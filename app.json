@@ -1,12 +1,19 @@
 {
   "expo": {
-    "name": "Sway",
-    "slug": "Sway",
+    "name": "sway",
+    "slug": "sway",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
+    "backgroundColor": "#6F4AE2",
     "scheme": "sway",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/OnBoardingScreen.png",
+      "resizemode": "contain",
+      "backgroundColor": "#6F4AE2"
+    },
+    "enableFullScreenImage_legacy": "true",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -28,10 +35,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#6F4AE2"
         }
       ]
     ],
