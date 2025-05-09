@@ -5,7 +5,7 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors } from "@/constants/color";
 
 export default function TabsLayout() {
@@ -22,11 +22,10 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           headerShown: true,
-
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" color={color} size={size} />
           ),
-        }}
+        }} /* Board */
       />
       <Tabs.Screen
         name="board"
@@ -62,6 +61,14 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      {/* <Tabs.Screen
+        name="index"
+        options={{
+          headerShown: false,
+          tabBarButton: () => <View style={{ width: 0, height: 0 }} />, // 스플래시로 탭 인덱스 활용했으니 탭에서 지워버림.
+        }}
+      /> */}
     </Tabs>
   );
 }
@@ -73,5 +80,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     height: 60,
     paddingBottom: 8,
+    paddingHorizontal: 16,
+    justifyContent: "center",
   },
 });

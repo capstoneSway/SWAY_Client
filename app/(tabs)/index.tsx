@@ -1,8 +1,31 @@
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function TabIndex() {
   const router = useRouter();
+  const [isVisited, setIsVisited] = useState(false);
+
+  useEffect(() => {
+    const checkSplashVisit = async () => {
+      try {
+        const isFreshStart = !globalThis.isVisitedOnce;
+        if (isFreshStart) {
+          globalThis.isVisitedOnce = true; // 전역 플래그 설정
+          await AsyncStorage.setItem("isVisited", "true");
+          router.replace("/splash");
+        } else {
+          setIsVisited(true);
+        }
+      } catch (error) {
+        console.error("Error checking splash visit:", error);
+        setIsVisited(true); // 에러 시에도 메인 화면 표시
+      }
+    };
+
+    checkSplashVisit();
+  }, []);
 
   const handleGoToAuth = () => {
     router.push("/auth/signIn");

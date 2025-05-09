@@ -1,24 +1,29 @@
 import { colors } from "@/constants/color";
 import React from "react";
-import { View, Pressable, Text, StyleSheet } from "react-native";
+import { View, Pressable, Text, StyleSheet, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface FixedBottomCTAProps {
   label: string;
   enabled: boolean; //활성화, 비활성화
   onPress: () => void;
+  style?: ViewStyle;
 }
 
 const FixedBottomCTA: React.FC<FixedBottomCTAProps> = ({
   label,
   enabled,
   onPress,
+  ...props
 }) => {
   // Safe Area
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom || 12 }]}>
+    <View
+      style={[styles.container, { paddingBottom: insets.bottom || 12 }]}
+      {...props}
+    >
       {/* 버튼 */}
       <Pressable
         style={[styles.button, enabled ? styles.enabled : styles.disabled]}
@@ -42,6 +47,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 16,
     alignItems: "center",
+    maxWidth: 400,
+    zIndex: 10,
   },
   button: {
     width: "100%",
@@ -50,6 +57,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
+    maxWidth: 400,
+    paddingHorizontal: 16,
   },
   enabled: {
     backgroundColor: colors.PURPLE_300,

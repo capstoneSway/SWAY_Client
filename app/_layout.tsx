@@ -1,9 +1,4 @@
 import { colors } from "@/constants/color";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import "react-native-reanimated";
@@ -26,12 +21,19 @@ export default function RootLayout() {
         },
       }}
     >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="(tabs)"
+        options={{
+          headerShown: false,
+        }}
+      />
       <Stack.Screen
         name="auth"
         options={{
           title: "Login",
           headerShown: true,
+          headerTintColor: colors.BLACK,
+          headerBackTitle: "ㅤ",
         }}
       />
       <Stack.Screen name="+not-found" />

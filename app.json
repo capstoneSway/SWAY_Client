@@ -9,8 +9,8 @@
     "scheme": "sway",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/OnBoardingScreen.png",
-      "resizemode": "contain",
+      "image": "./assets/images/logo_splash.png",
+      "resizemode": "cover",
       "backgroundColor": "#6F4AE2"
     },
     "enableFullScreenImage_legacy": "true",

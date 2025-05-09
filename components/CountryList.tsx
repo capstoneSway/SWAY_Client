@@ -1,10 +1,18 @@
 import React from "react";
-import { Pressable, Text, View, StyleSheet } from "react-native";
+import {
+  Pressable,
+  Text,
+  View,
+  StyleSheet,
+  ImageSourcePropType,
+  Image,
+} from "react-native";
 import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
 
 //props부터
 interface CountryListItemProps {
-  flag: string; //국기
+  flag: ImageSourcePropType;
   name: string;
   selected: boolean;
   onPress: () => void;
@@ -23,7 +31,7 @@ const CountryListItem: React.FC<CountryListItemProps> = ({
       style={[styles.container, selected && styles.selectedFrame]}
       onPress={onPress}
     >
-      <Text style={styles.flag}>{flag}</Text>
+      <Image source={flag} style={styles.flag} />
 
       {/* 선택한다면 fontWeight */}
       <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
@@ -47,7 +55,8 @@ const styles = StyleSheet.create({
   },
 
   flag: {
-    fontSize: 24,
+    width: 32,
+    height: 32,
     marginRight: 16, // 국가명이랑 간격
   },
 

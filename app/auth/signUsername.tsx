@@ -3,6 +3,7 @@ import { colors } from "@/constants/color";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 export default function SignUsername() {
   // 유저네임 입력 필드 상태
@@ -64,13 +65,14 @@ export default function SignUsername() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAwareScrollView contentContainerStyle={styles.container}>
       {/* 제목 */}
       <Text style={styles.title}>{title}</Text>
       {/* 부제목 */}
       <Text style={styles.subtitle}>{subtitle}</Text>
 
       {/* 유저네임 입력필드 */}
+
       <TextInput
         style={[
           styles.input,
@@ -102,7 +104,7 @@ export default function SignUsername() {
         enabled={buttonEnabled}
         onPress={handleSubmit}
       ></FixedBottomCTA>
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     backgroundColor: colors.WHITE,
   },
   title: {
