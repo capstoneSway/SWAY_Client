@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface FixedBottomCTAProps {
   label: string;
-  enabled: boolean; //활성화, 비활성화
+  enabled: boolean; // 활성화, 비활성화 상태
   onPress: () => void;
   style?: ViewStyle;
 }
@@ -14,16 +14,17 @@ const FixedBottomCTA: React.FC<FixedBottomCTAProps> = ({
   label,
   enabled,
   onPress,
-  ...props
+  style,
 }) => {
-  // Safe Area
   const insets = useSafeAreaInsets();
 
   return (
     <View
-      style={[styles.container, { paddingBottom: insets.bottom || 12 }]}
-      {...props}
+      style={[styles.container, style, { paddingBottom: insets.bottom || 12 }]}
     >
+      {/* 헤어라인 */}
+      <View style={styles.hairline} />
+
       {/* 버튼 */}
       <Pressable
         style={[styles.button, enabled ? styles.enabled : styles.disabled]}
@@ -41,24 +42,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     width: "100%",
-    backgroundColor: colors.WHITE,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.GRAY_300,
-    paddingTop: 12,
     paddingHorizontal: 16,
+    backgroundColor: colors.WHITE,
+    justifyContent: "center",
     alignItems: "center",
-    maxWidth: 400,
-    zIndex: 10,
+  },
+  hairline: {
+    width: "120%",
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.GRAY_300,
+    marginBottom: 12,
   },
   button: {
-    width: "100%",
+    width: "105%",
+    maxWidth: 400,
     height: 50,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
-    maxWidth: 400,
-    paddingHorizontal: 16,
   },
   enabled: {
     backgroundColor: colors.PURPLE_300,

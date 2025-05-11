@@ -2,6 +2,7 @@
   "expo": {
     "name": "sway",
     "slug": "sway",
+    "owner": "jjh0074",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -16,14 +17,21 @@
     "enableFullScreenImage_legacy": "true",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.sway",
+      "icon": {
+        "light": "./assets/images/appLogo.png",
+        "dark": "./assets/images/appLogo.png",
+        "tinted": "./assets/images/appLogo.png"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.sway"
     },
     "web": {
       "bundler": "metro",
@@ -35,15 +43,55 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
+          "image": "./assets/images/logo_splash.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#6F4AE2"
+          "backgroundColor": "#6F4AE2",
+          "dark": {
+            "image": "./assets/images/logo_splash.png",
+            "backgroundColor": "#6F4AE2"
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ],
+            "newArchEnabled": true
+          },
+          "ios": {
+            "newArchEnabled": true
+          }
+        }
+      ],
+      [
+        "@react-native-kakao/core",
+        {
+          "nativeAppKey": "56f7a27315dfde85f38e49b0821a6770",
+          "android": {
+            "authCodeHandlerActivity": true
+          },
+          "ios": {
+            "handleKakaoOpenUrl": true
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1dbf7654-b7b8-4073-8643-42945443f493"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/1dbf7654-b7b8-4073-8643-42945443f493"
     }
   }
 }

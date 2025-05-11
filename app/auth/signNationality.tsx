@@ -1,25 +1,68 @@
-import React, { useState } from "react";
-import { View, Text, FlatList, StyleSheet, TextInput } from "react-native";
-import { countries } from "@/constants/country";
 import CountryListItem from "@/components/CountryList";
 import FixedBottomCTA from "@/components/FixedBottomCTA";
 import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
+import { saveNationalityToStorage } from "@/utils/saveNationality";
+import Feather from "@expo/vector-icons/Feather";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import React, { useState } from "react";
+import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import Feather from "@expo/vector-icons/Feather";
 
 export default function SignNationality() {
   const insets = useSafeAreaInsets();
-  // 골랐으면 담고 아니면 없고
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [search, setSearch] = useState(""); // 검색으로 받을 로마자
+  const [search, setSearch] = useState(""); // 검색어
 
-  // 검색어 필터링된 국가 반환 용도. 소문자가 편할 듯.
-  const filteredCountries = countries.filter(
-    (country) => country.name.toLowerCase().includes(search.toLowerCase()) // 소문자로 소문자를 필터링.
+  // 검색어 필터링된 국가 반환
+  const filteredCountries = countries.filter((country) =>
+    country.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  //  사용자 정보 가져오기
+  const fetchKakaoUserInfo = async (accessToken: string) => {
+    try {
+      const response = await axios.get("https://kapi.kakao.com/v2/user/me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      console.log("카카오 사용자 정보:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("카카오 사용자 정보 가져오기 실패:", error);
+      return null;
+    }
+  };
+
+  //  국적 선택
+  const handleSubmitNationality = async () => {
+    if (selectedCountry) {
+      try {
+        await saveNationalityToStorage(selectedCountry);
+        console.log("국적 저장 성공:", selectedCountry);
+
+        // 로컬 스토리지에서 카카오 토큰 가져오기
+        const tokenDataString = await AsyncStorage.getItem("kakaoTokenData");
+        const tokenData = tokenDataString ? JSON.parse(tokenDataString) : null;
+
+        if (!tokenData?.accessToken) {
+          console.error("액세스 토큰이 없습니다.");
+          return;
+        }
+
+        // 카카오 사용자 정보 가져오기
+        const kakaoUserInfo = await fetchKakaoUserInfo(tokenData.accessToken);
+        console.log("받아온 사용자 정보:", kakaoUserInfo);
+      } catch (error) {
+        console.error("국적 저장 중 오류:", error);
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,7 +70,6 @@ export default function SignNationality() {
       <Text style={styles.subtitle}>Select your nationality to continue</Text>
 
       {/* 검색 필드 */}
-
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -50,7 +92,7 @@ export default function SignNationality() {
       {/* 국가 목록 */}
       <FlatList
         data={filteredCountries}
-        keyExtractor={(item) => item.code} // 각 국가의 고유 코드로 key 설정
+        keyExtractor={(item) => item.code}
         renderItem={({ item }) => (
           <CountryListItem
             flag={item.flag}
@@ -59,14 +101,15 @@ export default function SignNationality() {
             onPress={() => setSelectedCountry(item.code)}
           />
         )}
-        contentContainerStyle={styles.listContainer} // 목록 스타일
+        contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
       />
 
+      {/* 완료 버튼 */}
       <FixedBottomCTA
         label="Done"
-        enabled={selectedCountry !== null} // 선택된 국가가 있을 때만 활성화
-        onPress={() => console.log("Selected country:", selectedCountry)}
+        enabled={selectedCountry !== null}
+        onPress={handleSubmitNationality}
         style={styles.bottomCTA}
       />
     </SafeAreaView>
@@ -80,14 +123,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 24,
   },
-
   searchContainer: {
     position: "relative",
     width: "90%",
     marginBottom: 16,
     left: 20,
   },
-
   searchIcon: {
     position: "absolute",
     right: 16,
@@ -95,7 +136,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
   },
-
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -103,14 +143,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: "center",
   },
-
   subtitle: {
     fontSize: 16,
     color: colors.BLACK,
     marginBottom: 16,
     textAlign: "center",
   },
-  // 검색 입력 필드 스타일
   searchInput: {
     width: "100%",
     height: 64,
@@ -121,23 +159,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.GRAY_700,
   },
-
   listContainer: {
     paddingHorizontal: 36,
-    marginBottom: 16, // 버튼 영역 확보
+    paddingVertical: 26,
+    marginBottom: 16,
     width: "100%",
     alignItems: "stretch",
     backgroundColor: colors.WHITE,
     overflow: "visible",
   },
-
   bottomCTA: {
     position: "relative",
+    top: 34,
     width: "100%",
     alignSelf: "center",
-    maxWidth: 370,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.GRAY_300,
-    paddingTop: 12,
   },
 });

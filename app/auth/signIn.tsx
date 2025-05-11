@@ -1,49 +1,70 @@
-import {
-  View,
-  Text,
-  Image,
-  Pressable,
-  Linking,
-  ScrollView,
-} from "react-native";
-import { router, useRouter } from "expo-router";
-import { StyleSheet } from "react-native";
-import { useState } from "react";
 import { colors } from "@/constants/color";
+import * as AuthSession from "expo-auth-session";
+import { useState } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function AuthHome() {
+  const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}`;
+
   const [isError, setIsError] = useState(false);
-  // const router = useRouter();
+  const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
+  const REDIRECT_URI = "http://localhost:8081/auth/signUsername";
+  const SCOPES = [
+    "account_email",
+    "profile_image",
+    "profile_nickname",
+    "name",
+    "gender",
+  ];
 
+  // AuthSession 설정
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: REST_API_KEY,
+      redirectUri: REDIRECT_URI,
+      scopes: SCOPES,
+      responseType: "code",
+      usePKCE: false,
+    },
+    {
+      authorizationEndpoint: "https://kauth.kakao.com/oauth/authorize",
+    }
+  );
+
+  // 로그인 버튼 클릭 핸들러
   const handleKakaoLogin = async () => {
+    console.log("🟢 로그인 버튼 클릭됨");
     try {
-      // 카카오 로그인 로직 (실패 시 에러 메시지 표시)
-      const success = Math.random() > 0.5; // 임시 성공/실패 로직
-      if (!success) {
-        setIsError(true);
-        throw new Error("Login failed");
-      }
+      const result = await promptAsync();
+      console.log("🔵 promptAsync 호출 결과:", result);
 
-      // 최초 로그인이 여부 판별해야 하나, 일단 테스트로 닉 설정 진행.
-      router.replace("./signUsername");
+      if (result.type === "success" && result.params.code) {
+        const code = result.params.code;
+        console.log("인가 코드:", code);
+      } else {
+        console.error(" 인가 코드가 없습니다.");
+        setIsError(true);
+      }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("카카오 로그인 에러:", error);
       setIsError(true);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.container}>
       <Image
         source={require("@/assets/images/logo_login.png")}
         style={styles.logo}
       />
 
-      {isError && ( // 찐빠 시만 표시
-        <Text style={styles.errorMessage}>
-          Oops! Something went wrong! Please try again!
-        </Text>
-      )}
+      <View style={styles.errorContainer}>
+        {isError && (
+          <Text style={styles.errorMessage}>
+            Oops! Something went wrong! Please try again!
+          </Text>
+        )}
+      </View>
 
       <Pressable style={styles.kakaoButton} onPress={handleKakaoLogin}>
         <Image
@@ -52,12 +73,13 @@ export default function AuthHome() {
         />
         <Text style={styles.kakaoText}>Login with Kakao</Text>
       </Pressable>
+
       <Text style={styles.termsText}>
         By clicking continue, you agree to our{" "}
         <Text style={styles.link}>Terms of Service</Text> and{" "}
         <Text style={styles.link}>Privacy Policy</Text>
       </Text>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -70,13 +92,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   logo: {
+    top: -30,
     width: 300,
     height: 300,
     marginBottom: 40,
     resizeMode: "contain",
   },
-
   kakaoButton: {
+    top: -64,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -114,5 +137,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     bottom: 10,
+  },
+  errorContainer: {
+    top: -64,
+    height: 20,
+    justifyContent: "center",
   },
 });
