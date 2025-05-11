@@ -20,6 +20,14 @@ export default function SignUsername() {
     // 사용자 이름이 idToken 안에 들어가 있는데, 이게 JWT 형식인 것 같습니다.
     // <header>.<payload>.<signature>가 있으면 . 기준으로 스플릿해서 인덱스 1번, 페이로드 가져옵니다.
     // util화 하였습니다.
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // !!!!!!!!!!!!! 수정 예정. 액세스 토큰 통해 사용자 정보 가져올 수 있습니다. GET/POST	https://kapi.kakao.com/v2/user/me
     const initUsername = async () => {
       const fetchedName = await extractNicknameFromToken();
       if (fetchedName) {

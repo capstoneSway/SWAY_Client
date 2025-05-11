@@ -35,3 +35,5 @@ export const extractNicknameFromToken = async (): Promise<string | null> => {
     return null;
   }
 };
+
+// 현재 시점에서 임시 로직입니다. 삭제되거나 대폭 수정될 예정입니다.

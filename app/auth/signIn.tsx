@@ -1,66 +1,75 @@
-// AuthHome.tsx
 import { colors } from "@/constants/color";
+import { SCOPES } from "@/constants/scope";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import { jwtDecode } from "jwt-decode";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { WebView, WebViewNavigation } from "react-native-webview";
+import { WebView } from "react-native-webview";
+import { exchangeKakaoCode } from "../api/kakaoAuth";
 
 export default function AuthHome() {
-  const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
-  const REDIRECT_URI = "http://127.0.0.1:8081/auth/signUsername";
-
-  // 모달, 로딩, 에러 상태
-  const [modalVisible, setModalVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [showWebView, setShowWebView] = useState(false);
 
-  // 요청할 권한들
-  const SCOPES = [
-    "account_email",
-    "profile_image",
-    "profile_nickname",
-    "gender",
-  ];
-  const AUTH_URL =
+  const REDIRECT_URI = "http://127.0.0.1:8081/auth/signUsername";
+  const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5"; //클라이언트 아디
+  const KAKAO_AUTH_URL =
     `https://kauth.kakao.com/oauth/authorize` +
     `?response_type=code` +
     `&client_id=${REST_API_KEY}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    `&scope=${encodeURIComponent(SCOPES.join(","))}` +
-    `&prompt=login`;
+    `&scope=${encodeURIComponent(SCOPES.join(","))}` + // constants
+    "&prompt=login";
 
-  // 로그인 버튼 누르면 모달 열기 + 에러 리셋
   const handleKakaoLogin = () => {
-    setIsError(false);
     setLoading(true);
-    setModalVisible(true);
+    setIsError(false);
+    // WebView 띄우기
+    setShowWebView(true);
   };
 
-  // WebView가 로드할 URL을 가로채서 code 파라미터만 처리
-  const handleShouldStartLoadWithRequest = (event: WebViewNavigation) => {
+  const handleWebViewNavigation = async (event: { url: string }) => {
     const { url } = event;
-    if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
-      const match = url.match(/[?&]code=([^&]+)/);
-      const code = match ? decodeURIComponent(match[1]) : null;
-      console.log("🟢 인가 코드:", code);
-      setModalVisible(false);
-      return false;
-    }
-    return true;
-  };
+    if (loading) setLoading(false);
 
-  // WebView 로드 중 에러 발생 시
-  const handleWebViewError = () => {
-    setLoading(false);
-    setModalVisible(false);
-    setIsError(true);
+    if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
+      const code = new URL(url).searchParams.get("code");
+      console.log("🟢 인가 코드:", code);
+      setShowWebView(false);
+      if (code) {
+        try {
+          const { accessToken, refreshToken } = await exchangeKakaoCode(code);
+          // 인가 코드 주고 토큰 받고, 일단 jwt 디코딩 ( me()로 받아와도 되고 )
+          // !!!!!!!!!1 GET/POST	https://kapi.kakao.com/v2/user/me 에서 가져올 예정. 디코딩은 그냥 임시.
+          const { sub: email, userId } = jwtDecode<{
+            sub: string;
+            userId: string;
+          }>(accessToken);
+          // 스토리지에 저장
+
+          await AsyncStorage.multiSet([
+            ["@accessToken", accessToken],
+            ["@refreshToken", refreshToken],
+            ["@email", email],
+            ["@userId", userId],
+          ]);
+
+          router.replace("/auth/signUsername");
+        } catch (err) {
+          console.error("코드 교환 실패:", err);
+          setIsError(true);
+        }
+      }
+    }
   };
 
   return (
@@ -70,21 +79,28 @@ export default function AuthHome() {
         style={styles.logo}
       />
 
-      {/* 에러 메시지 */}
-      <View style={styles.errorContainer}>
-        {isError && (
-          <Text style={styles.errorMessage}>
-            Oops! Something went wrong! Please try again!
-          </Text>
-        )}
-      </View>
+      {isError && (
+        <Text style={styles.errorMessage}>
+          Oops! Something went wrong! Please try again!
+        </Text>
+      )}
 
-      <Pressable style={styles.kakaoButton} onPress={handleKakaoLogin}>
-        <Image
-          source={require("@/assets/images/kakao.png")}
-          style={styles.kakaoIcon}
-        />
-        <Text style={styles.kakaoText}>Login with Kakao</Text>
+      <Pressable
+        style={styles.kakaoButton}
+        onPress={handleKakaoLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color={colors.BLACK} />
+        ) : (
+          <>
+            <Image
+              source={require("@/assets/images/kakao.png")}
+              style={styles.kakaoIcon}
+            />
+            <Text style={styles.kakaoText}>Login with Kakao</Text>
+          </>
+        )}
       </Pressable>
 
       <Text style={styles.termsText}>
@@ -93,51 +109,27 @@ export default function AuthHome() {
         <Text style={styles.link}>Privacy Policy</Text>
       </Text>
 
-      {/* WebView 모달 */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={() => {
-          setModalVisible(false);
-          setIsError(true);
-        }}
-      >
-        {/* ─── 닫기 버튼 ─── */}
-        <View style={styles.closeWrapper}>
-          <Pressable
-            style={styles.closeButton}
-            onPress={() => setModalVisible(false)}
-          >
-            <Text style={styles.closeText}>Close</Text>
-          </Pressable>
-        </View>
-
-        {/* ─── WebView ─── */}
-        <View style={styles.webviewWrapper}>
-          {loading && (
-            <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
-          )}
+      {/* WebView with incognito to clear cookies */}
+      {showWebView && (
+        <View style={styles.webviewContainer}>
           <WebView
-            source={{ uri: AUTH_URL }}
-            originWhitelist={["*"]}
+            source={{ uri: KAKAO_AUTH_URL }}
+            incognito={true} // 세션·쿠키 초기화
+            cacheEnabled={false}
+            sharedCookiesEnabled={false}
+            onNavigationStateChange={handleWebViewNavigation}
             startInLoadingState
-            onLoadEnd={() => setLoading(false)}
-            onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-            onError={handleWebViewError}
-            onHttpError={handleWebViewError}
-            injectedJavaScript={`
-              // 시뮬레이터 테스트용: kakaotalk:// 링크 제거
-              document.querySelectorAll('a').forEach(a => {
-                if (a.href.startsWith('kakaotalk://')) a.remove();
-              });
-              true;
-            `}
+            renderLoading={() => (
+              <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
+            )}
           />
         </View>
-      </Modal>
+      )}
     </View>
   );
 }
+
+// button onPress -> setShowWebView(True) -> showWebView
 
 const styles = StyleSheet.create({
   container: {
@@ -154,17 +146,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     resizeMode: "contain",
   },
-  // 에러 영역
-  errorContainer: {
-    top: -64,
-    height: 20,
-    justifyContent: "center",
-  },
   errorMessage: {
     color: colors.RED_500,
     fontSize: 14,
     textAlign: "center",
-    bottom: 10,
+    marginBottom: 16,
   },
   kakaoButton: {
     top: -64,
@@ -200,30 +186,9 @@ const styles = StyleSheet.create({
     color: colors.BLACK,
     fontWeight: "400",
   },
-  // ─── 닫기 버튼 래퍼 ───
-  closeWrapper: {
-    paddingTop: 64,
-    paddingHorizontal: 16,
+  webviewContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999,
     backgroundColor: colors.WHITE,
-    alignItems: "flex-start",
-  },
-  closeButton: {
-    backgroundColor: colors.GRAY_200,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    width: 82,
-    height: 32,
-  },
-  closeText: {
-    fontSize: 14,
-    color: colors.BLACK,
-    textAlign: "center",
-    justifyContent: "center",
-    alignContent: "center",
-  },
-  // ─── WebView 래퍼 ───
-  webviewWrapper: {
-    flex: 1,
   },
 });

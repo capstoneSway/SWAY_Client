@@ -17,6 +17,9 @@
     "enableFullScreenImage_legacy": "true",
     "newArchEnabled": true,
     "ios": {
+      "infoPlist": {
+        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true }
+      },
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sway",
       "icon": {
