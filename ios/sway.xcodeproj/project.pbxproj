@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		2374163271AE054A5E0F48A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F2519B37181283481912734C /* PrivacyInfo.xcprivacy */; };
+		175475F39B6B9CB40538005B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C041065D1152FC72216F3F0F /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		5AF722F8DC16468C7C7858D5 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD666F6A832BD3F2D52BB781 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D4DA9B2A382A60C2D6025253 /* libPods-sway.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C4BB42470E2E20D581D06065 /* libPods-sway.a */; };
+		C5CD4B240F01DEFB8031B963 /* libPods-sway.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 50B26E9A571AD6C90FF2745F /* libPods-sway.a */; };
+		DE9821F192EE1CE5757472D7 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CCF909DE063BCFBE9D15EE /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
@@ -20,16 +20,16 @@
 		13B07F961A680F5B00A75B9A /* sway.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sway.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = sway/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = sway/Info.plist; sourceTree = "<group>"; };
-		8CA4553B47965E05E2457431 /* Pods-sway.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-sway.release.xcconfig"; path = "Target Support Files/Pods-sway/Pods-sway.release.xcconfig"; sourceTree = "<group>"; };
-		9F0B48CD22A72346AE3E953C /* Pods-sway.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-sway.debug.xcconfig"; path = "Target Support Files/Pods-sway/Pods-sway.debug.xcconfig"; sourceTree = "<group>"; };
+		50B26E9A571AD6C90FF2745F /* libPods-sway.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-sway.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		63CCF909DE063BCFBE9D15EE /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-sway/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		82EA4418D1CAE66D02D74234 /* Pods-sway.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-sway.release.xcconfig"; path = "Target Support Files/Pods-sway/Pods-sway.release.xcconfig"; sourceTree = "<group>"; };
+		840C592707DD3ADC4B8063AF /* Pods-sway.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-sway.debug.xcconfig"; path = "Target Support Files/Pods-sway/Pods-sway.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = sway/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C4BB42470E2E20D581D06065 /* libPods-sway.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-sway.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		DD666F6A832BD3F2D52BB781 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-sway/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		C041065D1152FC72216F3F0F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = sway/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = sway/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* sway-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "sway-Bridging-Header.h"; path = "sway/sway-Bridging-Header.h"; sourceTree = "<group>"; };
-		F2519B37181283481912734C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = sway/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D4DA9B2A382A60C2D6025253 /* libPods-sway.a in Frameworks */,
+				C5CD4B240F01DEFB8031B963 /* libPods-sway.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,36 +53,18 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				F2519B37181283481912734C /* PrivacyInfo.xcprivacy */,
+				C041065D1152FC72216F3F0F /* PrivacyInfo.xcprivacy */,
 			);
 			name = sway;
-			sourceTree = "<group>";
-		};
-		14EA08AD2A62EF789B97F8E2 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				E05DAD2764DAE8EBD11E96FD /* sway */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				C4BB42470E2E20D581D06065 /* libPods-sway.a */,
+				50B26E9A571AD6C90FF2745F /* libPods-sway.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		67EDBC0DAADA141CE694C519 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				9F0B48CD22A72346AE3E953C /* Pods-sway.debug.xcconfig */,
-				8CA4553B47965E05E2457431 /* Pods-sway.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -99,8 +81,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				67EDBC0DAADA141CE694C519 /* Pods */,
-				14EA08AD2A62EF789B97F8E2 /* ExpoModulesProviders */,
+				84F75DCE4603F55A83D383BD /* Pods */,
+				98E89EDE34B475FB850D9129 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -115,6 +97,24 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		84F75DCE4603F55A83D383BD /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				840C592707DD3ADC4B8063AF /* Pods-sway.debug.xcconfig */,
+				82EA4418D1CAE66D02D74234 /* Pods-sway.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		98E89EDE34B475FB850D9129 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				C441A6337FA611854E8004E6 /* sway */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -124,10 +124,10 @@
 			path = sway/Supporting;
 			sourceTree = "<group>";
 		};
-		E05DAD2764DAE8EBD11E96FD /* sway */ = {
+		C441A6337FA611854E8004E6 /* sway */ = {
 			isa = PBXGroup;
 			children = (
-				DD666F6A832BD3F2D52BB781 /* ExpoModulesProvider.swift */,
+				63CCF909DE063BCFBE9D15EE /* ExpoModulesProvider.swift */,
 			);
 			name = sway;
 			sourceTree = "<group>";
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "sway" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				39FB26821E0E68AB89569E48 /* [Expo] Configure project */,
+				6ACFC9E8FA00DEFB6A180881 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				1CB5573C88B0842D5C5217AA /* [CP] Embed Pods Frameworks */,
+				4CFAD2059981CABEE2DCD234 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				2374163271AE054A5E0F48A5 /* PrivacyInfo.xcprivacy in Resources */,
+				175475F39B6B9CB40538005B /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,7 +240,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		1CB5573C88B0842D5C5217AA /* [CP] Embed Pods Frameworks */ = {
+		4CFAD2059981CABEE2DCD234 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -258,7 +258,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-sway/Pods-sway-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		39FB26821E0E68AB89569E48 /* [Expo] Configure project */ = {
+		6ACFC9E8FA00DEFB6A180881 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -288,12 +288,14 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/EXNotifications/ExpoNotifications_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXUpdates/EXUpdates.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoSystemUI/ExpoSystemUI_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/KakaoSDKCommon/KakaoSDKCommon.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ReachabilitySwift/ReachabilitySwift.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
@@ -309,12 +311,14 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoApplication_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoNotifications_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXUpdates.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoSystemUI_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/KakaoSDKCommon.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ReachabilitySwift.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
@@ -337,7 +341,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				5AF722F8DC16468C7C7858D5 /* ExpoModulesProvider.swift in Sources */,
+				DE9821F192EE1CE5757472D7 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,7 +350,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9F0B48CD22A72346AE3E953C /* Pods-sway.debug.xcconfig */;
+			baseConfigurationReference = 840C592707DD3ADC4B8063AF /* Pods-sway.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -382,7 +386,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8CA4553B47965E05E2457431 /* Pods-sway.release.xcconfig */;
+			baseConfigurationReference = 82EA4418D1CAE66D02D74234 /* Pods-sway.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

@@ -1,12 +1,9 @@
 import { Tabs } from "expo-router";
-import {
-  Feather,
-  FontAwesome,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
-import { StyleSheet, View } from "react-native";
+import React from "react";
+
 import { colors } from "@/constants/color";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { StyleSheet } from "react-native";
 
 export default function TabsLayout() {
   return (
