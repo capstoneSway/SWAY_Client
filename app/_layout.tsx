@@ -1,6 +1,7 @@
 import { colors } from "@/constants/color";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import React from "react";
 import "react-native-reanimated";
 
 export default function RootLayout() {
@@ -37,10 +38,10 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
-        name="post/newpost"
+        name="post"
         options={{
           title: "New Post",
-          headerShown: true,
+          headerShown: false,
         }}
       />
       <Stack.Screen name="+not-found" />
