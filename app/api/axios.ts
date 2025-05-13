@@ -1,7 +1,8 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "https://example.com/api", // <- 실제 백엔드 URL
+  baseURL:
+    "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/accounts/", // <- 실제 백엔드 URL
   headers: { "Content-Type": "application/json" },
   timeout: 5000,
 });
