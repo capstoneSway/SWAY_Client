@@ -7,6 +7,7 @@ import * as Notifications from "expo-notifications";
 import { Alert, Linking, Platform } from "react-native";
 
 export type PermissionState = "granted" | "denied" | "undetermined";
+// 승인 / 거부 / 묻지 않음
 
 async function openSettings() {
   if (Platform.OS === "ios") {
