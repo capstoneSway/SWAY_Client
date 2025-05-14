@@ -40,13 +40,10 @@ export default function AuthHome() {
         // 기존 토큰으로 사용자 정보 조회 및 분기
         const userInfo = await fetchUserInfo(existingAccessToken);
         if (userInfo) {
-          if (!userInfo.nickname || userInfo.nickname.trim() === "") {
+          if (userInfo.nickname === null) {
             router.replace("/auth/signUsername");
             return;
-          } else if (
-            !userInfo.nationality ||
-            userInfo.nationality.trim() === ""
-          ) {
+          } else if (userInfo.nationality === null) {
             router.replace("/auth/signNationality");
             return;
           } else {
@@ -83,12 +80,9 @@ export default function AuthHome() {
       // 사용자 정보 조회 및 분기
       const userInfo = await fetchUserInfo(jwt_access);
       if (userInfo) {
-        if (!userInfo.nickname || userInfo.nickname.trim() === "") {
+        if (userInfo.nickname === null) {
           router.replace("/auth/signUsername");
-        } else if (
-          !userInfo.nationality ||
-          userInfo.nationality.trim() === ""
-        ) {
+        } else if (userInfo.nationality === null) {
           router.replace("/auth/signNationality");
         } else {
           router.replace("../(tabs)");
@@ -98,6 +92,7 @@ export default function AuthHome() {
       console.error("❌ 토큰 처리 오류:", err);
       setIsError(true);
     } finally {
+      // 무조건 웹뷰 닫기 및 로딩 해제
       setShowWebView(false);
       setLoading(false);
     }
