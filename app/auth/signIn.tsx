@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import fetchUserInfo from "../api/fetchUserInfo";
 
 const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
 const REDIRECT_URI =
@@ -31,49 +32,72 @@ export default function AuthHome() {
     `&scope=${encodeURIComponent(SCOPES.join(","))}` +
     `&prompt=login`;
 
-  // handleKakaoLogin 수정
   const handleKakaoLogin = async () => {
     try {
-      // 기존 JWT 토큰이 있는지 먼저 확인
       const existingAccessToken = await AsyncStorage.getItem("@jwt");
-
       if (existingAccessToken) {
         console.log("🟢 기존 JWT 발견:", existingAccessToken);
-        router.replace("/auth/signUsername");
-        return;
+        // 기존 토큰으로 사용자 정보 조회 및 분기
+        const userInfo = await fetchUserInfo(existingAccessToken);
+        if (userInfo) {
+          if (!userInfo.nickname || userInfo.nickname.trim() === "") {
+            router.replace("/auth/signUsername");
+            return;
+          } else if (
+            !userInfo.nationality ||
+            userInfo.nationality.trim() === ""
+          ) {
+            router.replace("/auth/signNationality");
+            return;
+          } else {
+            router.replace("../(tabs)");
+            return;
+          }
+        }
+      } else {
+        // 토큰이 없으면 카카오 로그인 WebView 표시
+        setIsError(false);
+        setShowWebView(true);
       }
-
-      setIsError(false);
-      setShowWebView(true);
     } catch (err) {
-      console.error(" 토큰 초기화 오류:", err);
+      console.error("토큰 초기화 오류:", err);
     }
   };
 
-  // redirectURI로 로그인을 성공하면, 추가 요청 없이 자동으로 토큰이 담겨지는 구조더라구요. 따라서 kakaoAuth.ts가 불필요해 삭제했습니다.
-  // injectedJS의 postMessage에서 받아온 데이터가 event.nativeEvent.data, 즉 토큰이 될 데이터입니다. 거기서 파싱합니다.
   const handleMessage = async (event: any) => {
     try {
       const jsonText = event.nativeEvent.data.trim();
       console.log("🟢 받은 JSON:", jsonText);
 
       const data = JSON.parse(jsonText);
-      const { jwt_access, jwt_refresh } = data; // 파싱한 data에서 토큰만 가져옵니다.
+      const { jwt_access, jwt_refresh } = data;
 
       console.log("🟢 Access Token:", jwt_access);
       console.log("🟢 Refresh Token:", jwt_refresh);
 
+      // 로컬 스토리지에 토큰 저장
       const pairs: [string, string][] = [["@jwt", jwt_access]];
       if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
-      await AsyncStorage.multiSet(pairs); // 즉 액세스와 리프레시 토큰은 pairs 라는 형태로 저장됩니다. 골뱅이는 키입니다.
+      await AsyncStorage.multiSet(pairs);
 
-      // 다음 화면으로 이동
-      router.replace("/auth/signUsername");
+      // 사용자 정보 조회 및 분기
+      const userInfo = await fetchUserInfo(jwt_access);
+      if (userInfo) {
+        if (!userInfo.nickname || userInfo.nickname.trim() === "") {
+          router.replace("/auth/signUsername");
+        } else if (
+          !userInfo.nationality ||
+          userInfo.nationality.trim() === ""
+        ) {
+          router.replace("/auth/signNationality");
+        } else {
+          router.replace("../(tabs)");
+        }
+      }
     } catch (err) {
       console.error("❌ 토큰 처리 오류:", err);
       setIsError(true);
     } finally {
-      // 무조건 웹뷰 닫기
       setShowWebView(false);
       setLoading(false);
     }
@@ -124,7 +148,7 @@ export default function AuthHome() {
                 const jsonText = document.body.innerText.trim();
                 try {
                   const data = JSON.parse(jsonText);
-                  window.ReactNativeWebView.postMessage(jsonText); // 웹뷰에서 앱으로 데이터 전송.
+                  window.ReactNativeWebView.postMessage(jsonText);
                 } catch (e) {
                   console.error("🛑 JSON 파싱 실패:", e, jsonText);
                 }
