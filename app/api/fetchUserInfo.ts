@@ -2,7 +2,7 @@ import { api } from "./axios";
 
 export default async function fetchUserInfo(jwtAccessToken: string) {
   try {
-    const response = await api.get("user/info/", {
+    const response = await api.get("/accounts/user/info/", {
       headers: {
         Authorization: `Bearer ${jwtAccessToken}`,
       },
