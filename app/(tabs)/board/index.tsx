@@ -1,25 +1,61 @@
-import FeedList from "@/components/FeedList";
+import { fetchBoardList } from "@/app/api/board";
+import FeedItem from "@/components/FeedItem";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Pressable, SafeAreaView, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 export default function BoardScreen() {
-  //로그인 정보 관리 (나중에 백엔드 연동 시 변경)
-  const [user, setUser] = useState({ id: 1 });
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const data = await fetchBoardList();
+        setPosts(data);
+      } catch (error) {
+        console.error("❌ 게시글 불러오기 실패:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPosts();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      <FeedList />
-      {user.id && (
-        <Pressable
-          style={styles.writeButton}
-          onPress={() => router.push("/post/newpost")}
-        >
-          <Ionicons name="pencil" size={32} color={colors.WHITE} />
-        </Pressable>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.PURPLE_300} />
+        </View>
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => <FeedItem post={item} />}
+          ListEmptyComponent={
+            <Text style={{ padding: 16 }}>게시글이 없습니다.</Text>
+          }
+        />
       )}
+
+      <Pressable
+        style={styles.writeButton}
+        onPress={() => router.push("/post/newpost")}
+      >
+        <Ionicons name="pencil" size={32} color={colors.WHITE} />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -28,6 +64,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.WHITE,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   writeButton: {
     position: "absolute",
@@ -44,5 +85,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOpacity: 0.5,
     elevation: 2,
+    zIndex: 10,
   },
 });

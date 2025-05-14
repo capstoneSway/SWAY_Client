@@ -1,34 +1,25 @@
+import { View, Image, Text, Pressable, StyleSheet } from "react-native";
 import { colors } from "@/constants/color";
-import React, { ReactNode } from "react";
-import { Pressable, StyleSheet, View, Image, Text } from "react-native";
 
 interface ProfileProps {
-  onPress: () => void;
+  onPress?: () => void;
   nickname: string;
   imageUri?: string;
   createdAt: string;
-  option?: ReactNode;
 }
 
-function Profile({ onPress, imageUri, nickname, createdAt, option }: ProfileProps) {
+export default function Profile({ onPress, imageUri, nickname, createdAt }: ProfileProps) {
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.profileContainer} onPress={onPress}>
-        <Image
-          source={
-            imageUri
-              ? { uri: imageUri }
-              : require("@/assets/images/default_profile.png")
-          }
-          style={styles.profile}
-        />
-        <View style={{ gap: 4 }}>
-          <Text style={styles.nickname}>{nickname}</Text>
-          <Text style={styles.createdAt}>{createdAt}</Text>
-        </View>
-      </Pressable>
-      {option}
-    </View>
+    <Pressable style={styles.container} onPress={onPress}>
+      <Image
+        source={imageUri ? { uri: imageUri } : require("@/assets/images/default_profile.png")}
+        style={styles.avatar}
+      />
+      <View>
+        <Text style={styles.nickname}>{nickname}</Text>
+        <Text style={styles.createdAt}>{createdAt}</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -36,26 +27,22 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    marginBottom: 12,
   },
-  profileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  profile: {
-    width: 50,
-    height: 50,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.GRAY_200,
+    marginRight: 10,
   },
   nickname: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "bold",
     color: colors.BLACK,
   },
   createdAt: {
     fontSize: 12,
-    color: colors.GRAY_500,
+    color: colors.GRAY_600,
   },
 });
-
-export default Profile;
