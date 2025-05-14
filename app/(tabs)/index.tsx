@@ -1,99 +1,174 @@
+// TabIndex.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
+
+import {
+  PermissionState,
+  requestCameraPermission,
+  requestGalleryPermission,
+  requestLocationPermission,
+  requestNotificationPermission,
+} from "@/utils/permissions";
 
 export default function TabIndex() {
   const router = useRouter();
-  const [isVisited, setIsVisited] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "sway",
-    path: "redirect",
+  const [permStatuses, setPermStatuses] = useState<{
+    camera: PermissionState;
+    gallery: PermissionState;
+    location: PermissionState;
+    notifications: PermissionState;
+  }>({
+    camera: "undetermined",
+    gallery: "undetermined",
+    location: "undetermined",
+    notifications: "undetermined",
   });
 
-  console.log(redirectUri);
+  // 📌 권한 상태 초기화
+  const resetPermissions = async () => {
+    // 플래그 초기화
+    await AsyncStorage.removeItem("@isVisited");
+    await AsyncStorage.removeItem("@permissions");
+    console.log("🔄 플래그 초기화 완료");
 
-  const handleGoToAuth = () => {
-    // 임시 버튼
-    router.push("/auth/signIn");
+    // 권한 상태도 초기화 (강제로 undetermined으로 설정)
+    const resetStatuses = {
+      camera: "undetermined" as PermissionState,
+      gallery: "undetermined" as PermissionState,
+      location: "undetermined" as PermissionState,
+      notifications: "undetermined" as PermissionState,
+    };
+
+    setPermStatuses(resetStatuses);
+    console.log("🔄 권한 상태 초기화 완료 (undetermined)");
   };
 
-  const clearKakaoTokens = async () => {
-    try {
-      // 각 토큰 개별 삭제
-      await AsyncStorage.removeItem("kakaoAccessToken");
-      await AsyncStorage.removeItem("kakaoRefreshToken");
-      console.log(" 카카오 토큰 초기화 완료");
-    } catch (error) {
-      console.error(" 토큰 초기화 실패:", error);
+  // 📌 권한 상태 로드
+  const loadPermissions = async () => {
+    const savedStatuses = await AsyncStorage.getItem("@permissions");
+    if (savedStatuses) {
+      const parsed = JSON.parse(savedStatuses);
+      setPermStatuses(parsed);
+    } else {
+      // 저장된 상태가 없으면 네이티브 권한 상태 가져오기
+      const camera = (await ImagePicker.getCameraPermissionsAsync())
+        .status as PermissionState;
+      const gallery = (await ImagePicker.getMediaLibraryPermissionsAsync())
+        .status as PermissionState;
+      const location = (await Location.getForegroundPermissionsAsync())
+        .status as PermissionState;
+      const notifications = (await Notifications.getPermissionsAsync())
+        .status as PermissionState;
+
+      const initialStatuses = { camera, gallery, location, notifications };
+      setPermStatuses(initialStatuses);
+      await AsyncStorage.setItem(
+        "@permissions",
+        JSON.stringify(initialStatuses)
+      );
     }
+    setIsLoading(false);
   };
 
-  // useEffect(() => {
-  //   const checkLoginStatus = async () => {
-  //     try {
-  //       const isValidToken = await validateToken();
+  // 📌 권한 요청
+  const requestAllPermissions = async () => {
+    const updatedStatuses = { ...permStatuses };
 
-  //       if (isValidToken) {
-  //         console.log("✅ 이미 로그인된 상태");
-  //       } else {
-  //         console.log("🚫 토큰 없음 또는 만료, 로그인 필요");
-  //         router.replace("/auth/signIn");
-  //       }
-  //     } catch (error) {
-  //       console.error("로그인 상태 확인 중 오류:", error);
-  //       router.replace("/auth/signIn");
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
+    if (updatedStatuses.camera === "undetermined") {
+      updatedStatuses.camera = await requestCameraPermission();
+    }
 
-  //   checkLoginStatus();
-  // }, []);
+    if (updatedStatuses.gallery === "undetermined") {
+      updatedStatuses.gallery = await requestGalleryPermission();
+    }
 
-  // if (isLoading) {
-  //   // 로딩 중에는 빈 화면 표시
-  //   return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
-  // }
+    if (updatedStatuses.location === "undetermined") {
+      updatedStatuses.location = await requestLocationPermission();
+    }
+
+    if (updatedStatuses.notifications === "undetermined") {
+      updatedStatuses.notifications = await requestNotificationPermission();
+    }
+
+    setPermStatuses(updatedStatuses);
+    await AsyncStorage.setItem("@permissions", JSON.stringify(updatedStatuses));
+  };
+
+  // 📌 컴포넌트 로드 시 권한 상태 초기화
+  useEffect(() => {
+    const init = async () => {
+      const visited = await AsyncStorage.getItem("@isVisited");
+      if (!visited) {
+        await requestAllPermissions();
+        await AsyncStorage.setItem("@isVisited", "true");
+      }
+      await loadPermissions();
+    };
+
+    init();
+  }, []);
+
+  if (isLoading) {
+    return <ActivityIndicator style={{ flex: 1 }} size="large" />;
+  }
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text style={{ fontSize: 20, marginBottom: 20 }}>임시</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>권한 상태 확인:</Text>
+      <Text>카메라: {permStatuses.camera}</Text>
+      <Text>갤러리: {permStatuses.gallery}</Text>
+      <Text>위치: {permStatuses.location}</Text>
+      <Text>알림: {permStatuses.notifications}</Text>
+
       <Pressable
-        onPress={handleGoToAuth}
+        onPress={() => router.push("/auth/signIn")}
         style={({ pressed }) => ({
+          marginTop: 24,
           backgroundColor: pressed ? "lightgray" : "#000",
-          paddingVertical: pressed ? 10 : 12,
-          paddingHorizontal: pressed ? 22 : 24,
-          opacity: pressed ? 0.8 : 1,
+          paddingVertical: 12,
+          paddingHorizontal: 24,
         })}
       >
-        <Text style={{ color: "#fff", fontSize: 16 }}>이동하기</Text>
+        <Text style={{ color: "#fff", fontSize: 16 }}>
+          로그인 화면으로 이동
+        </Text>
       </Pressable>
-      <Pressable onPress={clearKakaoTokens}>
-        <Text>카카오 토큰 초기화</Text>
+
+      <Pressable
+        onPress={resetPermissions}
+        style={({ pressed }) => ({
+          marginTop: 12,
+          backgroundColor: pressed ? "lightcoral" : "#900",
+          paddingVertical: 10,
+          paddingHorizontal: 24,
+        })}
+      >
+        <Text style={{ color: "#fff", fontSize: 14 }}>🔄 권한 초기화</Text>
       </Pressable>
     </View>
   );
 }
 
-//   useEffect(() => {
-//     const checkAuthStatus = async () => {
-//         try {
-//             const userToken = await AsyncStorage.getItem('userToken');
-//             if (!userToken) {
-//                 router.replace('/auth/auth-home');
-//             }
-//         } catch (error) {
-//             console.error(error);
-//             router.replace('/auth/login-fail');
-//         }
-//     };
-
-//     checkAuthStatus();
-// }, []);
-// -> 로그인 실패시 시 Auth로 넘어가는 임시 로직입니다.
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 24,
+  },
+  title: { fontSize: 18, marginBottom: 12 },
+});

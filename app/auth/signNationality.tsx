@@ -2,65 +2,43 @@ import CountryListItem from "@/components/CountryList";
 import FixedBottomCTA from "@/components/FixedBottomCTA";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
-import { saveNationalityToStorage } from "@/utils/saveNationality";
 import Feather from "@expo/vector-icons/Feather";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { setNationality } from "../api/setNationality";
 
 export default function SignNationality() {
   const insets = useSafeAreaInsets();
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [search, setSearch] = useState(""); // 검색어
+  const [search, setSearch] = useState("");
 
-  // 검색어 필터링된 국가 반환
+  // 필터링된 국가 목록
   const filteredCountries = countries.filter((country) =>
     country.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  //  사용자 정보 가져오기
-  const fetchKakaoUserInfo = async (accessToken: string) => {
-    try {
-      const response = await axios.get("https://kapi.kakao.com/v2/user/me", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      console.log("카카오 사용자 정보:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("카카오 사용자 정보 가져오기 실패:", error);
-      return null;
-    }
-  };
-
-  //  국적 선택
+  // 국적 제출
   const handleSubmitNationality = async () => {
-    if (selectedCountry) {
-      try {
-        await saveNationalityToStorage(selectedCountry);
-        console.log("국적 저장 성공:", selectedCountry);
+    if (!selectedCountry) return;
+    const country = countries.find((c) => c.code === selectedCountry);
+    if (!country) return;
+    const nationality = country.name;
 
-        // 로컬 스토리지에서 카카오 토큰 가져오기
-        const tokenDataString = await AsyncStorage.getItem("kakaoTokenData");
-        const tokenData = tokenDataString ? JSON.parse(tokenDataString) : null;
-
-        if (!tokenData?.accessToken) {
-          console.error("액세스 토큰이 없습니다.");
-          return;
-        }
-
-        // 카카오 사용자 정보 가져오기
-        const kakaoUserInfo = await fetchKakaoUserInfo(tokenData.accessToken);
-        console.log("받아온 사용자 정보:", kakaoUserInfo);
-      } catch (error) {
-        console.error("국적 저장 중 오류:", error);
-      }
+    try {
+      // 백엔드에 PATCH 요청으로 nationality 전송
+      await setNationality(nationality);
+      // 로컬 스토리지에도 저장
+      await AsyncStorage.setItem("userNationality", nationality);
+      // 메인 화면으로 이동
+      router.replace("../(tabs)");
+    } catch (error) {
+      console.error("내셔널리티 설정 중 오류:", error);
     }
   };
 
@@ -108,7 +86,7 @@ export default function SignNationality() {
       {/* 완료 버튼 */}
       <FixedBottomCTA
         label="Done"
-        enabled={selectedCountry !== null}
+        enabled={!!selectedCountry}
         onPress={handleSubmitNationality}
         style={styles.bottomCTA}
       />
