@@ -1,8 +1,4 @@
-/**
- * rate.ts
- *  - /currency/overview/{code}/
- *    (today + history 한 번에 내려주는) 단일 엔드포인트 호출 모듈
- */
+// app/api/rate.ts
 import { api } from "./axios"; // axios.ts 에서 export const api = axios.create(...)
 
 // ── 응답 타입 정의 ──
@@ -28,13 +24,6 @@ export interface TodayResponse {
     rate: number;
   };
 }
-
-/**
- * formatCode
- *  - JPY, IDR처럼 ‘100 단위’로 내려오는 코드는
- *    뒤에 “(100)”을 반드시 붙여서 호출해야 성공하기 때문에
- *    호출 전에 자동으로 붙여주는 헬퍼
- */
 function formatCode(code: string): string {
   if (code === "JPY" || code === "IDR") {
     return `${code}(100)`;
@@ -73,4 +62,4 @@ export const getTimeSeries = (
 // ── 오늘 + 히스토리 조회 ──
 // GET  /history/{code}
 export const getHistory = (code: string) =>
-  api.get<HistoryResponse>(`/currency/overview/${formatCode(code)}/`);
+  api.get<HistoryResponse>(`/currency/overview/${code}/`);

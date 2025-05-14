@@ -1,5 +1,5 @@
 import { getHistory, getRate } from "@/app/api/rate";
-import { fillMissingDates } from "@/app/api/utils";
+import { fillMissingDates, parseCurrencyCode } from "@/app/api/utils";
 import CurrencyListItem from "@/components/CurrencyList";
 import { colors } from "@/constants/color";
 import { currencies } from "@/constants/currency";
@@ -25,6 +25,13 @@ import { LineChart } from "react-native-chart-kit";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const MEMO_KEY = "@currency_memos";
+const normalizeCode = (code: string) => code.split("(")[0];
+
+// ─── 0. JPY/IDR 100단위 예외 설정 ───────────────────────────────────────────────
+const SPECIAL_UNIT: Record<string, number> = {
+  JPY: 100, // 100엔 단위
+  IDR: 100, // 100루피아 단위
+};
 
 // ─── 메모 데이터 타입 정의 ────────────────────────────────────────────────────────
 type Memo = {
@@ -40,7 +47,6 @@ type Memo = {
 
 // ─── CurrencyScreen 컴포넌트 ───────────────────────────────────────────────────
 export default function CurrencyScreen() {
-  const normalizeCode = (code: string) => code.split("(")[0];
   // 기본 상태 선언 ─
   const [modalVisible, setModalVisible] = useState(false);
   const [selecting, setSelecting] = useState<"from" | "to">("from");
@@ -104,29 +110,40 @@ export default function CurrencyScreen() {
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        // 1) API에서 today + history 받아오기 (통화코드 반영된 URL)
-        const res = await getHistory(normalizeCode(fromCur.code));
+        // ① 원시 코드와 단위를 분리
+        const { code: baseCode, unit: baseUnit } = parseCurrencyCode(
+          fromCur.code
+        );
+        const chartUnit = SPECIAL_UNIT[baseCode] ?? baseUnit;
 
-        // 2) 시작/끝 날짜 계산 (today 기준 6일 전부터 today까지)
-        const endDate = res.data.today.date; // "YYYY-MM-DD"
-        const start = new Date(endDate);
-        start.setDate(start.getDate() - 6);
-        const startDate = start.toISOString().slice(0, 10);
+        // API 호출 (today + history)
+        const res = await getHistory(baseCode);
+        const today = res.data.today;
+        const history = res.data.history;
 
-        // 3) history 배열 + today를 합쳐 누락 날짜 보정
-        const filled = fillMissingDates(
-          [
-            ...res.data.history,
-            { date: res.data.today.date, rate: res.data.today.rate },
-          ],
+        const endDate = today.date; // "2025-05-14"
+        const sd = new Date(endDate);
+        sd.setDate(sd.getDate() - 6);
+        const startDate = sd.toISOString().slice(0, 10); // "2025-05-08"
+
+        // ② 누락일 채우기 (utils.fillMissingDates)
+        const { dates, rates } = fillMissingDates(
+          [...history, { date: today.date, rate: today.rate }],
           startDate,
           endDate
         );
 
-        // 4) 차트에 적용 (labels: "MM/DD")
+        // ③ 차트용 데이터: 날짜 레이블, 환율 데이터
         setChartData({
-          labels: filled.dates.map((d) => d.slice(5).replace("-", "/")),
-          datasets: [{ data: filled.rates }],
+          labels: dates.map((d) => {
+            const [y, m, dd] = d.split("-");
+            return `${+m}/${+dd}`;
+          }),
+          datasets: [
+            {
+              data: rates.map((r) => r * chartUnit),
+            },
+          ],
         });
       } catch (e) {
         console.warn("히스토리 조회 실패", e);
@@ -134,44 +151,51 @@ export default function CurrencyScreen() {
     };
 
     loadHistory();
-    // 🔧 fromCur 이 바뀔 때마다 재조회
   }, [fromCur]);
 
   useEffect(() => {
-    const loadRate = async () => {
-      // ❶ 금액 유무와 상관없이 비율 계산
-      const resFrom = await getRate(normalizeCode(fromCur.code));
-      const resTo = await getRate(normalizeCode(toCur.code));
-      const x2y = resFrom.data.today.rate / resTo.data.today.rate;
-      setCurrentRate(x2y);
-
-      // 금액이 없으면 출력만 초기화
-      if (!fromAmt) {
-        setToAmt("");
-        return;
-      }
+    const loadRateOnly = async () => {
       try {
-        // 1) from -> KRW
-        const resFrom = await getRate(normalizeCode(fromCur.code));
-        const rateFrom = resFrom.data.today.rate;
+        // 코드와 단위를 분리
+        const { code: fromCode, unit: defaultFromUnit } = parseCurrencyCode(
+          fromCur.code
+        );
+        const { code: toCode, unit: defaultToUnit } = parseCurrencyCode(
+          toCur.code
+        );
 
-        // 2) to -> KRW
-        const resTo = await getRate(normalizeCode(toCur.code));
+        const fromUnit = SPECIAL_UNIT[fromCode] ?? defaultFromUnit;
+        const toUnit = SPECIAL_UNIT[toCode] ?? defaultToUnit;
+
+        // API 호출: 1 fromCode → KRW, 1 toCode → KRW
+        const resFrom = await getRate(fromCode);
+        const resTo = await getRate(toCode);
+        const rateFrom = resFrom.data.today.rate;
         const rateTo = resTo.data.today.rate;
 
-        // 3) X→Y 환율과 변환액 계산
-        const x2y = rateFrom / rateTo;
-        const converted = parseFloat(fromAmt) * x2y;
-        setCurrentRate(x2y); // 🔧 2. 값 채워 주기
+        // displayRate = (rateFrom * fromUnit) / (rateTo * toUnit)
+        // ex) 100 JPY → KRW, 1 USD → KRW 등을 단위에 맞춰 계산
+        const displayRate = (rateFrom * fromUnit) / (rateTo * toUnit);
 
-        setToAmt(converted.toFixed(2));
+        setCurrentRate(displayRate);
+        // → fromAmt와 관계없이 항상 환율 텍스트를 업데이트
       } catch (e) {
         console.warn("환율 조회 실패", e);
       }
     };
-    loadRate();
-    // 🔧 fromAmt, fromCur, toCur 변경 시마다 재계산
-  }, [fromAmt, fromCur, toCur]);
+    loadRateOnly();
+  }, [fromCur, toCur]);
+
+  // ─── ② 입력값(fromAmt) 변경 시 ToAmount 계산 ─────────────────────────────────────
+  useEffect(() => {
+    if (!fromAmt) {
+      // 입력값이 없으면 toAmt는 빈 문자열로
+      setToAmt("");
+      return;
+    }
+    // currentRate가 준비된 이후에만 계산
+    setToAmt((parseFloat(fromAmt) * currentRate).toFixed(2));
+  }, [fromAmt, currentRate]);
 
   useEffect(() => {
     (async () => {
@@ -255,17 +279,26 @@ export default function CurrencyScreen() {
               }
             })()}
 
-            {/* ─── 환율 텍스트 (검증 로직 재사용) ─── */}
-            {(() => {
-              const rates = chartData.datasets[0].data;
-              const isValid =
-                rates.length > 0 && rates.every((v) => Number.isFinite(v));
-              return (
-                <Text style={styles.rateText}>
-                  1 {fromCur.code} = {currentRate.toFixed(4)} {toCur.code}
-                </Text>
-              );
-            })()}
+            {/* 환율 텍스트 */}
+            <Text style={styles.rateText}>
+              {(() => {
+                const { code: fC, unit: defaultFU } = parseCurrencyCode(
+                  fromCur.code
+                );
+                const { code: tC, unit: defaultTU } = parseCurrencyCode(
+                  toCur.code
+                );
+                // SPECIAL_UNIT 우선 적용
+                const fU = SPECIAL_UNIT[fC] ?? defaultFU;
+                const tU = SPECIAL_UNIT[tC] ?? defaultTU;
+
+                // 왼쪽/오른쪽 단위 문자열 생성
+                const leftUnit = fU > 1 ? `${fU} ${fC}` : `1 ${fC}`;
+                const rightUnit = tU > 1 ? `${tU} ${tC}` : `${tC}`;
+
+                return `${leftUnit} = ${currentRate.toFixed(4)} ${rightUnit}`;
+              })()}
+            </Text>
 
             {/* 입력부 */}
             <View style={styles.inputArea}>
