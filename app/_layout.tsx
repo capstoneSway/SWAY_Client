@@ -37,7 +37,17 @@ export default function RootLayout() {
           headerBackTitle: "ㅤ",
         }}
       />
+<<<<<<< HEAD
 
+=======
+      <Stack.Screen
+        name="post"
+        options={{
+          title: "New Post",
+          headerShown: false,
+        }}
+      />
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
       <Stack.Screen name="+not-found" />
     </Stack>
   );

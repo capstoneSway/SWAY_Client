@@ -64,7 +64,12 @@
     <dict>
       <key>NSAllowsArbitraryLoads</key>
       <true/>
+<<<<<<< HEAD
           <key>NSExceptionDomains</key>
+=======
+      <true/>
+    <key>NSExceptionDomains</key>
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
     <dict>
         <key>127.0.0.1</key>  <!-- 로컬 서버 IP -->
         <dict>

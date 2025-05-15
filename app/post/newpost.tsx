@@ -1,4 +1,5 @@
 import DescriptionInput from "@/components/DescriptionInput";
+<<<<<<< HEAD
 import TitleInput from "@/components/TitleInput";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,6 +7,13 @@ import { useNavigation, useRouter } from "expo-router";
 import React from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+=======
+import NewPostFooter from "@/components/NewPostFooter";
+import TitleInput from "@/components/TitleInput";
+import React from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { StyleSheet } from "react-native";
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 type FormValues = {
@@ -14,15 +22,19 @@ type FormValues = {
 };
 
 export default function NewPostScreen() {
+<<<<<<< HEAD
   const router = useRouter();
   const navigation = useNavigation();
 
+=======
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
   const postForm = useForm<FormValues>({
     defaultValues: {
       title: "",
       description: "",
     },
   });
+<<<<<<< HEAD
 
   const { watch } = postForm;
   const title = watch("title");
@@ -63,11 +75,22 @@ export default function NewPostScreen() {
         <DescriptionInput />
         {/* <ImageUploadBar /> 나중에 이미지 업로드 들어올 자리 */}
       </KeyboardAwareScrollView>
+=======
+  return (
+    <FormProvider {...postForm}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.container}>
+        <TitleInput />
+        <DescriptionInput />
+      </KeyboardAwareScrollView>
+
+      <NewPostFooter />
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
     </FormProvider>
   );
 }
 
 const styles = StyleSheet.create({
+<<<<<<< HEAD
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -91,6 +114,8 @@ const styles = StyleSheet.create({
   headerPostDisabled: {
     color: colors.GRAY_400,
   },
+=======
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
   container: {
     margin: 16,
     gap: 16,

@@ -57,7 +57,15 @@
     "react-native-screens": "~4.10.0",
     "react-native-svg": "^15.11.2",
     "react-native-web": "~0.20.0",
+<<<<<<< HEAD
     "react-native-webview": "13.13.5"
+=======
+    "react-native-webview": "13.13.5",
+    "expo-image-picker": "~16.1.4",
+    "expo-camera": "~16.1.6",
+    "expo-location": "~18.1.5",
+    "expo-notifications": "~0.31.2"
+>>>>>>> 4a7f9093a90f01d2518441b4d62a9c997eca11a5
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
