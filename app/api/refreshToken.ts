@@ -5,7 +5,9 @@ export interface RefreshResponse {
   refresh?: string;
 }
 
-export default async function refreshToken(): Promise<RefreshResponse | null> {
+export default async function refreshToken(
+  refresh: string
+): Promise<RefreshResponse | null> {
   try {
     const response = await api.post<RefreshResponse>(
       "/accounts/token/refresh/",

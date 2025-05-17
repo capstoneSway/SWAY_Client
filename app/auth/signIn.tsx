@@ -2,6 +2,7 @@
 import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import CookieManager from "@react-native-cookies/cookies";
 import { Buffer } from "buffer";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -39,14 +40,14 @@ export default function AuthHome() {
     setIsError(false);
     setLoading(true);
 
-    // 1) 로컬에 저장된 토큰 확인
+    // 1) AsyncStorage에서 기존 토큰 불러오기
     const existingAccess = await AsyncStorage.getItem("@jwt");
     const existingRefresh = await AsyncStorage.getItem("@refreshToken");
     console.log("🟢 기존 Access Token:", existingAccess);
     console.log("🟢 기존 Refresh Token:", existingRefresh);
 
     if (existingAccess) {
-      // 2) 액세스 토큰 만료 시 리프레시 시도
+      // 2) 만료 여부 체크
       const [, payload] = existingAccess.split(".");
       const exp = JSON.parse(
         Buffer.from(
@@ -58,8 +59,9 @@ export default function AuthHome() {
       const now = Date.now() / 1000;
       let accessToken = existingAccess;
 
+      // 3) Access 토큰이 만료됐으면 Refresh 토큰으로 갱신
       if (now >= exp && existingRefresh) {
-        const data = await refreshToken();
+        const data = await refreshToken(existingRefresh);
         console.log("🟢 [테스트 버튼] 반환된 토큰들:", data);
         if (data?.access) {
           console.log("🟢 [테스트 버튼] 새로 받은 accessToken:", data.access);
@@ -76,20 +78,21 @@ export default function AuthHome() {
         }
       }
 
-      // 3) 사용자 정보 조회
+      // 4) 사용자 정보 조회
       const userInfo = await fetchUserInfo(accessToken);
       console.log("🟢 fetchUserInfo 결과:", userInfo);
       setLoading(false);
+
       if (userInfo) {
         if (!userInfo.nickname) {
-          console.log("🚧 닉네임 미설정, /auth/signUsername 로 이동");
+          console.log("🚧 닉네임 미설정 → /auth/signUsername");
           router.replace("/auth/signUsername");
         } else if (!userInfo.nationality) {
-          console.log("🚧 국적 미설정, /auth/signNationality 로 이동");
+          console.log("🚧 국적 미설정 → /auth/signNationality");
           router.replace("/auth/signNationality");
         } else {
-          console.log("✅ 모든 정보 설정 완료, 메인 탭으로 이동");
-          router.replace("../(tabs)");
+          console.log("✅ 모든 정보 설정 완료 → 메인 탭");
+          router.replace("/"); // (tabs) 대신 루트("/")로 변경
         }
         return;
       }
@@ -99,7 +102,7 @@ export default function AuthHome() {
       return;
     }
 
-    // 4) 토큰이 없을 때 WebView 로그인 플로우
+    // 5) 토큰이 없으면 WebView 로그인 플로우 시작
     setLoading(false);
     setShowWebView(true);
   };
@@ -110,7 +113,9 @@ export default function AuthHome() {
       console.log("🟢 인가 코드:", code);
       setShowWebView(false);
       setLoading(true);
+
       try {
+        // 6) 코드로 JWT 교환
         const resp = await api.get("/accounts/login/kakao/callback/", {
           params: { code },
         });
@@ -118,10 +123,12 @@ export default function AuthHome() {
         console.log("🟢 Access Token:", jwt_access);
         console.log("🟢 Refresh Token:", jwt_refresh);
 
+        // 7) AsyncStorage 저장
         const pairs: [string, string][] = [["@jwt", jwt_access]];
         if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
         await AsyncStorage.multiSet(pairs);
 
+        // 8) 사용자 정보 조회 후 라우팅
         const userInfo = await fetchUserInfo(jwt_access);
         console.log("🟢 fetchUserInfo 결과:", userInfo);
         setLoading(false);
@@ -129,7 +136,7 @@ export default function AuthHome() {
           if (!userInfo.nickname) router.replace("/auth/signUsername");
           else if (!userInfo.nationality)
             router.replace("/auth/signNationality");
-          else router.replace("../(tabs)");
+          else router.replace("/");
         } else {
           setShowWebView(true);
         }
@@ -182,7 +189,12 @@ export default function AuthHome() {
         onPress={async () => {
           console.log("🟢 [테스트 버튼] RefreshToken 호출 시작");
           try {
-            const data = await refreshToken();
+            const existingRefresh = await AsyncStorage.getItem("@refreshToken");
+            if (!existingRefresh) {
+              console.warn("⚠️ [테스트 버튼] 저장된 refreshToken이 없습니다.");
+              return;
+            }
+            const data = await refreshToken(existingRefresh);
             console.log("🟢 [테스트 버튼] refreshToken 결과:", data);
             if (!data) {
               console.warn(
@@ -209,22 +221,23 @@ export default function AuthHome() {
         <Text>🔄 RefreshToken 테스트</Text>
       </Pressable>
 
-      {/* AsyncStorage 초기화 버튼 */}
+      {/* AsyncStorage + 쿠키 초기화(로그아웃 대체) */}
       <Pressable
         style={[styles.kakaoButton, { backgroundColor: "#FF5252" }]}
         onPress={async () => {
           try {
             await AsyncStorage.clear();
             console.log("🟢 AsyncStorage 초기화 완료");
+            await CookieManager.clearAll();
+            console.log("🟢 쿠키 초기화 완료");
           } catch (e) {
-            console.error("❌ AsyncStorage 초기화 실패:", e);
+            console.error("❌ 초기화 실패:", e);
           }
         }}
       >
-        <Text style={styles.kakaoText}>🧹 AsyncStorage 초기화</Text>
+        <Text style={styles.kakaoText}>🧹 AsyncStorage + 쿠키 초기화</Text>
       </Pressable>
 
-      {/* Terms & Privacy */}
       <Text style={styles.termsText}>
         By clicking continue, you agree to our{" "}
         <Text style={styles.link}>Terms of Service</Text> and{" "}
