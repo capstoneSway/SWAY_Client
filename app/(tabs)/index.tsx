@@ -110,6 +110,10 @@ export default function TabIndex() {
     init();
   }, []);
 
+  // useEffect(() => {
+  //   initAuthManager();
+  // }, []);
+
   if (isLoading) {
     return <ActivityIndicator style={{ flex: 1 }} size="large" />;
   }
