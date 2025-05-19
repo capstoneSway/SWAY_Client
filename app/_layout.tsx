@@ -21,8 +21,33 @@ export default function RootLayout() {
         },
       }}
     >
+<<<<<<< HEAD
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="auth" />
+=======
+      <Stack.Screen
+        name="(tabs)"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="auth"
+        options={{
+          title: "Login",
+          headerShown: true,
+          headerTintColor: colors.BLACK,
+          headerBackTitle: "ㅤ",
+        }}
+      />
+      <Stack.Screen
+        name="post"
+        options={{
+          title: "New Post",
+          headerShown: false,
+        }}
+      />
+>>>>>>> origin/login
       <Stack.Screen name="+not-found" />
     </Stack>
   );

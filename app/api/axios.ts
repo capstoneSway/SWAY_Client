@@ -1,9 +1,8 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/", // <- 실제 백엔드 URL
+  baseURL: "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app",
   headers: { "Content-Type": "application/json" },
   timeout: 5000,
+  withCredentials: true, // ✅ 쿠키도 전송되도록 설정
 });
-
-// 예시입니다. 백엔드 요청 주소로 설정하셔야 합니다...

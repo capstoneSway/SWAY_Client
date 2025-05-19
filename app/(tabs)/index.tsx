@@ -21,8 +21,10 @@ import {
   requestLocationPermission,
   requestNotificationPermission,
 } from "@/utils/permissions";
+import CookieManager from "@react-native-cookies/cookies";
+import ensureValidToken from "../api/tokenManager";
 
-export default function TabIndex() {
+export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [permStatuses, setPermStatuses] = useState<{
@@ -37,51 +39,18 @@ export default function TabIndex() {
     notifications: "undetermined",
   });
 
-  // 📌 권한 상태 초기화
-  const resetPermissions = async () => {
-    // 플래그 초기화
-    await AsyncStorage.removeItem("@isVisited");
-    await AsyncStorage.removeItem("@permissions");
-    console.log("🔄 플래그 초기화 완료");
-
-    // 권한 상태도 초기화 (강제로 undetermined으로 설정)
-    const resetStatuses = {
-      camera: "undetermined" as PermissionState,
-      gallery: "undetermined" as PermissionState,
-      location: "undetermined" as PermissionState,
-      notifications: "undetermined" as PermissionState,
+  // 🔒 토큰 유효성 검사 및 자동 로그인
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await ensureValidToken();
+      if (!token) {
+        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+        await CookieManager.clearAll();
+        router.replace("/auth/signIn");
+      }
     };
-
-    setPermStatuses(resetStatuses);
-    console.log("🔄 권한 상태 초기화 완료 (undetermined)");
-  };
-
-  // 📌 권한 상태 로드
-  const loadPermissions = async () => {
-    const savedStatuses = await AsyncStorage.getItem("@permissions");
-    if (savedStatuses) {
-      const parsed = JSON.parse(savedStatuses);
-      setPermStatuses(parsed);
-    } else {
-      // 저장된 상태가 없으면 네이티브 권한 상태 가져오기
-      const camera = (await ImagePicker.getCameraPermissionsAsync())
-        .status as PermissionState;
-      const gallery = (await ImagePicker.getMediaLibraryPermissionsAsync())
-        .status as PermissionState;
-      const location = (await Location.getForegroundPermissionsAsync())
-        .status as PermissionState;
-      const notifications = (await Notifications.getPermissionsAsync())
-        .status as PermissionState;
-
-      const initialStatuses = { camera, gallery, location, notifications };
-      setPermStatuses(initialStatuses);
-      await AsyncStorage.setItem(
-        "@permissions",
-        JSON.stringify(initialStatuses)
-      );
-    }
-    setIsLoading(false);
-  };
+    checkAuth();
+  }, []);
 
   // 📌 권한 요청
   const requestAllPermissions = async () => {
@@ -107,7 +76,32 @@ export default function TabIndex() {
     await AsyncStorage.setItem("@permissions", JSON.stringify(updatedStatuses));
   };
 
-  // 📌 컴포넌트 로드 시 권한 상태 초기화
+  // 📌 권한 상태 로드
+  const loadPermissions = async () => {
+    const savedStatuses = await AsyncStorage.getItem("@permissions");
+    if (savedStatuses) {
+      setPermStatuses(JSON.parse(savedStatuses));
+    } else {
+      const camera = (await ImagePicker.getCameraPermissionsAsync())
+        .status as PermissionState;
+      const gallery = (await ImagePicker.getMediaLibraryPermissionsAsync())
+        .status as PermissionState;
+      const location = (await Location.getForegroundPermissionsAsync())
+        .status as PermissionState;
+      const notifications = (await Notifications.getPermissionsAsync())
+        .status as PermissionState;
+
+      const initialStatuses = { camera, gallery, location, notifications };
+      setPermStatuses(initialStatuses);
+      await AsyncStorage.setItem(
+        "@permissions",
+        JSON.stringify(initialStatuses)
+      );
+    }
+    setIsLoading(false);
+  };
+
+  // 📌 초기 실행 시 권한 및 방문 여부 확인
   useEffect(() => {
     const init = async () => {
       const visited = await AsyncStorage.getItem("@isVisited");
@@ -120,6 +114,21 @@ export default function TabIndex() {
 
     init();
   }, []);
+
+  const resetPermissions = async () => {
+    await AsyncStorage.removeItem("@isVisited");
+    await AsyncStorage.removeItem("@permissions");
+
+    const resetStatuses = {
+      camera: "undetermined" as PermissionState,
+      gallery: "undetermined" as PermissionState,
+      location: "undetermined" as PermissionState,
+      notifications: "undetermined" as PermissionState,
+    };
+
+    setPermStatuses(resetStatuses);
+    console.log("🔄 권한 초기화 완료");
+  };
 
   if (isLoading) {
     return <ActivityIndicator style={{ flex: 1 }} size="large" />;
@@ -134,29 +143,25 @@ export default function TabIndex() {
       <Text>알림: {permStatuses.notifications}</Text>
 
       <Pressable
+        style={styles.button}
         onPress={() => router.push("/auth/signIn")}
-        style={({ pressed }) => ({
-          marginTop: 24,
-          backgroundColor: pressed ? "lightgray" : "#000",
-          paddingVertical: 12,
-          paddingHorizontal: 24,
-        })}
       >
-        <Text style={{ color: "#fff", fontSize: 16 }}>
-          로그인 화면으로 이동
-        </Text>
+        <Text style={styles.buttonText}>로그인 화면으로 이동</Text>
       </Pressable>
 
       <Pressable
-        onPress={resetPermissions}
-        style={({ pressed }) => ({
-          marginTop: 12,
-          backgroundColor: pressed ? "lightcoral" : "#900",
-          paddingVertical: 10,
-          paddingHorizontal: 24,
-        })}
+        style={[styles.button, styles.logoutButton]}
+        onPress={async () => {
+          await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+          await CookieManager.clearAll();
+          router.replace("/auth/signIn");
+        }}
       >
-        <Text style={{ color: "#fff", fontSize: 14 }}>🔄 권한 초기화</Text>
+        <Text style={[styles.buttonText, styles.logoutText]}>로그아웃</Text>
+      </Pressable>
+
+      <Pressable style={styles.resetButton} onPress={resetPermissions}>
+        <Text style={styles.resetText}>🔄 권한 초기화</Text>
       </Pressable>
     </View>
   );
@@ -171,4 +176,26 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   title: { fontSize: 18, marginBottom: 12 },
+  button: {
+    width: "100%",
+    padding: 14,
+    backgroundColor: "#007AFF",
+    borderRadius: 6,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  buttonText: { color: "#fff", fontSize: 16 },
+  logoutButton: { backgroundColor: "#FF3B30" },
+  logoutText: { color: "#fff" },
+  resetButton: {
+    marginTop: 12,
+    backgroundColor: "#900",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 6,
+  },
+  resetText: {
+    color: "#fff",
+    fontSize: 14,
+  },
 });

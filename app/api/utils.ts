@@ -1,15 +1,20 @@
-/**
- * utils.ts
- *  - API 로부터 받은 history + today 데이터를
- *    시작일~종료일 사이에 빠진 날짜 없이 채워주는 헬퍼
- */
+// app/api/utils.ts
 import { HistoryItem } from "./rate";
 
+// app/api/utils.ts
+export function parseCurrencyCode(code: string): {
+  code: string;
+  unit: number;
+} {
+  // "JPY(100)" → ["JPY", "100)"], ["100", ""]
+  const [base, rest] = code.split("(");
+  const unit = rest ? parseInt(rest.replace(")", ""), 10) : 1;
+  return { code: base, unit: unit || 1 };
+}
+
 /**
- * fillMissingDates
- *  - API 에서 간헐적으로 빠져올 수 있는 일부 날짜를
- *    '직전 받은 rate' 로 메꿔서
- *    차트에 빈 구간 없이 그리기 위함
+ * 주어진 기간(start ~ end) 내 누락된 날짜를
+ * 이전 마지막 환율로 채워 7일 차트를 완성합니다.
  */
 export function fillMissingDates(
   history: HistoryItem[], // API로 받은 history 배열
