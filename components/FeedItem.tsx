@@ -1,65 +1,173 @@
+import { toggleLike, toggleScrap } from "@/app/api/board";
 import { colors } from "@/constants/color";
 import Post from "@/type/types";
 import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react"; // useState 추가
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Profile from "./Profile";
 
 interface FeedItemProps {
   post: Post;
   isDetail?: boolean;
+  onCommentPress?: () => void;
+  onDelete?: () => void;
 }
 
-const FeedItem = ({ post, isDetail = false }: FeedItemProps) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+const FeedItem = ({
+  post,
+  isDetail = false,
+  onCommentPress,
+  onDelete,
+}: FeedItemProps) => {
+  const [isLiked, setIsLiked] = useState(post.isLiked ?? false);
+  const [likeCount, setLikeCount] = useState(post.likes ?? 0);
+  const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked ?? false);
+  const [bookmarkCount, setBookmarkCount] = useState(post.bookmarks ?? 0);
+  const [commentCount, setCommentCount] = useState(post.commentCount ?? 0);
+
+  const [showMenu, setShowMenu] = useState(false);
+  const [isMyPost, setIsMyPost] = useState(false);
+
+  useEffect(() => {
+    const checkIsMyPost = async () => {
+      const myId = await AsyncStorage.getItem("@userId");
+      setIsMyPost(post?.userId?.toString() === myId);
+    };
+    checkIsMyPost();
+  }, [post]);
 
   const ContainerComponent = isDetail ? View : Pressable;
 
   const handlePressFeed = () => {
-    console.log("Feed item pressed!");
+    if (!isDetail) {
+      router.push(`/board/${post.id}`);
+    }
+  };
+
+  const handleLike = async () => {
+    try {
+      await toggleLike(post.id);
+      setIsLiked((prev) => !prev);
+      setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
+    } catch (error) {
+      console.error("Failed to like:", error);
+    }
+  };
+
+  const handleScrap = async () => {
+    try {
+      await toggleScrap(post.id);
+      setIsBookmarked((prev) => !prev);
+      setBookmarkCount((prev) => (isBookmarked ? prev - 1 : prev + 1));
+    } catch (error) {
+      console.error("Failed to bookmark:", error);
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert("Delete this post?", "This action cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          onDelete?.();
+          setShowMenu(false);
+        },
+      },
+    ]);
+  };
+
+  const handleEdit = () => {
+    router.push(`/board/edit/${post.id}`);
+    setShowMenu(false);
+  };
+
+  const handleReport = () => {
+    Alert.alert("Report submitted", "Thank you for your feedback.");
+    setShowMenu(false);
   };
 
   return (
     <ContainerComponent style={styles.container} onPress={handlePressFeed}>
       <View style={styles.contentContainer}>
-        <Profile
-          imageUri={post.author.imageUri}
-          nickname={post.author.nickname}
-          createdAt={post.createdAt}
-        />
-        <Text style={styles.title}>{post.title}</Text>
-        <Text style={styles.description}>{post.description}</Text>
+        <View style={styles.profileRow}>
+          <Profile
+            imageUri={post?.author?.imageUri ?? ""}
+            nickname={post?.author?.nickname ?? "Anonymous"}
+            createdAt={post?.createdAt ?? new Date().toISOString()}
+          />
+
+          {isDetail && (
+            <Pressable onPress={() => setShowMenu(true)}>
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.BLACK} />
+            </Pressable>
+          )}
+        </View>
+
+        {post?.title ? <Text style={styles.title}>{post.title}</Text> : null}
+        {post?.description ? (
+          <Text style={styles.description}>{post.description}</Text>
+        ) : null}
       </View>
+
       <View style={styles.menuContainer}>
-        <Pressable style={styles.menu} onPress={() => setIsLiked(!isLiked)}>
+        <Pressable style={styles.menu} onPress={handleLike}>
           <AntDesign
             name={isLiked ? "heart" : "hearto"}
             size={20}
             color={isLiked ? colors.RED_500 : colors.BLACK}
           />
           <Text style={isLiked ? styles.activeMenuText : styles.menuText}>
-            {isLiked ? post.likes.length + 1 : post.likes.length}
+            {likeCount > 0 ? likeCount : ""}
           </Text>
         </Pressable>
 
-        <Pressable style={styles.menu}>
+        <Pressable style={styles.menu} onPress={onCommentPress}>
           <FontAwesome6 name="comment" size={20} color={colors.BLACK} />
-          <Text style={styles.menuText}>{post.comments}</Text>
+          <Text style={styles.menuText}>{commentCount}</Text>
         </Pressable>
 
-        <Pressable
-          style={styles.menu}
-          onPress={() => setIsBookmarked(!isBookmarked)}
-        >
+        <Pressable style={styles.menu} onPress={handleScrap}>
           <Ionicons
             name={isBookmarked ? "bookmark" : "bookmark-outline"}
             size={20}
             color={isBookmarked ? colors.PURPLE_300 : colors.BLACK}
           />
-          <Text style={styles.menuText}></Text>
+          <Text style={styles.menuText}>{bookmarkCount}</Text>
         </Pressable>
       </View>
+
+      {/* Modal for ⋮ menu */}
+      <Modal transparent visible={showMenu} animationType="fade">
+        <Pressable style={styles.modalBackground} onPress={() => setShowMenu(false)}>
+          <View style={styles.modalBox}>
+            {isMyPost ? (
+              <>
+                <Pressable style={styles.menuItem} onPress={handleEdit}>
+                  <Text style={styles.menuTextOnly}>Edit Post</Text>
+                </Pressable>
+                <Pressable style={styles.menuItem} onPress={handleDelete}>
+                  <Text style={[styles.menuTextOnly, { color: "red" }]}>Delete Post</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Pressable style={styles.menuItem} onPress={handleReport}>
+                <Text style={styles.menuTextOnly}>Report Post</Text>
+              </Pressable>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </ContainerComponent>
   );
 };
@@ -71,6 +179,12 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 12,
+  },
+  profileRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
   menuContainer: {
     flexDirection: "row",
@@ -102,10 +216,32 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 14,
     color: colors.GRAY_700,
+    marginLeft: 4,
   },
   activeMenuText: {
     fontWeight: "600",
-    color: colors.RED_500,
+    color: colors.RED,
+    marginLeft: 4,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalBox: {
+    backgroundColor: colors.WHITE,
+    borderRadius: 12,
+    paddingVertical: 12,
+    width: 220,
+  },
+  menuItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  menuTextOnly: {
+    fontSize: 16,
+    color: colors.BLACK,
   },
 });
 

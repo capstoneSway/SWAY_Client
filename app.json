@@ -18,7 +18,9 @@
     "newArchEnabled": true,
     "ios": {
       "infoPlist": {
-        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true }
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       },
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sway",
@@ -34,7 +36,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.sway"
+      "package": "com.anonymous.sway",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -56,7 +62,6 @@
           }
         }
       ],
-      "expo-image-picker",
       [
         "expo-build-properties",
         {
@@ -81,6 +86,20 @@
           "ios": {
             "handleKakaoOpenUrl": true
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ]
     ],

@@ -1,8 +1,8 @@
+// auth/AuthHome.tsx
 import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { jwtDecode } from "jwt-decode";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -13,62 +13,88 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import { exchangeKakaoCode } from "../api/kakaoAuth";
+import fetchUserInfo from "../api/fetchUserInfo";
+
+const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
+const REDIRECT_URI =
+  "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/accounts/login/kakao/callback";
 
 export default function AuthHome() {
+  const [showWebView, setShowWebView] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [showWebView, setShowWebView] = useState(false);
 
-  const REDIRECT_URI = "http://127.0.0.1:8081/auth/signUsername";
-  const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5"; //클라이언트 아디
   const KAKAO_AUTH_URL =
     `https://kauth.kakao.com/oauth/authorize` +
     `?response_type=code` +
     `&client_id=${REST_API_KEY}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    `&scope=${encodeURIComponent(SCOPES.join(","))}` + // constants
-    "&prompt=login";
+    `&scope=${encodeURIComponent(SCOPES.join(","))}` +
+    `&prompt=login`;
 
-  const handleKakaoLogin = () => {
-    setLoading(true);
-    setIsError(false);
-    // WebView 띄우기
-    setShowWebView(true);
+  const handleKakaoLogin = async () => {
+    try {
+      const existingAccessToken = await AsyncStorage.getItem("@jwt");
+      if (existingAccessToken) {
+        console.log("🟢 기존 JWT 발견:", existingAccessToken);
+        // 기존 토큰으로 사용자 정보 조회 및 분기
+        const userInfo = await fetchUserInfo(existingAccessToken);
+        if (userInfo) {
+          if (userInfo.nickname === null) {
+            router.replace("/auth/signUsername");
+            return;
+          } else if (userInfo.nationality === null) {
+            router.replace("/auth/signNationality");
+            return;
+          } else {
+            router.replace("../(tabs)");
+            return;
+          }
+        }
+      } else {
+        // 토큰이 없으면 카카오 로그인 WebView 표시
+        setIsError(false);
+        setShowWebView(true);
+      }
+    } catch (err) {
+      console.error("토큰 초기화 오류:", err);
+    }
   };
 
-  const handleWebViewNavigation = async (event: { url: string }) => {
-    const { url } = event;
-    if (loading) setLoading(false);
+  const handleMessage = async (event: any) => {
+    try {
+      const jsonText = event.nativeEvent.data.trim();
+      console.log("🟢 받은 JSON:", jsonText);
 
-    if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
-      const code = new URL(url).searchParams.get("code");
-      console.log("🟢 인가 코드:", code);
-      setShowWebView(false);
-      if (code) {
-        try {
-          const { accessToken, refreshToken } = await exchangeKakaoCode(code);
-          // 인가 코드 주고 토큰 받고, 일단 jwt 디코딩 ( me()로 받아와도 되고 )
-          // !!!!!!!!!1 GET/POST	https://kapi.kakao.com/v2/user/me 에서 가져올 예정. 디코딩은 그냥 임시.
-          const { sub: email, userId } = jwtDecode<{
-            sub: string;
-            userId: string;
-          }>(accessToken);
-          // 스토리지에 저장
+      const data = JSON.parse(jsonText);
+      const { jwt_access, jwt_refresh } = data;
 
-          await AsyncStorage.multiSet([
-            ["@accessToken", accessToken],
-            ["@refreshToken", refreshToken],
-            ["@email", email],
-            ["@userId", userId],
-          ]);
+      console.log("🟢 Access Token:", jwt_access);
+      console.log("🟢 Refresh Token:", jwt_refresh);
 
+      // 로컬 스토리지에 토큰 저장
+      const pairs: [string, string][] = [["@jwt", jwt_access]];
+      if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
+      await AsyncStorage.multiSet(pairs);
+
+      // 사용자 정보 조회 및 분기
+      const userInfo = await fetchUserInfo(jwt_access);
+      if (userInfo) {
+        if (userInfo.nickname === null) {
           router.replace("/auth/signUsername");
-        } catch (err) {
-          console.error("코드 교환 실패:", err);
-          setIsError(true);
+        } else if (userInfo.nationality === null) {
+          router.replace("/auth/signNationality");
+        } else {
+          router.replace("../(tabs)");
         }
       }
+    } catch (err) {
+      console.error("❌ 토큰 처리 오류:", err);
+      setIsError(true);
+    } finally {
+      // 무조건 웹뷰 닫기 및 로딩 해제
+      setShowWebView(false);
+      setLoading(false);
     }
   };
 
@@ -86,21 +112,15 @@ export default function AuthHome() {
       )}
 
       <Pressable
-        style={styles.kakaoButton}
+        style={[styles.kakaoButton, showWebView && { opacity: 0.6 }]}
         onPress={handleKakaoLogin}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color={colors.BLACK} />
-        ) : (
-          <>
-            <Image
-              source={require("@/assets/images/kakao.png")}
-              style={styles.kakaoIcon}
-            />
-            <Text style={styles.kakaoText}>Login with Kakao</Text>
-          </>
-        )}
+        <Image
+          source={require("@/assets/images/kakao.png")}
+          style={styles.kakaoIcon}
+        />
+        <Text style={styles.kakaoText}>Login with Kakao</Text>
       </Pressable>
 
       <Text style={styles.termsText}>
@@ -109,27 +129,36 @@ export default function AuthHome() {
         <Text style={styles.link}>Privacy Policy</Text>
       </Text>
 
-      {/* WebView with incognito to clear cookies */}
       {showWebView && (
         <View style={styles.webviewContainer}>
+          {loading && (
+            <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
+          )}
           <WebView
             source={{ uri: KAKAO_AUTH_URL }}
-            incognito={true} // 세션·쿠키 초기화
+            incognito
             cacheEnabled={false}
-            sharedCookiesEnabled={false}
-            onNavigationStateChange={handleWebViewNavigation}
-            startInLoadingState
-            renderLoading={() => (
-              <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
-            )}
+            injectedJavaScript={`
+              (function() {
+                const jsonText = document.body.innerText.trim();
+                try {
+                  const data = JSON.parse(jsonText);
+                  window.ReactNativeWebView.postMessage(jsonText);
+                } catch (e) {
+                  console.error("🛑 JSON 파싱 실패:", e, jsonText);
+                }
+              })();
+              true;
+            `}
+            onMessage={handleMessage}
+            onLoadStart={() => setLoading(true)}
+            onLoadEnd={() => setLoading(false)}
           />
         </View>
       )}
     </View>
   );
 }
-
-// button onPress -> setShowWebView(True) -> showWebView
 
 const styles = StyleSheet.create({
   container: {
@@ -138,22 +167,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.WHITE,
     paddingHorizontal: 24,
+    top: -20,
   },
   logo: {
-    top: -30,
     width: 300,
     height: 300,
-    marginBottom: 40,
     resizeMode: "contain",
+    marginBottom: 40,
   },
   errorMessage: {
     color: colors.RED_500,
-    fontSize: 14,
-    textAlign: "center",
     marginBottom: 16,
+    textAlign: "center",
   },
   kakaoButton: {
-    top: -64,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -161,26 +188,26 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    marginBottom: 40,
-    width: 360,
+    width: "100%",
     height: 44,
+    marginBottom: 20,
   },
   kakaoIcon: {
+    position: "absolute",
+    left: 16,
     width: 24,
     height: 24,
-    left: -90,
   },
   kakaoText: {
-    color: colors.BLACK,
     fontSize: 16,
-    textAlign: "center",
-    left: -10,
+    color: colors.BLACK,
   },
   termsText: {
     fontSize: 12,
     color: colors.GRAY_600,
     textAlign: "center",
     lineHeight: 18,
+    marginBottom: 20,
   },
   link: {
     color: colors.BLACK,
@@ -188,7 +215,7 @@ const styles = StyleSheet.create({
   },
   webviewContainer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
     backgroundColor: colors.WHITE,
+    zIndex: 10,
   },
 });
