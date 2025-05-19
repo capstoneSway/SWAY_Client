@@ -20,6 +20,7 @@ interface FeedItemProps {
   isDetail?: boolean;
   onCommentPress?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
 }
 
 const FeedItem = ({
@@ -27,6 +28,7 @@ const FeedItem = ({
   isDetail = false,
   onCommentPress,
   onDelete,
+  onEdit,
 }: FeedItemProps) => {
   const [isLiked, setIsLiked] = useState(post.isLiked ?? false);
   const [likeCount, setLikeCount] = useState(post.likes ?? 0);
@@ -55,9 +57,9 @@ const FeedItem = ({
 
   const handleLike = async () => {
     try {
-      await toggleLike(post.id);
-      setIsLiked((prev) => !prev);
-      setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
+      const updated = await toggleLike(post.id);
+      setIsLiked(updated.isLiked);
+      setLikeCount(updated.like);
     } catch (error) {
       console.error("Failed to like:", error);
     }
@@ -65,9 +67,9 @@ const FeedItem = ({
 
   const handleScrap = async () => {
     try {
-      await toggleScrap(post.id);
-      setIsBookmarked((prev) => !prev);
-      setBookmarkCount((prev) => (isBookmarked ? prev - 1 : prev + 1));
+      const updated = await toggleScrap(post.id);
+      setIsBookmarked(updated.isBookmarked);
+      setBookmarkCount(updated.bookmarkCount);
     } catch (error) {
       console.error("Failed to bookmark:", error);
     }
@@ -87,10 +89,17 @@ const FeedItem = ({
     ]);
   };
 
-  const handleEdit = () => {
-    router.push(`/board/edit/${post.id}`);
-    setShowMenu(false);
-  };
+const handleEdit = () => {
+  router.push({
+    pathname: "/post/newpost",
+    params: {
+      edit: "true",
+      id: post.id.toString(),
+      title: post.title,
+      description: post.description,
+    },
+  });
+};
 
   const handleReport = () => {
     Alert.alert("Report submitted", "Thank you for your feedback.");

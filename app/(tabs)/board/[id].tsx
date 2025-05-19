@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,17 +14,20 @@ import {
 } from "react-native";
 
 import {
+  deleteComment,
   deletePost,
   fetchBoardDetail,
   fetchComments,
   postComment,
   toggleCommentLike,
+  toggleLike,
+  toggleScrap,
+  updateComment,
 } from "@/app/api/board";
 import CommentList from "@/components/CommentList";
 import CommonHeader from "@/components/CommonHeader";
 import FeedItem from "@/components/FeedItem";
 import { colors } from "@/constants/color";
-import { router } from "expo-router";
 
 export default function BoardDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -33,6 +36,7 @@ export default function BoardDetailScreen() {
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedCommentId, setSelectedCommentId] = useState(null);
@@ -42,7 +46,7 @@ export default function BoardDetailScreen() {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    navigation.setOptions({ headerShown: false }); // ✅ 기본 헤더 제거
+    navigation.setOptions({ headerShown: false });
   }, []);
 
   const handleDeletePost = async () => {
@@ -54,6 +58,19 @@ export default function BoardDetailScreen() {
       console.error("Post deletion failed:", err);
       Alert.alert("Deletion Failed", "Please try again.");
     }
+  };
+
+  const handleEditPost = () => {
+    if (!post) return;
+    router.push({
+      pathname: "/post/newpost",
+      params: {
+        edit: "true",
+        id: post.id.toString(),
+        title: post.title,
+        description: post.description,
+      },
+    });
   };
 
   useEffect(() => {
@@ -92,46 +109,109 @@ export default function BoardDetailScreen() {
     if (!newComment.trim()) return;
 
     try {
-      const result = await postComment(Number(id), newComment, replyTo);
-      const commentWithDate = {
-        ...result,
-        createdAt: new Date(result.created_at),
-      };
+      if (editingCommentId) {
+        const updated = await updateComment(
+          Number(id),
+          editingCommentId,
+          newComment
+        );
+        setComments((prev) =>
+          prev.map((parent) => {
+            if (parent.id === editingCommentId) {
+              return { ...parent, comment: updated.comment };
+            }
+            return {
+              ...parent,
+              replies: parent.replies.map((r) =>
+                r.id === editingCommentId
+                  ? { ...r, comment: updated.comment }
+                  : r
+              ),
+            };
+          })
+        );
+        setEditingCommentId(null);
+      } else {
+        const result = await postComment(Number(id), newComment, replyTo);
+        const commentWithDate = {
+          ...result,
+          createdAt: new Date(result.created_at),
+        };
 
-      setComments((prev) => {
-        if (replyTo) {
-          return prev.map((parent) =>
-            parent.id === replyTo
-              ? { ...parent, replies: [...parent.replies, commentWithDate] }
-              : parent
-          );
-        } else {
-          return [...prev, { ...commentWithDate, replies: [] }];
-        }
-      });
+        setComments((prev) => {
+          if (replyTo) {
+            return prev.map((parent) =>
+              parent.id === replyTo
+                ? { ...parent, replies: [...parent.replies, commentWithDate] }
+                : parent
+            );
+          } else {
+            return [...prev, { ...commentWithDate, replies: [] }];
+          }
+        });
+      }
       setNewComment("");
       setReplyTo(null);
     } catch (error) {
-      console.error("댓글 등록 실패:", error);
-      Alert.alert("Error", "Failed to post comment.");
+      console.error("댓글 등록/수정 실패:", error);
+      Alert.alert("Error", "Failed to process comment.");
     }
   };
 
-  const handleDeleteComment = () => {
+  const handleEditComment = (commentId, content) => {
+    setEditingCommentId(commentId);
+    setNewComment(content);
+    inputRef.current?.focus();
+  };
+
+  const handleDeleteComment = async () => {
     if (selectedCommentId !== null) {
-      setComments((prev) =>
-        prev
-          .map((c) => {
-            if (c.id === selectedCommentId) return null;
-            const updatedReplies = c.replies?.filter(
-              (r) => r.id !== selectedCommentId
-            );
-            return { ...c, replies: updatedReplies };
-          })
-          .filter(Boolean)
-      );
-      setConfirmVisible(false);
-      setMenuVisible(false);
+      try {
+        await deleteComment(selectedCommentId);
+        setComments((prev) =>
+          prev
+            .map((c) => {
+              if (c.id === selectedCommentId) return null;
+              const updatedReplies = c.replies?.filter(
+                (r) => r.id !== selectedCommentId
+              );
+              return { ...c, replies: updatedReplies };
+            })
+            .filter(Boolean)
+        );
+      } catch (err) {
+        console.error("❌ 댓글 삭제 실패", err);
+        Alert.alert("Error", "Failed to delete comment.");
+      } finally {
+        setConfirmVisible(false);
+        setMenuVisible(false);
+      }
+    }
+  };
+
+  const handlePostLikeToggle = async () => {
+    try {
+      const updated = await toggleLike(Number(id));
+      setPost((prev) => ({
+        ...prev,
+        likes: updated.like,
+        isLiked: updated.isLiked,
+      }));
+    } catch (err) {
+      console.error("게시글 좋아요 실패:", err);
+    }
+  };
+
+  const handlePostScrapToggle = async () => {
+    try {
+      const updated = await toggleScrap(Number(id));
+      setPost((prev) => ({
+        ...prev,
+        bookmarks: updated.bookmarkCount,
+        isBookmarked: updated.isBookmarked,
+      }));
+    } catch (err) {
+      console.error("스크랩 실패:", err);
     }
   };
 
@@ -143,7 +223,6 @@ export default function BoardDetailScreen() {
   const handleLikeToggle = async (commentId, isReply = false) => {
     try {
       const updated = await toggleCommentLike(commentId);
-
       setComments((prev) =>
         prev.map((parent) => {
           if (parent.id === commentId) {
@@ -162,7 +241,7 @@ export default function BoardDetailScreen() {
         })
       );
     } catch (error) {
-      console.error("좋아요 통과 실패:", error);
+      console.error("좋아요 실패:", error);
     }
   };
 
@@ -190,19 +269,18 @@ export default function BoardDetailScreen() {
             isDetail
             onCommentPress={() => inputRef.current?.focus()}
             onDelete={() => {
-              Alert.alert(
-                "Delete Post",
-                "Are you sure you want to delete this?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: handleDeletePost,
-                  },
-                ]
-              );
+              Alert.alert("Delete Post", "Are you sure?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: handleDeletePost,
+                },
+              ]);
             }}
+            onLikePress={handlePostLikeToggle}
+            onScrapPress={handlePostScrapToggle}
+            onEdit={handleEditPost}
           />
           <Text style={styles.commentTitle}>{comments.length} Comments</Text>
           <CommentList
@@ -210,6 +288,7 @@ export default function BoardDetailScreen() {
             onPressLike={handleLikeToggle}
             onPressMenu={handleOpenMenu}
             onPressReply={handleReplyRequest}
+            onPressEdit={handleEditComment}
           />
         </ScrollView>
 
@@ -231,77 +310,6 @@ export default function BoardDetailScreen() {
           />
         </View>
       </View>
-
-      {/* Reply Confirm Modal */}
-      {confirmReplyVisible && (
-        <View style={styles.overlay}>
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmText}>
-              Would you like to reply to this comment?
-            </Text>
-            <View style={styles.confirmButtons}>
-              <Text
-                style={styles.menuText}
-                onPress={() => {
-                  setConfirmReplyVisible(false);
-                  inputRef.current?.focus();
-                }}
-              >
-                confirm
-              </Text>
-              <Text
-                style={styles.menuText}
-                onPress={() => {
-                  setConfirmReplyVisible(false);
-                  setReplyTo(null);
-                }}
-              >
-                cancel
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Delete Menu Modal */}
-      {menuVisible && (
-        <View style={styles.overlay}>
-          <View style={styles.menu}>
-            <Text
-              style={styles.menuText}
-              onPress={() => {
-                setMenuVisible(false);
-                setConfirmVisible(true);
-              }}
-            >
-              Delete
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Confirm Delete Modal */}
-      {confirmVisible && (
-        <View style={styles.overlay}>
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmText}>Would you like to delete?</Text>
-            <View style={styles.confirmButtons}>
-              <Text style={styles.menuText} onPress={handleDeleteComment}>
-                Confirm
-              </Text>
-              <Text
-                style={styles.menuText}
-                onPress={() => {
-                  setConfirmVisible(false);
-                  setSelectedCommentId(null);
-                }}
-              >
-                cancel
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
     </KeyboardAvoidingView>
   );
 }
@@ -340,52 +348,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: colors.BLACK,
-  },
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
-  },
-  menu: {
-    backgroundColor: colors.WHITE,
-    padding: 16,
-    borderRadius: 12,
-    width: 200,
-  },
-  menuText: {
-    fontSize: 16,
-    paddingVertical: 12,
-    color: colors.BLACK,
-    textAlign: "center",
-  },
-  confirmBox: {
-    backgroundColor: colors.WHITE,
-    padding: 20,
-    borderRadius: 12,
-    width: 260,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmText: {
-    fontSize: 16,
-    color: colors.BLACK,
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  confirmButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  confirmButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
   },
 });

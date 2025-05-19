@@ -6,3 +6,11 @@ export const api = axios.create({
   timeout: 5000,
   withCredentials: true, // ✅ 쿠키도 전송되도록 설정
 });
+
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem("@jwt");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});

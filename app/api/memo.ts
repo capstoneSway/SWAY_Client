@@ -28,9 +28,6 @@ export const postMemo = async (memo: {
   to: string;
   amount: number;
   text: string;
-<<<<<<< HEAD
-}) => api.post("/memos", memo); // POST /memos
-=======
 }): Promise<Memo> => {
   const jwtAccessToken = await AsyncStorage.getItem("jwt_access"); // ① 토큰 꺼내기
   const headers = jwtAccessToken
@@ -39,4 +36,3 @@ export const postMemo = async (memo: {
   const response = await api.post<Memo>("/memos/", memo, { headers }); // ② 헤더에 붙여 호출
   return response.data;
 };
->>>>>>> origin/login

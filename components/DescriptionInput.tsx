@@ -1,13 +1,7 @@
-<<<<<<< HEAD
 import { colors } from "@/constants/color";
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { StyleSheet, TextInput } from "react-native";
-=======
-import React from "react";
-import { Controller, useFormContext } from "react-hook-form";
-import InputField from "./InputField";
->>>>>>> origin/login
 
 function DescriptionInput() {
   const { control } = useFormContext();

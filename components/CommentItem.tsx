@@ -1,15 +1,16 @@
+import { toggleCommentLike } from "@/app/api/board";
 import { colors } from "@/constants/color";
-import { AntDesign, Entypo, FontAwesome6 ,Feather} from "@expo/vector-icons";
+import { AntDesign, Entypo, Feather, FontAwesome6 } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
-  Alert,
 } from "react-native";
 
 interface CommentItemProps {
@@ -52,10 +53,14 @@ export default function CommentItem({
     checkUser();
   }, [userId]);
 
-  const toggleLike = () => {
-    const next = !isLiked;
-    setIsLiked(next);
-    setLikeCount((prev) => (next ? prev + 1 : prev - 1));
+  const toggleLike = async () => {
+    try {
+      const updated = await toggleCommentLike(commentId);
+      setIsLiked(updated.isLiked);
+      setLikeCount(updated.like);
+    } catch (err) {
+      console.error("댓글 좋아요 실패:", err);
+    }
   };
 
   const handleEdit = () => {
@@ -64,17 +69,21 @@ export default function CommentItem({
   };
 
   const handleDelete = () => {
-    Alert.alert("Delete Comment", "Are you sure you want to delete this comment?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          onDelete?.();
-          setMenuVisible(false);
+    Alert.alert(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            onDelete?.();
+            setMenuVisible(false);
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleReport = () => {
@@ -94,7 +103,14 @@ export default function CommentItem({
     <View style={styles.wrapper}>
       <View style={styles.container}>
         <View style={styles.leftColumn}>
-          {isReply && <Feather name="corner-down-right" size={24} color="black" style={styles.arrowIcon}/>}
+          {isReply && (
+            <Feather
+              name="corner-down-right"
+              size={24}
+              color="black"
+              style={styles.arrowIcon}
+            />
+          )}
           <Image
             source={
               profileUri
@@ -111,16 +127,20 @@ export default function CommentItem({
             <View style={styles.iconGroup}>
               <Pressable onPress={toggleLike} style={styles.iconButton}>
                 <AntDesign
-                  name="hearto"
+                  name={isLiked ? "heart" : "hearto"}
                   size={14}
-                  color={colors.GRAY_400}
+                  color={isLiked ? colors.RED_500 : colors.GRAY_400}
                 />
               </Pressable>
               <Text style={styles.separator}>|</Text>
               {!isReply && (
                 <>
                   <Pressable style={styles.iconButton} onPress={onPressReply}>
-                    <FontAwesome6 name="comment" size={14} color={colors.BLACK} />
+                    <FontAwesome6
+                      name="comment"
+                      size={14}
+                      color={colors.BLACK}
+                    />
                   </Pressable>
                   <Text style={styles.separator}>|</Text>
                 </>
@@ -138,21 +158,10 @@ export default function CommentItem({
           <Text style={styles.commentContent}>{content}</Text>
 
           <View style={styles.metaRow}>
-            {likeCount > 0 ? (
-              <>
-                <AntDesign
-                  name={isLiked ? "heart" : "hearto"}
-                  size={12}
-                  color={isLiked ? colors.RED_500 : colors.GRAY_400}
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={styles.metaText}>
-                  {likeCount} | {formattedDate}
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.metaText}>{formattedDate}</Text>
-            )}
+            <Text style={styles.metaText}>
+              {likeCount > 0 ? `${likeCount} | ` : ""}
+              {formattedDate}
+            </Text>
           </View>
         </View>
       </View>
@@ -160,7 +169,10 @@ export default function CommentItem({
       <View style={styles.divider} />
 
       <Modal transparent visible={menuVisible} animationType="fade">
-        <Pressable style={styles.modalBackground} onPress={() => setMenuVisible(false)}>
+        <Pressable
+          style={styles.modalBackground}
+          onPress={() => setMenuVisible(false)}
+        >
           <View style={styles.modalBox}>
             {isMyComment ? (
               <>
@@ -168,7 +180,9 @@ export default function CommentItem({
                   <Text style={styles.menuText}>Edit Comment</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleDelete}>
-                  <Text style={[styles.menuText, { color: "red" }]}>Delete Comment</Text>
+                  <Text style={[styles.menuText, { color: "red" }]}>
+                    Delete Comment
+                  </Text>
                 </Pressable>
               </>
             ) : (
@@ -199,7 +213,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   arrowIcon: {
-    marginRight: 4,
     marginRight: 6,
     color: colors.BLACK,
   },
@@ -232,7 +245,6 @@ const styles = StyleSheet.create({
   separator: {
     color: colors.BLACK,
     marginHorizontal: 6,
-    marginRight: 6,
     lineHeight: 16,
   },
   commentContent: {

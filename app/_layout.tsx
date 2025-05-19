@@ -15,16 +15,12 @@ export default function RootLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false, //  모든 화면 기본 헤더 감추기!
+        headerShown: false, // 모든 화면 기본 헤더 감추기
         contentStyle: {
           backgroundColor: colors.WHITE,
         },
       }}
     >
-<<<<<<< HEAD
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="auth" />
-=======
       <Stack.Screen
         name="(tabs)"
         options={{
@@ -37,7 +33,7 @@ export default function RootLayout() {
           title: "Login",
           headerShown: true,
           headerTintColor: colors.BLACK,
-          headerBackTitle: "ㅤ",
+          headerBackTitle: "ㅤ", // ← iOS에서 뒤로가기 텍스트 없애기
         }}
       />
       <Stack.Screen
@@ -47,7 +43,6 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
->>>>>>> origin/login
       <Stack.Screen name="+not-found" />
     </Stack>
   );

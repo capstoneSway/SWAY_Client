@@ -62,8 +62,4 @@ export const getTimeSeries = (
 // ── 오늘 + 히스토리 조회 ──
 // GET  /history/{code}
 export const getHistory = (code: string) =>
-<<<<<<< HEAD
-  api.get<HistoryResponse>(`/currency/overview/${formatCode(code)}/`);
-=======
   api.get<HistoryResponse>(`/currency/overview/${code}/`);
->>>>>>> origin/login

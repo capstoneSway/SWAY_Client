@@ -37,61 +37,6 @@ export default function AuthHome() {
     `&prompt=login`;
 
   const handleKakaoLogin = async () => {
-<<<<<<< HEAD
-    try {
-      const existingAccessToken = await AsyncStorage.getItem("@jwt");
-      if (existingAccessToken) {
-        console.log("🟢 기존 JWT 발견:", existingAccessToken);
-        // 기존 토큰으로 사용자 정보 조회 및 분기
-        const userInfo = await fetchUserInfo(existingAccessToken);
-        if (userInfo) {
-          if (userInfo.nickname === null) {
-            router.replace("/auth/signUsername");
-            return;
-          } else if (userInfo.nationality === null) {
-            router.replace("/auth/signNationality");
-            return;
-          } else {
-            router.replace("../(tabs)");
-            return;
-          }
-        }
-      } else {
-        // 토큰이 없으면 카카오 로그인 WebView 표시
-        setIsError(false);
-        setShowWebView(true);
-      }
-    } catch (err) {
-      console.error("토큰 초기화 오류:", err);
-    }
-  };
-
-  const handleMessage = async (event: any) => {
-    try {
-      const jsonText = event.nativeEvent.data.trim();
-      console.log("🟢 받은 JSON:", jsonText);
-
-      const data = JSON.parse(jsonText);
-      const { jwt_access, jwt_refresh } = data;
-
-      console.log("🟢 Access Token:", jwt_access);
-      console.log("🟢 Refresh Token:", jwt_refresh);
-
-      // 로컬 스토리지에 토큰 저장
-      const pairs: [string, string][] = [["@jwt", jwt_access]];
-      if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
-      await AsyncStorage.multiSet(pairs);
-
-      // 사용자 정보 조회 및 분기
-      const userInfo = await fetchUserInfo(jwt_access);
-      if (userInfo) {
-        if (userInfo.nickname === null) {
-          router.replace("/auth/signUsername");
-        } else if (userInfo.nationality === null) {
-          router.replace("/auth/signNationality");
-        } else {
-          router.replace("../(tabs)");
-=======
     setIsError(false);
     setLoading(true);
 
@@ -163,55 +108,47 @@ export default function AuthHome() {
   };
 
   const handleWebViewNavigation = async ({ url }: { url: string }) => {
-    if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
+  if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
+    try {
       const code = new URL(url).searchParams.get("code");
       console.log("🟢 인가 코드:", code);
       setShowWebView(false);
       setLoading(true);
 
-      try {
-        // 6) 코드로 JWT 교환
-        const resp = await api.get("/accounts/login/kakao/callback/", {
-          params: { code },
-        });
-        const { jwt_access, jwt_refresh } = resp.data;
-        console.log("🟢 Access Token:", jwt_access);
-        console.log("🟢 Refresh Token:", jwt_refresh);
+      // 6) 코드로 JWT 교환
+      const resp = await api.get("/accounts/login/kakao/callback/", {
+        params: { code },
+      });
+      const { jwt_access, jwt_refresh } = resp.data;
+      console.log("🟢 Access Token:", jwt_access);
+      console.log("🟢 Refresh Token:", jwt_refresh);
 
-        // 7) AsyncStorage 저장
-        const pairs: [string, string][] = [["@jwt", jwt_access]];
-        if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
-        await AsyncStorage.multiSet(pairs);
+      // 7) AsyncStorage 저장
+      const pairs: [string, string][] = [["@jwt", jwt_access]];
+      if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
+      await AsyncStorage.multiSet(pairs);
 
-        // 8) 사용자 정보 조회 후 라우팅
-        const userInfo = await fetchUserInfo(jwt_access);
-        console.log("🟢 fetchUserInfo 결과:", userInfo);
-        setLoading(false);
-        if (userInfo) {
-          if (!userInfo.nickname) router.replace("/auth/signUsername");
-          else if (!userInfo.nationality)
-            router.replace("/auth/signNationality");
-          else router.replace("/");
-        } else {
-          setShowWebView(true);
->>>>>>> origin/login
-        }
-      } catch (e) {
-        console.error("❌ 토큰 교환 오류:", e);
-        setIsError(true);
-        setLoading(false);
+      // 8) 사용자 정보 조회 후 라우팅
+      const userInfo = await fetchUserInfo(jwt_access);
+      console.log("🟢 fetchUserInfo 결과:", userInfo);
+
+      if (userInfo) {
+        if (!userInfo.nickname) router.replace("/auth/signUsername");
+        else if (!userInfo.nationality)
+          router.replace("/auth/signNationality");
+        else router.replace("/");
+      } else {
         setShowWebView(true);
       }
     } catch (err) {
-      console.error("❌ 토큰 처리 오류:", err);
+      console.error("❌ 로그인 처리 오류:", err);
       setIsError(true);
+      setShowWebView(true);
     } finally {
-      // 무조건 웹뷰 닫기 및 로딩 해제
-      setShowWebView(false);
       setLoading(false);
     }
-  };
-
+  }
+};
   return (
     <View style={styles.container}>
       <Image
@@ -226,14 +163,10 @@ export default function AuthHome() {
       )}
 
       <Pressable
-<<<<<<< HEAD
-        style={[styles.kakaoButton, showWebView && { opacity: 0.6 }]}
-=======
         style={[
           styles.kakaoButton,
           (showWebView || loading) && { opacity: 0.6 },
         ]}
->>>>>>> origin/login
         onPress={handleKakaoLogin}
         disabled={showWebView || loading}
       >
@@ -314,23 +247,6 @@ export default function AuthHome() {
             source={{ uri: KAKAO_AUTH_URL }}
             incognito
             cacheEnabled={false}
-<<<<<<< HEAD
-            injectedJavaScript={`
-              (function() {
-                const jsonText = document.body.innerText.trim();
-                try {
-                  const data = JSON.parse(jsonText);
-                  window.ReactNativeWebView.postMessage(jsonText);
-                } catch (e) {
-                  console.error("🛑 JSON 파싱 실패:", e, jsonText);
-                }
-              })();
-              true;
-            `}
-            onMessage={handleMessage}
-            onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
-=======
             onLoadStart={() => setLoading(true)}
             onLoadEnd={() => setLoading(false)}
             onShouldStartLoadWithRequest={(e) => {
@@ -339,7 +255,6 @@ export default function AuthHome() {
             }}
             javaScriptEnabled
             domStorageEnabled
->>>>>>> origin/login
           />
           {loading && (
             <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
@@ -359,16 +274,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     top: -20,
   },
-<<<<<<< HEAD
-  logo: {
-    width: 300,
-    height: 300,
-    resizeMode: "contain",
-    marginBottom: 40,
-  },
-=======
   logo: { width: 300, height: 300, resizeMode: "contain", marginBottom: 40 },
->>>>>>> origin/login
   errorMessage: {
     color: colors.RED_500,
     marginBottom: 16,
@@ -386,21 +292,8 @@ const styles = StyleSheet.create({
     height: 44,
     marginBottom: 20,
   },
-<<<<<<< HEAD
-  kakaoIcon: {
-    position: "absolute",
-    left: 16,
-    width: 24,
-    height: 24,
-  },
-  kakaoText: {
-    fontSize: 16,
-    color: colors.BLACK,
-  },
-=======
   kakaoIcon: { position: "absolute", left: 16, width: 24, height: 24 },
   kakaoText: { fontSize: 16, color: colors.BLACK },
->>>>>>> origin/login
   termsText: {
     marginTop: 80,
     fontSize: 12,

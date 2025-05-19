@@ -1,12 +1,14 @@
+import { postNewPost, updatePost } from "@/app/api/board";
 import DescriptionInput from "@/components/DescriptionInput";
 import TitleInput from "@/components/TitleInput";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import {
+  Alert,
   Animated,
   Image,
   Keyboard,
@@ -31,6 +33,13 @@ type FormValues = {
 
 export default function NewPostScreen() {
   const router = useRouter();
+  const {
+    id,
+    edit,
+    title: initTitle,
+    description: initDescription,
+  } = useLocalSearchParams();
+  const isEdit = edit === "true";
 
   const postForm = useForm<FormValues>({
     defaultValues: {
@@ -39,13 +48,20 @@ export default function NewPostScreen() {
     },
   });
 
-  const { watch } = postForm;
+  const { watch, setValue } = postForm;
   const title = watch("title");
   const description = watch("description");
   const isFormValid = Boolean(title?.trim() && description?.trim());
 
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const animatedBottom = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isEdit && initTitle && initDescription) {
+      setValue("title", String(initTitle));
+      setValue("description", String(initDescription));
+    }
+  }, [isEdit, initTitle, initDescription]);
 
   useEffect(() => {
     const onKeyboardShow = (e: KeyboardEvent) => {
@@ -72,27 +88,21 @@ export default function NewPostScreen() {
     };
   }, [animatedBottom]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) return;
 
-    const newPost = {
-      id: Date.now(),
-      title,
-      description,
-      images: selectedImages,
-      createdAt: new Date().toISOString(),
-      author: {
-        nickname: "하영",
-        imageUri: "",
-      },
-    };
-
-    router.push({
-      pathname: "/(tabs)/board",
-      params: {
-        newPost: JSON.stringify(newPost),
-      },
-    });
+    try {
+      if (isEdit && id) {
+        await updatePost(Number(id), title, description);
+        Alert.alert("Updated", "Post updated successfully.");
+        router.back();
+      } else {
+        await postNewPost(title, description);
+        router.push("/(tabs)/board");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to submit post.");
+    }
   };
 
   const pickImageFromGallery = async () => {
@@ -130,7 +140,9 @@ export default function NewPostScreen() {
                 <Ionicons name="arrow-back" size={24} color={colors.BLACK} />
               </TouchableOpacity>
 
-              <Text style={styles.headerTitle}>New Post</Text>
+              <Text style={styles.headerTitle}>
+                {isEdit ? "Edit Post" : "New Post"}
+              </Text>
 
               <TouchableOpacity disabled={!isFormValid} onPress={handleSubmit}>
                 <Text
@@ -139,7 +151,7 @@ export default function NewPostScreen() {
                     !isFormValid && styles.headerPostDisabled,
                   ]}
                 >
-                  Post
+                  {isEdit ? "Update" : "Post"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -180,7 +192,6 @@ export default function NewPostScreen() {
             </KeyboardAwareScrollView>
           </KeyboardAvoidingView>
 
-          {/* ✅ 부드럽게 따라오는 애니메이션 툴바 */}
           <Animated.View style={[styles.inputBar, { bottom: animatedBottom }]}>
             <Pressable onPress={takePhoto}>
               <Ionicons name="camera-outline" size={24} color={colors.BLACK} />

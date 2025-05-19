@@ -3,7 +3,7 @@ import CommonHeader from "@/components/CommonHeader";
 import FeedItem from "@/components/FeedItem";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native"; // ✅ 추가
+import { useNavigation } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -17,14 +17,13 @@ import {
 } from "react-native";
 
 export default function BoardScreen() {
-  const navigation = useNavigation(); // ✅ 추가
+  const navigation = useNavigation();
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const params = useLocalSearchParams();
 
-  // ✅ 기본 헤더 숨기기
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
@@ -38,8 +37,9 @@ export default function BoardScreen() {
         if (raw && raw !== "undefined") {
           const newPost = typeof raw === "string" ? JSON.parse(raw) : raw;
           if (newPost?.title && newPost?.description) {
-            setPosts([newPost, ...data]);
-            setFilteredPosts([newPost, ...data]);
+            const updated = [newPost, ...data];
+            setPosts(updated);
+            setFilteredPosts(updated);
           } else {
             setPosts(data);
             setFilteredPosts(data);
