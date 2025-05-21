@@ -1,50 +1,127 @@
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { useFormContext } from "react-hook-form";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-function NewPostFooter() {
-  const inset = useSafeAreaInsets();
+export default function NewPostFooter() {
+  const router = useRouter();
+  const { watch } = useFormContext();
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const handleOpenImagePick = async () => {
+  const title = watch("title");
+  const description = watch("description");
+  const isFormValid = title?.trim() && description?.trim();
+
+  const handlePost = () => {
+    if (!isFormValid) return;
+
+    console.log("📮 POST SUBMIT:", {
+      title,
+      description,
+      image: selectedImage,
+    });
+    router.back();
+  };
+
+  const pickImageFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      allowsMultipleSelection: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
     });
 
-    if (result.canceled) {
-      return;
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const takePhoto = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
     }
   };
 
   return (
-    <View style={[styles.container, { paddingBottom: inset.bottom }]}>
-      <Pressable style={styles.footerIcon} onPress={handleOpenImagePick}>
-        <Ionicons name={"camera"} size={20} color={colors.BLACK} />
-      </Pressable>
+    <View>
+      {selectedImage && (
+        <Image source={{ uri: selectedImage }} style={styles.preview} />
+      )}
+
+      <View style={styles.footer}>
+        <View style={styles.iconRow}>
+          <Pressable onPress={takePhoto}>
+            <Ionicons name="camera-outline" size={24} color={colors.BLACK} />
+          </Pressable>
+
+          <Pressable onPress={pickImageFromGallery} style={{ marginLeft: 16 }}>
+            <Ionicons name="image-outline" size={24} color={colors.BLACK} />
+          </Pressable>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.postButton, !isFormValid && styles.disabledButton]}
+          onPress={handlePost}
+          disabled={!isFormValid}
+        >
+          <Text
+            style={[styles.postButtonText, !isFormValid && styles.disabledText]}
+          >
+            Post
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    paddingTop: 12,
-    bottom: 12,
-    paddingHorizontal: 16,
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.GRAY_200,
+    padding: 16,
     backgroundColor: colors.WHITE,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.GRAY_300,
-    flexDirection: "row",
-    gap: 10,
   },
-  footerIcon: {
-    backgroundColor: colors.GRAY_100,
-    padding: 10,
-    borderRadius: 5,
+  iconRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  preview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    margin: 16,
+    alignSelf: "center",
+  },
+  postButton: {
+    backgroundColor: colors.PURPLE_300,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  postButtonText: {
+    color: colors.WHITE,
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: colors.GRAY_300,
+  },
+  disabledText: {
+    color: colors.GRAY_500,
   },
 });
-
-export default NewPostFooter;

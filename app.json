@@ -18,7 +18,9 @@
     "newArchEnabled": true,
     "ios": {
       "infoPlist": {
-        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true }
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       },
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sway",
@@ -34,7 +36,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.sway"
+      "package": "com.anonymous.sway",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",

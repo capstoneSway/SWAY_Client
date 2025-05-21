@@ -108,47 +108,47 @@ export default function AuthHome() {
   };
 
   const handleWebViewNavigation = async ({ url }: { url: string }) => {
-    if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
+  if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
+    try {
       const code = new URL(url).searchParams.get("code");
       console.log("🟢 인가 코드:", code);
       setShowWebView(false);
       setLoading(true);
 
-      try {
-        // 6) 코드로 JWT 교환
-        const resp = await api.get("/accounts/login/kakao/callback/", {
-          params: { code },
-        });
-        const { jwt_access, jwt_refresh } = resp.data;
-        console.log("🟢 Access Token:", jwt_access);
-        console.log("🟢 Refresh Token:", jwt_refresh);
+      // 6) 코드로 JWT 교환
+      const resp = await api.get("/accounts/login/kakao/callback/", {
+        params: { code },
+      });
+      const { jwt_access, jwt_refresh } = resp.data;
+      console.log("🟢 Access Token:", jwt_access);
+      console.log("🟢 Refresh Token:", jwt_refresh);
 
-        // 7) AsyncStorage 저장
-        const pairs: [string, string][] = [["@jwt", jwt_access]];
-        if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
-        await AsyncStorage.multiSet(pairs);
+      // 7) AsyncStorage 저장
+      const pairs: [string, string][] = [["@jwt", jwt_access]];
+      if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
+      await AsyncStorage.multiSet(pairs);
 
-        // 8) 사용자 정보 조회 후 라우팅
-        const userInfo = await fetchUserInfo(jwt_access);
-        console.log("🟢 fetchUserInfo 결과:", userInfo);
-        setLoading(false);
-        if (userInfo) {
-          if (!userInfo.nickname) router.replace("/auth/signUsername");
-          else if (!userInfo.nationality)
-            router.replace("/auth/signNationality");
-          else router.replace("/");
-        } else {
-          setShowWebView(true);
-        }
-      } catch (e) {
-        console.error("❌ 토큰 교환 오류:", e);
-        setIsError(true);
-        setLoading(false);
+      // 8) 사용자 정보 조회 후 라우팅
+      const userInfo = await fetchUserInfo(jwt_access);
+      console.log("🟢 fetchUserInfo 결과:", userInfo);
+
+      if (userInfo) {
+        if (!userInfo.nickname) router.replace("/auth/signUsername");
+        else if (!userInfo.nationality)
+          router.replace("/auth/signNationality");
+        else router.replace("/");
+      } else {
         setShowWebView(true);
       }
+    } catch (err) {
+      console.error("❌ 로그인 처리 오류:", err);
+      setIsError(true);
+      setShowWebView(true);
+    } finally {
+      setLoading(false);
     }
-  };
-
+  }
+};
   return (
     <View style={styles.container}>
       <Image
@@ -170,17 +170,11 @@ export default function AuthHome() {
         onPress={handleKakaoLogin}
         disabled={showWebView || loading}
       >
-        {loading ? (
-          <ActivityIndicator color={colors.BLACK} />
-        ) : (
-          <>
-            <Image
-              source={require("@/assets/images/kakao.png")}
-              style={styles.kakaoIcon}
-            />
-            <Text style={styles.kakaoText}>Login with Kakao</Text>
-          </>
-        )}
+        <Image
+          source={require("@/assets/images/kakao.png")}
+          style={styles.kakaoIcon}
+        />
+        <Text style={styles.kakaoText}>Login with Kakao</Text>
       </Pressable>
 
       {/* RefreshToken 테스트 버튼 */}
@@ -246,6 +240,9 @@ export default function AuthHome() {
 
       {showWebView && (
         <View style={styles.webviewContainer}>
+          {loading && (
+            <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
+          )}
           <WebView
             source={{ uri: KAKAO_AUTH_URL }}
             incognito

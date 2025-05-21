@@ -1,63 +1,38 @@
+import { fetchBoardList } from "@/app/api/board";
 import { colors } from "@/constants/color";
-import React from "react";
-import { StyleSheet, FlatList} from "react-native";
+import { useEffect, useState } from "react";
+import { FlatList, StyleSheet, View } from "react-native";
 import FeedItem from "./FeedItem";
 
+export default function FeedList() {
+  const [posts, setPosts] = useState([]);
 
-const dummyData = [
-  {
-    id: 1,
-    userId: 1,
-    title: "Fair rent fair near HUFS?",
-    description:
-      "I rent a studio through a real estate agent, but I'm not sure the rent fee is fair enough. How much do you pay?",
-    createdAt: "2025-05-10",
-    author: {
-      id: 1,
-      nickname: "Fàn Bīngbīng",
-      imageUri: "",
-    },
-    imageUris: [],
-    likes: [],
-    commentCount: 1,
-    comments: [],
-  },
-  {
-    id: 2,
-    userId: 1,
-    title: "Fair rent fair near HUFS?",
-    description:
-      "I rent a studio through a real estate agent, but I'm not sure the rent fee is fair enough. How much do you pay?",
-    createdAt: "2025-05-11",
-    author: {
-      id: 1,
-      nickname: "Fàn Bīngbīng",
-      imageUri: "",
-    },
-    imageUris: [],
-    likes: [],
-    commentCount: 1,
-    comments: [],
-  },
-];
+  useEffect(() => {
+    const load = async () => {
+      const data = await fetchBoardList();
+      setPosts(data);
+    };
+    load();
+  }, []);
 
-function FeedList() {
   return (
-    <FlatList
-      data={dummyData}
-      renderItem={( {item} ) => <FeedItem post={item} />}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.contentContainer}
-    />
+    <View style={styles.container}>
+      <FlatList
+        data={posts}
+        renderItem={({ item }) => <FeedItem post={item} />}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.contentContainer}
+      />
+    </View>
   );
 }
 
-
 const styles = StyleSheet.create({
-  contentContainer: {
-    paddingVertical: 12,
+  container: {
+    flex: 1,
     backgroundColor: colors.WHITE,
   },
+  contentContainer: {
+    paddingBottom: 12,
+  },
 });
-
-export default FeedList;
