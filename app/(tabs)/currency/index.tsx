@@ -1,15 +1,23 @@
+import { Memo as APIMemo, fetchMemos, postMemo } from "@/app/api/memo";
+import { getHistory, getRate } from "@/app/api/rate";
+import { fillMissingDates, parseCurrencyCode } from "@/app/api/utils";
+import CurrencyListItem from "@/components/CurrencyList";
+import { colors } from "@/constants/color";
+import { currencies } from "@/constants/currency";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
   Dimensions,
+  FlatList,
+  Image,
+  Keyboard,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Modal,
-  FlatList,
-  Keyboard,
   TouchableWithoutFeedback,
   Platform,
   Image,
@@ -98,7 +106,7 @@ export default function CurrencyScreen() {
   const [toAmt, setToAmt] = useState("" as string);
   const [memoModalVisible, setMemoModalVisible] = useState(false);
   const [memoText, setMemoText] = useState("");
-  const [memos, setMemos] = useState<Memo[]>([]);
+  const [memos, setMemos] = useState<APIMemo[]>([]);
 
   // ==== 수정: 초기 chartData, currentRate 설정 (fromCur ↔ toCur 기반)
   const initialFrom = parseCurrencyCode(fromCur.code)
@@ -199,26 +207,68 @@ export default function CurrencyScreen() {
             </Text>
 
             {/* 7일치 차트 */}
-            <LineChart
-              data={chartData}
-              width={SCREEN_W * 0.86}
-              height={180}
-              chartConfig={{
-                backgroundGradientFrom: colors.PURPLE_100,
-                backgroundGradientTo: colors.PURPLE_100,
-                color: () => colors.PURPLE_300,
-                labelColor: () => "rgba(0,0,0,0.3)",
-                propsForDots: { r: "4", stroke: colors.PURPLE_300 },
-              }}
-              withInnerLines={false}
-              withOuterLines={false}
-              style={{ borderRadius: 12, marginBottom: 12 }}
-            />
+            {(() => {
+              const rates = chartData.datasets[0].data;
+              // 모든 값이 유한 숫자인지 검사
+              const isValid =
+                rates.length > 0 && rates.every((v) => Number.isFinite(v));
 
+              if (isValid) {
+                return (
+                  <LineChart
+                    data={chartData}
+                    width={SCREEN_W * 0.86}
+                    height={180}
+                    chartConfig={{
+                      backgroundGradientFrom: colors.PURPLE_100,
+                      backgroundGradientTo: colors.PURPLE_100,
+                      color: () => colors.PURPLE_300,
+                      labelColor: () => "rgba(0,0,0,0.3)",
+                      propsForDots: { r: "4", stroke: colors.PURPLE_300 },
+                    }}
+                    withInnerLines={false}
+                    withOuterLines={false}
+                    style={{ borderRadius: 12, marginBottom: 12 }}
+                  />
+                );
+              } else {
+                return (
+                  <View
+                    style={{
+                      width: SCREEN_W * 0.86,
+                      height: 180,
+                      borderRadius: 12,
+                      backgroundColor: colors.PURPLE_100,
+                      marginBottom: 12,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text>차트 데이터를 불러오는 중…</Text>
+                  </View>
+                );
+              }
+            })()}
+
+            {/* 환율 텍스트 */}
             <Text style={styles.rateText}>
-              1 {fromCur.code} ={" "}
-              {chartData.datasets[0].data.slice(-1)[0]?.toFixed(2) ?? "--"}{" "}
-              {toCur.code}
+              {(() => {
+                const { code: fC, unit: defaultFU } = parseCurrencyCode(
+                  fromCur.code
+                );
+                const { code: tC, unit: defaultTU } = parseCurrencyCode(
+                  toCur.code
+                );
+                // SPECIAL_UNIT 우선 적용
+                const fU = SPECIAL_UNIT[fC] ?? defaultFU;
+                const tU = SPECIAL_UNIT[tC] ?? defaultTU;
+
+                // 왼쪽/오른쪽 단위 문자열 생성
+                const leftUnit = fU > 1 ? `${fU} ${fC}` : `1 ${fC}`;
+                const rightUnit = tU > 1 ? `${tU} ${tC}` : `${tC}`;
+
+                return `${leftUnit} = ${currentRate.toFixed(4)} ${rightUnit}`;
+              })()}
             </Text>
 
             {/* 입력부 */}
@@ -306,8 +356,12 @@ export default function CurrencyScreen() {
             </View>
             <Text style={styles.memoText}>{item.text}</Text>
             <Text style={styles.memoRate}>
-              {item.fromAmt} {item.fromCode} → {item.toAmt} {item.toCode} (@
-              {item.rate.toFixed(2)})
+              {/* ★ ApiMemo 타입에 맞춰 프로퍼티명을 변경 */}
+              {/*   amount: 변환 전 금액, from: 변환 전 통화 코드 */}
+              {/*   to: 변환 후 통화 코드, rate: 1단위 환율 */}
+              {item.amount} {item.from} → {/* ★ toAmt 계산: amount × rate */}
+              {(item.amount * item.rate).toFixed(2)} {item.to}{" "}
+              {/* ★ (환율: 1 {item.from} = {item.rate.toFixed(2)} {item.to}) */}
             </Text>
           </View>
         )}
