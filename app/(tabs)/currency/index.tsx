@@ -19,175 +19,175 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  Platform,
+  Image,
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import CurrencyListItem from "@/components/CurrencyList";
+import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
+import { currencies } from "@/constants/currency";
+import { parseCurrencyCode } from "@/app/api/utils";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-const normalizeCode = (code: string) => code.split("(")[0];
 
-// ─── 0. JPY/IDR 100단위 예외 설정 ───────────────────────────────────────────────
-const SPECIAL_UNIT: Record<string, number> = {
-  JPY: 100, // 100엔 단위
-  IDR: 100, // 100루피아 단위
+// ==== 수정: API 호출 대신 고정 예시 환율
+const rawQuotes = {
+  KRWUSD: 0.000715,
+  KRWEUR: 0.000638,
+  KRWCAD: 0.000998,
+  KRWAUD: 0.001115,
 };
 
-// ─── CurrencyScreen 컴포넌트 ───────────────────────────────────────────────────
+// ==== 수정: 1 외화당 KRW 환율 계산 (역수)
+const dummyRates: Record<"USD" | "EUR" | "CAD" | "AUD" | "KRW", number> = {
+  KRW: 1,
+  USD: parseFloat((1 / rawQuotes.KRWUSD).toFixed(3)),
+  EUR: parseFloat((1 / rawQuotes.KRWEUR).toFixed(3)),
+  CAD: parseFloat((1 / rawQuotes.KRWCAD).toFixed(3)),
+  AUD: parseFloat((1 / rawQuotes.KRWAUD).toFixed(3)),
+};
+
+// ==== 수정: 차트용 7일 라벨 생성
+const labels7 = (() => {
+  const arr: string[] = [];
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    arr.push(`${d.getMonth() + 1}/${d.getDate()}`);
+  }
+  return arr;
+})();
+
+// ==== 수정: 차트용 더미 히스토리 (기존대로 남겨둠)
+const dummyHistories: Record<
+  "USD" | "EUR" | "CAD" | "AUD",
+  { date: string; rate: number }[]
+> = {
+  USD: labels7.map((d) => ({ date: d, rate: dummyRates.USD })),
+  EUR: labels7.map((d) => ({ date: d, rate: dummyRates.EUR })),
+  CAD: labels7.map((d) => ({ date: d, rate: dummyRates.CAD })),
+  AUD: labels7.map((d) => ({ date: d, rate: dummyRates.AUD })),
+};
+
+// 환율 계산 헬퍼
+const getRate = (from: keyof typeof dummyRates, to: keyof typeof dummyRates) =>
+  dummyRates[from] / dummyRates[to];
+
+type Memo = {
+  id: string;
+  date: string;
+  rate: number;
+  fromCode: string;
+  toCode: string;
+  fromAmt: string;
+  toAmt: string;
+  text: string;
+};
+
 export default function CurrencyScreen() {
-  // 기본 상태 선언 ─
+  // 기본 상태 선언
   const [modalVisible, setModalVisible] = useState(false);
   const [selecting, setSelecting] = useState<"from" | "to">("from");
-  const [fromCur, setFromCur] = useState(currencies[0]);
-  const [toCur, setToCur] = useState(currencies[1]);
-  const [fromAmt, setFromAmt] = useState("");
-  const [toAmt, setToAmt] = useState("");
-  const [currentRate, setCurrentRate] = useState<number>(0);
+  // ① dummyRates 키 목록 (['USD','EUR','CAD','AUD'])
+  const supportedCodes = Object.keys(dummyRates) as (keyof typeof dummyRates)[];
+  const supportedCurrencies = countries.filter((c) =>
+    supportedCodes.includes(c.code as keyof typeof dummyRates)
+  );
 
+  // ③ 초기 상태도 이 배열 안에서 꺼내기
+  const [fromCur, setFromCur] = useState(supportedCurrencies[0]);
+  const [toCur, setToCur] = useState(supportedCurrencies[1]);
+
+  const [fromAmt, setFromAmt] = useState("");
+  const [toAmt, setToAmt] = useState("" as string);
   const [memoModalVisible, setMemoModalVisible] = useState(false);
   const [memoText, setMemoText] = useState("");
   const [memos, setMemos] = useState<APIMemo[]>([]);
 
-  // 차트 데이터 ─
-  const [chartData, setChartData] = useState({
-    labels: [] as string[],
-    datasets: [{ data: [] as number[] }],
-  });
+  // ==== 수정: 초기 chartData, currentRate 설정 (fromCur ↔ toCur 기반)
+  const initialFrom = parseCurrencyCode(fromCur.code)
+    .code as keyof typeof dummyRates;
+  const initialTo = parseCurrencyCode(toCur.code)
+    .code as keyof typeof dummyRates;
+  const initialRate = getRate(initialFrom, initialTo);
 
-  // 유틸/핸들러 함수 ─
-  const openSheet = (w: "from" | "to") => {
-    setSelecting(w);
+  const [chartData, setChartData] = useState({
+    labels: labels7,
+    datasets: [{ data: labels7.map(() => initialRate) }],
+  });
+  const [currentRate, setCurrentRate] = useState(initialRate);
+
+  // 셀렉터 시트 열기
+  const openSheet = (which: "from" | "to") => {
+    setSelecting(which);
     setModalVisible(true);
   };
+
+  // 통화 교환
   const swap = () => {
     setFromCur(toCur);
     setToCur(fromCur);
     setFromAmt(toAmt);
-    setToAmt(fromAmt);
   };
-  const onSelectCurrency = (item: (typeof currencies)[0]) => {
-    selecting === "from" ? setFromCur(item) : setToCur(item);
-    setModalVisible(false);
-  };
-  const saveMemo = async () => {
-    if (!memoText.trim()) return;
-    const rate = chartData.datasets[0].data.slice(-1)[0] ?? 0;
-    try {
-      const saved: APIMemo = await postMemo({
-        from: normalizeCode(fromCur.code),
-        to: normalizeCode(toCur.code),
-        amount: Number(fromAmt) || 0,
-        text: memoText,
-      });
-      setMemos([saved, ...memos]);
-      setMemoText("");
-      setMemoModalVisible(false);
-    } catch (e) {
-      console.warn("메모 저장 오류:", e);
-    }
-  };
-  const deleteMemo = (id: string) => setMemos(memos.filter((m) => m.id !== id));
 
-  // ─ effects ─
+  // ==== 수정: fromCur 또는 toCur 변경 시 차트+환율 동시 업데이트
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        // ① 원시 코드와 단위를 분리
-        const { code: baseCode, unit: baseUnit } = parseCurrencyCode(
-          fromCur.code
-        );
-        const chartUnit = SPECIAL_UNIT[baseCode] ?? baseUnit;
-
-        // API 호출 (today + history)
-        const res = await getHistory(baseCode);
-        const today = res.data.today;
-        const history = res.data.history;
-
-        const endDate = today.date; // "2025-05-14"
-        const sd = new Date(endDate);
-        sd.setDate(sd.getDate() - 6);
-        const startDate = sd.toISOString().slice(0, 10); // "2025-05-08"
-
-        // ② 누락일 채우기 (utils.fillMissingDates)
-        const { dates, rates } = fillMissingDates(
-          [...history, { date: today.date, rate: today.rate }],
-          startDate,
-          endDate
-        );
-
-        // ③ 차트용 데이터: 날짜 레이블, 환율 데이터
-        setChartData({
-          labels: dates.map((d) => {
-            const [y, m, dd] = d.split("-");
-            return `${+m}/${+dd}`;
-          }),
-          datasets: [
-            {
-              data: rates.map((r) => r * chartUnit),
-            },
-          ],
-        });
-      } catch (e) {
-        console.warn("히스토리 조회 실패", e);
-      }
-    };
-
-    loadHistory();
-  }, [fromCur]);
-
-  useEffect(() => {
-    const loadRateOnly = async () => {
-      try {
-        // 코드와 단위를 분리
-        const { code: fromCode, unit: defaultFromUnit } = parseCurrencyCode(
-          fromCur.code
-        );
-        const { code: toCode, unit: defaultToUnit } = parseCurrencyCode(
-          toCur.code
-        );
-
-        const fromUnit = SPECIAL_UNIT[fromCode] ?? defaultFromUnit;
-        const toUnit = SPECIAL_UNIT[toCode] ?? defaultToUnit;
-
-        // API 호출: 1 fromCode → KRW, 1 toCode → KRW
-        const resFrom = await getRate(fromCode);
-        const resTo = await getRate(toCode);
-        const rateFrom = resFrom.data.today.rate;
-        const rateTo = resTo.data.today.rate;
-
-        // displayRate = (rateFrom * fromUnit) / (rateTo * toUnit)
-        // ex) 100 JPY → KRW, 1 USD → KRW 등을 단위에 맞춰 계산
-        const displayRate = (rateFrom * fromUnit) / (rateTo * toUnit);
-
-        setCurrentRate(displayRate);
-        // → fromAmt와 관계없이 항상 환율 텍스트를 업데이트
-      } catch (e) {
-        console.warn("환율 조회 실패", e);
-      }
-    };
-    loadRateOnly();
+    const f = parseCurrencyCode(fromCur.code).code as keyof typeof dummyRates;
+    const t = parseCurrencyCode(toCur.code).code as keyof typeof dummyRates;
+    const rate = getRate(f, t);
+    setCurrentRate(rate);
+    setChartData({
+      labels: labels7,
+      datasets: [{ data: labels7.map(() => rate) }],
+    });
   }, [fromCur, toCur]);
 
-  // ─── ② 입력값(fromAmt) 변경 시 ToAmount 계산 ─────────────────────────────────────
+  // 금액 변환 로직
   useEffect(() => {
     if (!fromAmt) {
-      // 입력값이 없으면 toAmt는 빈 문자열로
       setToAmt("");
       return;
     }
-    // currentRate가 준비된 이후에만 계산
     setToAmt((parseFloat(fromAmt) * currentRate).toFixed(2));
   }, [fromAmt, currentRate]);
 
+  // AsyncStorage 기반 메모 로딩/저장 (기존 유지)
   useEffect(() => {
     (async () => {
       try {
-        const list = await fetchMemos();
-        setMemos(list);
-      } catch (e) {
-        console.warn("Failed to load memos:", e);
-      }
+        const stored = await AsyncStorage.getItem("@currency_memos");
+        if (stored) setMemos(JSON.parse(stored));
+      } catch {}
     })();
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem("@currency_memos", JSON.stringify(memos));
+  }, [memos]);
+
+  // 메모 저장/삭제 핸들러 (기존 유지)
+  const saveMemo = () => {
+    if (!memoText.trim()) return;
+    const saved: Memo = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleDateString(),
+      rate: currentRate,
+      fromCode: fromCur.code,
+      toCode: toCur.code,
+      fromAmt: fromAmt || "0.00",
+      toAmt: toAmt || "0.00",
+      text: memoText.trim(),
+    };
+    setMemos([saved, ...memos]);
+    setMemoText("");
+    setMemoModalVisible(false);
+  };
+
+  const deleteMemo = (id: string) => setMemos(memos.filter((m) => m.id !== id));
 
   // ─ render ─
   return (
@@ -289,7 +289,7 @@ export default function CurrencyScreen() {
                   style={styles.selector}
                   onPress={() => openSheet("from")}
                 >
-                  <Image source={fromCur.flag} style={styles.selectorFlag} />
+                  <Image source={fromCur.flag} style={styles.flagIcon} />
                   <Text style={styles.selectorText}>{fromCur.code}</Text>
                   <Ionicons name="chevron-down" size={16} />
                 </TouchableOpacity>
@@ -318,7 +318,7 @@ export default function CurrencyScreen() {
                   style={styles.selector}
                   onPress={() => openSheet("to")}
                 >
-                  <Image source={toCur.flag} style={styles.selectorFlag} />
+                  <Image source={toCur.flag} style={styles.flagIcon} />
                   <Text style={styles.selectorText}>{toCur.code}</Text>
                   <Ionicons name="chevron-down" size={16} />
                 </TouchableOpacity>
@@ -368,42 +368,51 @@ export default function CurrencyScreen() {
       />
 
       {/* 통화선택 모달 */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
+      {/* 통화선택 바텀시트 */}
+      <Modal visible={modalVisible} transparent={true} animationType="slide">
+        {/* 반투명 백드롭 */}
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.overlay}>
-            <View style={styles.sheet}>
-              <Text style={styles.sheetTitle}>Select currency</Text>
-              <FlatList
-                data={currencies}
-                keyExtractor={(c) => c.code}
-                renderItem={({ item }) => (
-                  <CurrencyListItem
-                    flag={item.flag}
-                    code={item.code}
-                    name={`${item.code} – ${item.name}`}
-                    selected={
-                      selecting === "from"
-                        ? item.code === fromCur.code
-                        : item.code === toCur.code
-                    }
-                    onPress={() => onSelectCurrency(item)}
-                  />
-                )}
-              />
-              <TouchableOpacity
-                style={styles.sheetClose}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.closeText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
+
+        {/* 하단 바텀 시트 */}
+        <View style={styles.sheetContainer}>
+          {/* 헤더 */}
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Select currency</Text>
+          </View>
+
+          {/* 리스트 */}
+          <FlatList
+            data={supportedCurrencies} // <-- 4개 통화만
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <CurrencyListItem
+                flag={item.flag}
+                code={item.code}
+                name={item.name}
+                selected={
+                  selecting === "from"
+                    ? item.code === fromCur.code
+                    : item.code === toCur.code
+                }
+                onPress={() => {
+                  if (selecting === "from") setFromCur(item);
+                  else setToCur(item);
+                  setModalVisible(false);
+                }}
+              />
+            )}
+          />
+
+          {/* 취소 버튼 */}
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setModalVisible(false)}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* 메모 작성 모달 */}
@@ -472,11 +481,10 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 16 },
   selector: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
   selectorText: { fontSize: 16, marginRight: 4 },
-  selectorFlag: {
+  flagIcon: {
     width: 24,
     height: 24,
     marginRight: 6,
-    resizeMode: "contain",
   },
   swapWrapper: {
     position: "absolute",
@@ -580,4 +588,30 @@ const styles = StyleSheet.create({
   memoDate: { fontSize: 14, color: colors.GRAY_600 },
   memoText: { fontSize: 16, marginBottom: 4 },
   memoRate: { fontSize: 14, color: colors.GRAY_600 },
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheetContainer: {
+    backgroundColor: colors.WHITE,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: "60%",
+  },
+  sheetHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderColor: colors.GRAY_200,
+    alignItems: "center",
+  },
+  cancelButton: {
+    padding: 16,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderColor: colors.GRAY_200,
+  },
+  cancelText: {
+    fontSize: 16,
+    color: colors.GRAY_600,
+  },
 });
