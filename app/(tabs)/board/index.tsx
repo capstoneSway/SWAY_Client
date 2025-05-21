@@ -2,7 +2,7 @@ import FeedList from "@/components/FeedList";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Pressable, SafeAreaView, StyleSheet } from "react-native";
 
 export default function BoardScreen() {
