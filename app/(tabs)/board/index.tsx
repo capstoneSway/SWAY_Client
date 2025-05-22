@@ -82,7 +82,7 @@ export default function BoardScreen() {
           <View style={styles.searchContainer}>
             <TextInput
               placeholder="Search"
-              placeholderTextColor={colors.GRAY_400}
+              placeholderTextColor={colors.GRAY_500}
               value={searchText}
               onChangeText={setSearchText}
               onSubmitEditing={handleSearch}

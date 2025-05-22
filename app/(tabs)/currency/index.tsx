@@ -1,5 +1,4 @@
-import { Memo as APIMemo, fetchMemos, postMemo } from "@/app/api/memo";
-import { getHistory, getRate } from "@/app/api/rate";
+import { getHistory } from "@/app/api/rate";
 import { fillMissingDates, parseCurrencyCode } from "@/app/api/utils";
 import CurrencyListItem from "@/components/CurrencyList";
 import { colors } from "@/constants/color";
@@ -19,19 +18,18 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Platform,
-  Image,
+  View,
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CurrencyListItem from "@/components/CurrencyList";
-import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
-import { currencies } from "@/constants/currency";
-import { parseCurrencyCode } from "@/app/api/utils";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+
+const SPECIAL_UNIT: Record<string, number> = {
+  JPY: 100, // 100엔 단위
+  IDR: 100, // 100루피아 단위
+};
 
 // ==== 수정: API 호출 대신 고정 예시 환율
 const rawQuotes = {
@@ -106,7 +104,7 @@ export default function CurrencyScreen() {
   const [toAmt, setToAmt] = useState("" as string);
   const [memoModalVisible, setMemoModalVisible] = useState(false);
   const [memoText, setMemoText] = useState("");
-  const [memos, setMemos] = useState<APIMemo[]>([]);
+  const [memos, setMemos] = useState<Memo[]>([]);
 
   // ==== 수정: 초기 chartData, currentRate 설정 (fromCur ↔ toCur 기반)
   const initialFrom = parseCurrencyCode(fromCur.code)
@@ -356,12 +354,8 @@ export default function CurrencyScreen() {
             </View>
             <Text style={styles.memoText}>{item.text}</Text>
             <Text style={styles.memoRate}>
-              {/* ★ ApiMemo 타입에 맞춰 프로퍼티명을 변경 */}
-              {/*   amount: 변환 전 금액, from: 변환 전 통화 코드 */}
-              {/*   to: 변환 후 통화 코드, rate: 1단위 환율 */}
-              {item.amount} {item.from} → {/* ★ toAmt 계산: amount × rate */}
-              {(item.amount * item.rate).toFixed(2)} {item.to}{" "}
-              {/* ★ (환율: 1 {item.from} = {item.rate.toFixed(2)} {item.to}) */}
+              {item.fromAmt} {item.fromCode} → {item.toAmt} {item.toCode}
+              {/* (환율: 1 {item.fromCode} = {item.rate.toFixed(2)} {item.toCode}) */}
             </Text>
           </View>
         )}
