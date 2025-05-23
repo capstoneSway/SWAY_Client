@@ -1,6 +1,6 @@
 import { colors } from "@/constants/color";
 import React from "react";
-import { View, Pressable, Text, StyleSheet, ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface FixedBottomCTAProps {

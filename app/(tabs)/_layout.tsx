@@ -3,7 +3,7 @@ import React from "react";
 
 import { colors } from "@/constants/color";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { StyleSheet } from "react-native";
+import { Image, StyleSheet } from "react-native";
 
 export default function TabsLayout() {
   return (
@@ -19,10 +19,30 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           headerShown: true,
+          headerTitleAlign: "center", // 가운데 정렬
+          headerLeft: () => (
+            <Image
+              source={require("@/assets/images/SWAY.png")}
+              style={{
+                width: 56,
+                height: 16,
+                marginLeft: 4,
+                resizeMode: "contain",
+              }}
+            />
+          ),
+          headerRight: () => (
+            <Ionicons
+              name="notifications-outline"
+              size={20}
+              color={colors.GRAY_700}
+              style={{ marginRight: 16 }}
+            />
+          ),
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" color={color} size={size} />
           ),
-        }} /* Board */
+        }}
       />
       <Tabs.Screen
         name="board"

@@ -1,5 +1,6 @@
 import { colors } from "@/constants/color";
-import Post from "@/type/types";
+
+import { Post } from "@/app/type/types";
 import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react"; // useState 추가
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -27,6 +28,9 @@ const FeedItem = ({ post, isDetail = false }: FeedItemProps) => {
           imageUri={post.author.imageUri}
           nickname={post.author.nickname}
           createdAt={post.createdAt}
+          onPress={() => {
+            console.log("프로필 눌림");
+          }}
         />
         <Text style={styles.title}>{post.title}</Text>
         <Text style={styles.description}>{post.description}</Text>
@@ -45,7 +49,7 @@ const FeedItem = ({ post, isDetail = false }: FeedItemProps) => {
 
         <Pressable style={styles.menu}>
           <FontAwesome6 name="comment" size={20} color={colors.BLACK} />
-          <Text style={styles.menuText}>{post.comments}</Text>
+          <Text style={styles.menuText}>{post.comments?.length ?? 0}</Text>
         </Pressable>
 
         <Pressable
