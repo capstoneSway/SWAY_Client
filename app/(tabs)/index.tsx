@@ -1,30 +1,50 @@
-// app/(tabs)/index.tsx
 import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import {
-  Dimensions,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useNavigation, useRouter } from "expo-router";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import ensureValidToken from "../api/tokenManager";
 
 const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
 
+//  KST 기준 "May 24, 2025 7pm" 스타일 포맷 함수
+function formatKSTDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    hour12: true,
+  }).format(date);
+}
+
 export default function Home() {
+  const navigation = useNavigation();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"meetup" | "current">("meetup");
-  // 기본 선택없음으로 변경
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [focusedCard, setFocusedCard] = useState<number>(1);
+  const [timeTick, setTimeTick] = useState(0); // ⏱ 실시간 갱신용
 
+  //  기본 헤더 제거
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, []);
+
+  //  1분마다 포커싱 갱신을 위한 시간 트리거
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeTick((prev) => prev + 1);
+    }, 60 * 1000); // 1분 간격
+    return () => clearInterval(interval);
+  }, []);
+
+  // 로그인 토큰 검사
   useEffect(() => {
     (async () => {
       const token = await ensureValidToken();
@@ -36,34 +56,57 @@ export default function Home() {
     })();
   }, []);
 
-  const renderCard = ({ item }: { item: (typeof CARDS)[0] }) => {
-    const isFocused = focusedCard === item.id;
+  //  포커싱 대상 판단 함수 (KST 기준으로 3시간 이하 남았는지 확인)
+  function isExpiringSoon(expiresAt: string): boolean {
+    const now = new Date();
+    const endTime = new Date(expiresAt);
+    const remaining = endTime.getTime() - now.getTime(); // ⬅️ 여기만 쓰면 됨!
+    return remaining > 0 && remaining <= 3 * 60 * 60 * 1000;
+  }
+
+  // 필터링 + 정렬된 카드 목록 생성
+  const filteredCards = useMemo(() => {
+    return CARDS.filter((c) => !selectedTag || c.tag === selectedTag)
+      .map((c) => {
+        const endTime = new Date(c.expiresAt);
+        return {
+          ...c,
+          isFocused: isExpiringSoon(c.expiresAt),
+          expiryTime: endTime,
+        };
+      })
+      .sort((a, b) => {
+        if (a.isFocused && !b.isFocused) return -1;
+        if (!a.isFocused && b.isFocused) return 1;
+        if (a.isFocused && b.isFocused) {
+          const aTime = a.expiryTime.getTime();
+          const bTime = b.expiryTime.getTime();
+          if (aTime !== bTime) return aTime - bTime;
+          return a.title.localeCompare(b.title);
+        }
+        return 0;
+      });
+  }, [selectedTag, timeTick]); //  시간 변화 감지
+
+  const renderCard = ({ item }: { item: (typeof filteredCards)[0] }) => {
+    const isFocused = item.isFocused;
 
     return (
-      <Pressable
-        style={[styles.card, isFocused && styles.cardFocused]}
-        onPress={() =>
-          setFocusedCard((prev) => (prev === item.id ? 0 : item.id))
-        }
-      >
-        {/* 타이틀 */}
+      <View style={[styles.card, isFocused && styles.cardFocused]}>
         <Text style={[styles.title, isFocused && styles.titleFocused]}>
           {item.title}
         </Text>
 
-        {/* Open until */}
         <Text style={[styles.sub, isFocused && styles.subFocused]}>
-          Open until {item.date}
+          Open until {formatKSTDate(item.expiresAt)}
         </Text>
 
-        {/* Participants */}
         <Text
           style={[styles.participants, isFocused && styles.participantsFocused]}
         >
           Participants: {item.participants}
         </Text>
 
-        {/* 버튼 */}
         <Pressable
           disabled={item.status === "closed"}
           onPress={() =>
@@ -91,12 +134,21 @@ export default function Home() {
             {item.status === "closed" ? "Closed" : "Register"}
           </Text>
         </Pressable>
-      </Pressable>
+      </View>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/*  커스텀 헤더 */}
+      <View style={styles.header}>
+        <Text style={styles.logoText}>SWAY</Text>
+        <Text style={styles.headerTitle}>Home</Text>
+        <Pressable onPress={() => console.log("알림 버튼 눌림")}>
+          <Ionicons name="notifications-outline" size={24} />
+        </Pressable>
+      </View>
+
       {/* 탭 */}
       <View style={styles.tabs}>
         {["Meet Ups", "Current"].map((label) => {
@@ -118,7 +170,7 @@ export default function Home() {
         })}
       </View>
 
-      {/* 해시태그 */}
+      {/* 해시태그 필터 */}
       {activeTab === "meetup" && (
         <View style={styles.tagList}>
           {TAGS.map((tag) => {
@@ -141,7 +193,7 @@ export default function Home() {
       {/* 카드 리스트 */}
       {activeTab === "meetup" ? (
         <FlatList
-          data={CARDS.filter((c) => !selectedTag || c.tag === selectedTag)}
+          data={filteredCards}
           renderItem={renderCard}
           keyExtractor={(i) => i.id.toString()}
           contentContainerStyle={styles.cardList}
@@ -164,15 +216,34 @@ export default function Home() {
           <Ionicons name="pencil" size={32} color={colors.WHITE} />
         </Pressable>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
-const W = Dimensions.get("window").width;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.WHITE },
-
-  /* 탭 */
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.GRAY_300,
+  },
+  logoText: {
+    fontSize: 23,
+    fontWeight: "bold",
+    color: colors.PURPLE_300,
+    fontFamily: "GasoekOne",
+  },
+  headerTitle: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "600",
+  },
   tabs: {
     flexDirection: "row",
     marginBottom: 8,
@@ -182,10 +253,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: colors.BLACK,
   },
-  tabText: { fontSize: 14, color: colors.GRAY_500 },
+  tabText: { fontSize: 16, color: colors.GRAY_500 },
   tabTextActive: { color: colors.BLACK, fontWeight: "600" },
-
-  /* 해시태그 */
   tagList: {
     width: "100%",
     flexDirection: "row",
@@ -203,11 +272,7 @@ const styles = StyleSheet.create({
   tagSel: { backgroundColor: colors.PURPLE_300 },
   tagText: { fontSize: 14, color: colors.PURPLE_300 },
   tagTextSel: { fontSize: 14, color: colors.WHITE },
-
-  /* 카드 리스트 여백 */
   cardList: { padding: 16, paddingBottom: 120 },
-
-  /* 카드 공통 */
   card: {
     backgroundColor: colors.WHITE,
     borderRadius: 12,
@@ -221,14 +286,7 @@ const styles = StyleSheet.create({
   },
   cardFocused: {
     backgroundColor: colors.PURPLE_300,
-    shadowColor: colors.BLACK,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
   },
-
-  /* 텍스트 간격 */
   title: {
     fontSize: 24,
     fontWeight: "600",
@@ -254,8 +312,6 @@ const styles = StyleSheet.create({
   participantsFocused: {
     color: colors.WHITE,
   },
-
-  /* 버튼 */
   btn: {
     alignSelf: "flex-end",
     borderRadius: 6,
@@ -270,8 +326,6 @@ const styles = StyleSheet.create({
   btnText: { fontSize: 14, fontWeight: "600", color: colors.WHITE },
   btnTextFocused: { color: colors.PURPLE_300 },
   btnTextClosed: { color: colors.WHITE },
-
-  /* 빈 상태 */
   empty: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: {
     color: colors.GRAY_500,
@@ -279,8 +333,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 4,
   },
-
-  /* 플로팅 버튼*/
   fab: {
     position: "absolute",
     bottom: 16,

@@ -45,6 +45,7 @@
     "expo-updates": "~0.28.12",
     "expo-web-browser": "~14.1.6",
     "jwt-decode": "^4.0.0",
+    "query-string": "6.14.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-hook-form": "^7.56.3",

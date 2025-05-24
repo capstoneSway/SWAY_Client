@@ -18,7 +18,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Home",
-          headerShown: true,
+          headerShown: false,
           headerTitleAlign: "center", // 가운데 정렬
           headerLeft: () => (
             <Image
