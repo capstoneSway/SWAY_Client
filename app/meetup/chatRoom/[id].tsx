@@ -4,7 +4,14 @@ import { colors } from "@/constants/color";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // 메시지 타입 선언 어차피 빼둘 것.
@@ -125,14 +132,13 @@ export default function ChatRoom() {
       />
 
       <View style={styles.container}>
-        <Text style={styles.date}>{formatKSTDate(meetup.meetupTime)}</Text>
+        <ScrollView style={styles.chatArea}>
+          <Text style={styles.date}>{formatKSTDate(meetup.meetupTime)}</Text>
 
-        <View style={styles.notice}>
-          <Text style={styles.noticeText}>{"<채팅방 안내사항>"}</Text>
-          <Text style={styles.noticeText}>{"말하기 전에 생각했나요?"}</Text>
-        </View>
-
-        <View style={styles.chatArea}>
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{"<채팅방 안내사항>"}</Text>
+            <Text style={styles.noticeText}>{"말하기 전에 생각했나요?"}</Text>
+          </View>
           {messages.map((msg, index) => {
             const bubbleType = getBubbleType(index, messages);
             const isMine = msg.sender === currentUser;
@@ -191,7 +197,7 @@ export default function ChatRoom() {
               </View>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
 
       <View style={{ paddingHorizontal: 16 }}>
@@ -293,6 +299,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 16,
     marginVertical: 2,
+    minHeight: 30,
+    maxHeight: 30,
+    justifyContent: "center",
     alignSelf: "flex-start",
   },
 });

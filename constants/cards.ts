@@ -25,7 +25,8 @@ export const CARDS = [
     meetupTime: getKSTISOString(2025, 5, 27, 17),
     createdAt: getKSTISOString(2025, 5, 23, 20), // ✅ 어제 19시 생성
     expiresAt: calculateExpiresAtFromKST(getKSTISOString(2025, 5, 23, 20)), // → 오늘 19시 만료
-    content: "Walk and talk in Seongsu! Let's get active and make new friends.",
+    content:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque euismod, nisl at convallis commodo, risus tortor interdum eros, in posuere justo ipsum nec erat. Morbi nec sapien ut nunc lacinia fermentum. Fusce scelerisque quam in purus tempor, a sollicitudin metus tincidunt. Cras at nunc sed nisi faucibus ultrices. Sed a nibh ac orci feugiat rutrum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aliquam erat volutpat. Integer ut tristique nulla. Suspendisse potenti. Phasellus rutrum, erat sit amet facilisis laoreet, felis augue dapibus erat, at feugiat erat magna nec sapien. Mauris efficitur purus sed vulputate faucibus.",
     image:
       "https://images.unsplash.com/photo-1554284126-aa88f22d8b74?auto=format&fit=crop&w=800&q=60",
     participantAvatars: [
@@ -45,7 +46,8 @@ export const CARDS = [
     meetupTime: getKSTISOString(2025, 5, 25, 10),
     createdAt: getKSTISOString(2025, 5, 24, 10),
     expiresAt: calculateExpiresAtFromKST(getKSTISOString(2025, 5, 24, 10)),
-    content: "Join a fun day in Incheon! Great sights and even better company.",
+    content:
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque euismod, nisl at convallis commodo, risus tortor interdum eros, in posuere justo ipsum nec erat. Morbi nec sapien ut nunc lacinia fermentum. Fusce scelerisque quam in purus tempor, a sollicitudin metus tincidunt. Cras at nunc sed nisi faucibus ultrices. Sed a nibh ac orci feugiat rutrum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aliquam erat volutpat. Integer ut tristique nulla. Suspendisse potenti. Phasellus rutrum, erat sit amet facilisis laoreet, felis augue dapibus erat, at feugiat erat magna nec sapien. Mauris efficitur purus sed vulputate faucibus.",
     image:
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=60",
     participantAvatars: [
@@ -64,7 +66,7 @@ export const CARDS = [
     createdAt: getKSTISOString(2025, 5, 24, 9),
     expiresAt: calculateExpiresAtFromKST(getKSTISOString(2025, 5, 24, 9)),
     content:
-      "I've found so many popular cafes around Hongdae! Let's go together!",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque euismod, nisl at convallis commodo, risus tortor interdum eros, in posuere justo ipsum nec erat. Morbi nec sapien ut nunc lacinia fermentum. Fusce scelerisque quam in purus tempor, a sollicitudin metus tincidunt. Cras at nunc sed nisi faucibus ultrices. Sed a nibh ac orci feugiat rutrum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aliquam erat volutpat. Integer ut tristique nulla. Suspendisse potenti. Phasellus rutrum, erat sit amet facilisis laoreet, felis augue dapibus erat, at feugiat erat magna nec sapien. Mauris efficitur purus sed vulputate faucibus.",
     image:
       "https://images.unsplash.com/photo-1506354666786-959d6d497f1a?auto=format&fit=crop&w=800&q=60",
     participantAvatars: [

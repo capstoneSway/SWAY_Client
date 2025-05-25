@@ -120,28 +120,38 @@ export default function MeetUpDetail() {
           <View style={styles.tagRow}>
             <Text style={styles.tag}>#{meetup.tag}</Text>
             {meetup.gender === "Male" && (
-              <FontAwesome5 name="mars" size={20} color={colors.PURPLE_300} />
+              <FontAwesome5
+                name="mars"
+                size={22}
+                color={colors.PURPLE_300}
+                style={{ paddingTop: 10 }}
+              />
             )}
             {meetup.gender === "Female" && (
-              <FontAwesome5 name="venus" size={20} color={colors.PURPLE_300} />
+              <FontAwesome5
+                name="venus"
+                size={22}
+                color={colors.PURPLE_300}
+                style={{ paddingTop: 10 }}
+              />
             )}
             {meetup.gender === "All" && (
               <FontAwesome5
                 name="transgender"
-                size={20}
+                size={22}
                 color={colors.PURPLE_300}
+                style={{ paddingTop: 10 }}
               />
             )}
           </View>
 
           <Text style={styles.description}>{meetup.content}</Text>
-
-          <View style={styles.openUntilRow}>
-            <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
-            <Text style={styles.openUntilText}>
-              Open Until: {formatKSTDate(meetup.expiresAt)}
-            </Text>
-          </View>
+        </View>
+        <View style={styles.openUntilRow}>
+          <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
+          <Text style={styles.openUntilText}>
+            Open Until: {formatKSTDate(meetup.expiresAt)}
+          </Text>
         </View>
 
         {meetup.status !== "closed" && (
@@ -267,7 +277,7 @@ const styles = StyleSheet.create({
   openUntilRow: {
     flexDirection: "row",
     alignItems: "center",
-    bottom: -260,
+    paddingHorizontal: 16,
   },
 
   openUntilText: {
