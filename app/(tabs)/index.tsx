@@ -3,6 +3,7 @@ import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
+import firebase from "@react-native-firebase/app";
 import { useNavigation, useRouter } from "expo-router";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -29,11 +30,20 @@ export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"meetup" | "current">("meetup");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [timeTick, setTimeTick] = useState(0); // ⏱ 실시간 갱신용
+  const [timeTick, setTimeTick] = useState(0); // 실시간 갱신용
 
   //  기본 헤더 제거
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
+  }, []);
+
+  useEffect(() => {
+    try {
+      const app = firebase.app();
+      console.log("✅ Firebase Initialized:", app.name); // 보통 "[DEFAULT]"
+    } catch (e) {
+      console.log("❌ Firebase not initialized", e);
+    }
   }, []);
 
   //  1분마다 포커싱 갱신을 위한 시간 트리거

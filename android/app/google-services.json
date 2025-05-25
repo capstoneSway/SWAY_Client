@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1090999048462",
+    "project_id": "sway-fcm",
+    "storage_bucket": "sway-fcm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1090999048462:android:4757259db574b523c0df5f",
+        "android_client_info": {
+          "package_name": "com.anonymous.sway"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHfX9DjccNfoEFdguXrv-RxBPbKuKYcys"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
