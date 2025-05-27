@@ -6,3 +6,4 @@ export const api = axios.create({
   timeout: 5000,
   //withCredentials: true, //  쿠키도 전송되도록 설정
 });
+

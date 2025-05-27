@@ -1,18 +1,11 @@
-import { toggleLike, toggleScrap, blockPostAuthor } from "@/app/api/board";
-import { colors } from "@/constants/color";
+import { blockPostAuthor, toggleLike, toggleScrap } from "@/app/api/board";
 import { Post } from "@/app/type/types";
+import { colors } from "@/constants/color";
 import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Profile from "./Profile";
 
 interface FeedItemProps {
@@ -111,7 +104,10 @@ const FeedItem = ({
   const handleBlock = async () => {
     try {
       await blockPostAuthor(post.id);
-      Alert.alert("User Blocked", "You will no longer see posts from this user.");
+      Alert.alert(
+        "User Blocked",
+        "You will no longer see posts from this user."
+      );
       setShowMenu(false);
     } catch (err) {
       console.error("Failed to block user:", err);
@@ -131,7 +127,11 @@ const FeedItem = ({
 
           {isDetail && (
             <Pressable onPress={() => setShowMenu(true)}>
-              <Ionicons name="ellipsis-vertical" size={20} color={colors.BLACK} />
+              <Ionicons
+                name="ellipsis-vertical"
+                size={20}
+                color={colors.BLACK}
+              />
             </Pressable>
           )}
         </View>
@@ -170,7 +170,10 @@ const FeedItem = ({
       </View>
 
       <Modal transparent visible={showMenu} animationType="fade">
-        <Pressable style={styles.modalBackground} onPress={() => setShowMenu(false)}>
+        <Pressable
+          style={styles.modalBackground}
+          onPress={() => setShowMenu(false)}
+        >
           <View style={styles.modalBox}>
             {isMyPost ? (
               <>
@@ -178,7 +181,9 @@ const FeedItem = ({
                   <Text style={styles.menuTextOnly}>Edit Post</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleDelete}>
-                  <Text style={[styles.menuTextOnly, { color: "red" }]}>Delete Post</Text>
+                  <Text style={[styles.menuTextOnly, { color: "red" }]}>
+                    Delete Post
+                  </Text>
                 </Pressable>
               </>
             ) : (
@@ -187,7 +192,9 @@ const FeedItem = ({
                   <Text style={styles.menuTextOnly}>Report Post</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleBlock}>
-                  <Text style={[styles.menuTextOnly, { color: "red" }]}>Block Author</Text>
+                  <Text style={[styles.menuTextOnly, { color: "red" }]}>
+                    Block Author
+                  </Text>
                 </Pressable>
               </>
             )}
