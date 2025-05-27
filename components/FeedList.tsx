@@ -1,7 +1,7 @@
 import React from "react";
 import { fetchBoardList } from "@/app/api/board";
 import { colors } from "@/constants/color";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import FeedItem from "./FeedItem";
 import type { Post } from "@/app/type/types";

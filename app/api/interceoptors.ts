@@ -7,9 +7,8 @@ api.interceptors.request.use(
     const token = await AsyncStorage.getItem("@jwt");
 
     if (token) {
-      // headers가 undefined일 가능성 제거
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token}`;
+      // headers가 AxiosHeaders 인스턴스라고 가정하고 set으로 설정
+      config.headers?.set?.("Authorization", `Bearer ${token}`);
     }
 
     return config;

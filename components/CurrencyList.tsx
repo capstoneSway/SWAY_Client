@@ -33,7 +33,9 @@ const CurrencyListItem: React.FC<CurrencyListItemntrProps> = ({
     >
       <Image source={flag} style={styles.flag} />
 
-      <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
+      <Text style={[styles.name, selected && styles.selectedName]}>
+        {code} - {name}
+      </Text>
     </Pressable>
   );
 };

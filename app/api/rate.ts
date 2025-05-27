@@ -1,5 +1,7 @@
 // app/api/rate.ts
-import { api } from "./axios"; // axios.ts 에서 export const api = axios.create(...)
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api } from "./axios";
+import { currencies } from "@/constants/currency";
 
 // ── 응답 타입 정의 ──
 // today + history 엔드포인트용
@@ -60,6 +62,30 @@ export const getTimeSeries = (
   });
 
 // ── 오늘 + 히스토리 조회 ──
-// GET  /history/{code}
-export const getHistory = (code: string) =>
-  api.get<HistoryResponse>(`/currency/overview/${code}/`);
+// GET  /currency/overview/{code}/  → today, history, memos
+export const getHistory = async (code: string): Promise<HistoryResponse> => {
+  // AsyncStorage에서 JWT 토큰을 읽어옵니다.
+  const token = await AsyncStorage.getItem("@jwt");
+
+  // 토큰이 있으면 요청 헤더에 Authorization을 붙입니다.
+  const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+  // ① 응답 전체를 받아서 res에 저장
+  const res = await api.get<HistoryResponse>(
+    `/currency/overview/${code}/`,
+    config
+  );
+
+  // ② 콘솔에 찍어보기
+  console.log(
+    `📥 getHistory(${code}) 응답:`,
+    JSON.stringify(res.data, null, 2)
+  );
+
+  // config 객체를 두 번째 인자로 전달하여 헤더를 포함시킵니다.
+  const { data } = await api.get<HistoryResponse>(
+    `/currency/overview/${code}/`,
+    config
+  );
+  return data;
+};

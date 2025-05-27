@@ -326,7 +326,7 @@ export default function BoardDetailScreen() {
             onPressLike={handleLikeToggle}
             onPressMenu={handleOpenMenu}
             onPressReply={handleReplyRequest}
-            onPressEdit={handleEditComment}
+            // onPressEdit={handleEditComment}
           />
         </ScrollView>
 

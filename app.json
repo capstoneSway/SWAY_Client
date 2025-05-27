@@ -24,13 +24,22 @@
       },
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sway",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "supportsTablet": true,
       "icon": {
         "light": "./assets/images/appLogo.png",
         "dark": "./assets/images/appLogo.png",
         "tinted": "./assets/images/appLogo.png"
+      },
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
+      "package": "com.anonymous.sway",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -64,6 +73,8 @@
       ],
       "expo-image-picker",
       "expo-camera",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       [
         "expo-build-properties",
         {
@@ -74,7 +85,8 @@
             "newArchEnabled": true
           },
           "ios": {
-            "newArchEnabled": true
+            "newArchEnabled": true,
+            "useFrameworks": "static"
           }
         }
       ],
@@ -103,7 +115,8 @@
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

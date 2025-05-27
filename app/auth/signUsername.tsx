@@ -101,9 +101,27 @@ export default function SignUsername() {
         placeholderTextColor={colors.GRAY_500}
         value={swayNickname}
         onChangeText={handleNicknameChange}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="off"
+        spellCheck={false}
       />
       <View style={styles.messageContainer}>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {message ? (
+          <Text
+            style={[
+              styles.message,
+              message === "This nickname is already taken." && {
+                color: colors.RED_500,
+              },
+              message === "This nickname is available." && {
+                color: colors.PURPLE_300,
+              },
+            ]}
+          >
+            {message}
+          </Text>
+        ) : null}
       </View>
       <FixedBottomCTA
         label="Next"
@@ -166,6 +184,5 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 14,
-    color: colors.PURPLE_300,
   },
 });

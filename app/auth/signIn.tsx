@@ -1,6 +1,6 @@
-// auth/AuthHome.tsx
 import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 //import CookieManager from "@react-native-cookies/cookies";
 import { Buffer } from "buffer";
@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -17,7 +18,9 @@ import {
 import { WebView } from "react-native-webview";
 import { api } from "../api/axios";
 import fetchUserInfo from "../api/fetchUserInfo";
+import logout from "../api/logout";
 import refreshToken from "../api/refreshToken";
+import deleteAccount from "../api/unregister";
 
 const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
 const REDIRECT_URI =
@@ -108,47 +111,47 @@ export default function AuthHome() {
   };
 
   const handleWebViewNavigation = async ({ url }: { url: string }) => {
-  if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
-    try {
-      const code = new URL(url).searchParams.get("code");
-      console.log("🟢 인가 코드:", code);
-      setShowWebView(false);
-      setLoading(true);
+    if (url.startsWith(REDIRECT_URI) && url.includes("code=")) {
+      try {
+        const code = new URL(url).searchParams.get("code");
+        console.log("🟢 인가 코드:", code);
+        setShowWebView(false);
+        setLoading(true);
 
-      // 6) 코드로 JWT 교환
-      const resp = await api.get("/accounts/login/kakao/callback/", {
-        params: { code },
-      });
-      const { jwt_access, jwt_refresh } = resp.data;
-      console.log("🟢 Access Token:", jwt_access);
-      console.log("🟢 Refresh Token:", jwt_refresh);
+        // 6) 코드로 JWT 교환
+        const resp = await api.get("/accounts/login/kakao/callback/", {
+          params: { code },
+        });
+        const { jwt_access, jwt_refresh } = resp.data;
+        console.log("🟢 Access Token:", jwt_access);
+        console.log("🟢 Refresh Token:", jwt_refresh);
 
-      // 7) AsyncStorage 저장
-      const pairs: [string, string][] = [["@jwt", jwt_access]];
-      if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
-      await AsyncStorage.multiSet(pairs);
+        // 7) AsyncStorage 저장
+        const pairs: [string, string][] = [["@jwt", jwt_access]];
+        if (jwt_refresh) pairs.push(["@refreshToken", jwt_refresh]);
+        await AsyncStorage.multiSet(pairs);
 
-      // 8) 사용자 정보 조회 후 라우팅
-      const userInfo = await fetchUserInfo(jwt_access);
-      console.log("🟢 fetchUserInfo 결과:", userInfo);
+        // 8) 사용자 정보 조회 후 라우팅
+        const userInfo = await fetchUserInfo(jwt_access);
+        console.log("🟢 fetchUserInfo 결과:", userInfo);
 
-      if (userInfo) {
-        if (!userInfo.nickname) router.replace("/auth/signUsername");
-        else if (!userInfo.nationality)
-          router.replace("/auth/signNationality");
-        else router.replace("/");
-      } else {
+        if (userInfo) {
+          if (!userInfo.nickname) router.replace("/auth/signUsername");
+          else if (!userInfo.nationality)
+            router.replace("/auth/signNationality");
+          else router.replace("/");
+        } else {
+          setShowWebView(true);
+        }
+      } catch (err) {
+        console.error("❌ 로그인 처리 오류:", err);
+        setIsError(true);
         setShowWebView(true);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("❌ 로그인 처리 오류:", err);
-      setIsError(true);
-      setShowWebView(true);
-    } finally {
-      setLoading(false);
     }
-  }
-};
+  };
   return (
     <View style={styles.container}>
       <Image
@@ -232,6 +235,66 @@ export default function AuthHome() {
         <Text style={styles.kakaoText}>🧹 AsyncStorage + 쿠키 초기화</Text>
       </Pressable>
 
+      {/* ✅ 로그아웃 + 회원탈퇴 버튼 묶음 */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 150,
+          alignSelf: "center",
+          alignItems: "center",
+        }}
+      >
+        {/* 로그아웃 버튼 */}
+        <Pressable
+          style={{
+            backgroundColor: colors.GRAY_500,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 20,
+            marginBottom: 12, // 버튼 간 여백
+            minWidth: 200,
+            alignItems: "center",
+          }}
+          onPress={async () => {
+            await logout();
+            router.replace("./auth");
+          }}
+        >
+          <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
+            로그아웃
+          </Text>
+        </Pressable>
+
+        {/* 회원탈퇴 버튼 */}
+        <Pressable
+          onPress={() => {
+            Alert.alert("회원탈퇴", "정말 탈퇴하시겠습니까?", [
+              { text: "취소", style: "cancel" },
+              {
+                text: "탈퇴",
+                style: "destructive",
+                onPress: async () => {
+                  await deleteAccount();
+                  router.replace("./auth");
+                },
+              },
+            ]);
+          }}
+          style={{
+            backgroundColor: "crimson",
+            paddingVertical: 10,
+            paddingHorizontal: 8,
+            borderRadius: 20,
+            minWidth: 200,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "600" }}>
+            회원탈퇴 (카카오 연결 끊기)
+          </Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.termsText}>
         By clicking continue, you agree to our{" "}
         <Text style={styles.link}>Terms of Service</Text> and{" "}
@@ -240,12 +303,25 @@ export default function AuthHome() {
 
       {showWebView && (
         <View style={styles.webviewContainer}>
-          {loading && (
-            <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
-          )}
+          {/* ✅ WebView 전용 닫기 헤더 */}
+          <View style={styles.webviewHeader}>
+            <Pressable onPress={() => setShowWebView(false)}>
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={colors.BLACK}
+                style={{ marginLeft: 8 }}
+              />
+            </Pressable>
+            <Text style={styles.headerText}>Back</Text>
+          </View>
           <WebView
+            style={{ marginTop: 48, backgroundColor: colors.WHITE }}
             source={{ uri: KAKAO_AUTH_URL }}
             incognito
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             cacheEnabled={false}
             onLoadStart={() => setLoading(true)}
             onLoadEnd={() => setLoading(false)}
@@ -256,6 +332,7 @@ export default function AuthHome() {
             javaScriptEnabled
             domStorageEnabled
           />
+
           {loading && (
             <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
           )}
@@ -305,7 +382,27 @@ const styles = StyleSheet.create({
   link: { color: colors.BLACK, fontWeight: "400" },
   webviewContainer: {
     ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    marginTop: 22,
     backgroundColor: colors.WHITE,
     zIndex: 10,
+    marginBottom: 0,
+  },
+
+  webviewHeader: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.GRAY_300,
+    backgroundColor: colors.WHITE,
+    zIndex: 100,
+  },
+
+  headerText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });
