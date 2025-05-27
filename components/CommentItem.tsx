@@ -1,30 +1,29 @@
-import { toggleCommentLike } from "@/app/api/board";
+import { blockPostAuthor, toggleCommentLike } from "@/app/api/board";
 import { colors } from "@/constants/color";
 import { AntDesign, Entypo, Feather, FontAwesome6 } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import Profile from "./Profile";
 
 interface CommentItemProps {
   nickname: string;
   content: string;
   createdAt: string;
   likes?: number;
+  isLiked: boolean;
   profileUri?: string;
+  nationality?: string;
   onPressReply?: () => void;
   userId: number;
   commentId: number;
+  postId: number;
   isReply?: boolean;
+  mostLiked?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPressLike: () => void;
+  onPressMenu: () => void;
 }
 
 export default function CommentItem({
@@ -33,9 +32,11 @@ export default function CommentItem({
   createdAt,
   likes = 0,
   profileUri,
+  nationality,
   onPressReply,
   userId,
   commentId,
+  postId,
   isReply = false,
   onEdit,
   onDelete,
@@ -91,6 +92,21 @@ export default function CommentItem({
     setMenuVisible(false);
   };
 
+  const handleBlock = async () => {
+    try {
+      await blockPostAuthor(postId);
+      Alert.alert(
+        "User Blocked",
+        "You will no longer see comments from this user."
+      );
+    } catch (err) {
+      console.error("댓글 작성자 차단 실패:", err);
+      Alert.alert("Error", "Failed to block the comment author.");
+    } finally {
+      setMenuVisible(false);
+    }
+  };
+
   const formattedDate = new Date(createdAt).toLocaleString("en-US", {
     month: "2-digit",
     day: "2-digit",
@@ -111,25 +127,22 @@ export default function CommentItem({
               style={styles.arrowIcon}
             />
           )}
-          <Image
-            source={
-              profileUri
-                ? { uri: profileUri }
-                : require("@/assets/images/default_profile.png")
-            }
-            style={styles.profileImage}
+          <Profile
+            imageUri={profileUri}
+            nickname={nickname}
+            createdAt={createdAt}
+            nationality={nationality}
           />
         </View>
 
         <View style={styles.rightContent}>
           <View style={styles.topRow}>
-            <Text style={styles.nickname}>{nickname}</Text>
             <View style={styles.iconGroup}>
               <Pressable onPress={toggleLike} style={styles.iconButton}>
                 <AntDesign
                   name={isLiked ? "heart" : "hearto"}
                   size={14}
-                  color={isLiked ? colors.RED_500 : colors.GRAY_400}
+                  color={isLiked ? colors.RED_500 : colors.GRAY_300}
                 />
               </Pressable>
               <Text style={styles.separator}>|</Text>
@@ -186,9 +199,16 @@ export default function CommentItem({
                 </Pressable>
               </>
             ) : (
-              <Pressable style={styles.menuItem} onPress={handleReport}>
-                <Text style={styles.menuText}>Report Comment</Text>
-              </Pressable>
+              <>
+                <Pressable style={styles.menuItem} onPress={handleReport}>
+                  <Text style={styles.menuText}>Report Comment</Text>
+                </Pressable>
+                <Pressable style={styles.menuItem} onPress={handleBlock}>
+                  <Text style={[styles.menuText, { color: "red" }]}>
+                    Block Comment Author
+                  </Text>
+                </Pressable>
+              </>
             )}
           </View>
         </Pressable>
@@ -216,24 +236,14 @@ const styles = StyleSheet.create({
     marginRight: 6,
     color: colors.BLACK,
   },
-  profileImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
   rightContent: {
     flex: 1,
   },
   topRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     marginBottom: 4,
-  },
-  nickname: {
-    fontWeight: "bold",
-    fontSize: 14,
-    color: colors.BLACK,
   },
   iconGroup: {
     flexDirection: "row",

@@ -1,37 +1,44 @@
 // api/board.ts
 import { api } from "./axios";
+import { Post } from "../type/types";
 
 // 게시글 목록 불러오기
-export async function fetchBoardList() {
+export async function fetchBoardList(): Promise<Post[]> {
   const res = await api.get("/board/");
   return res.data.map((post: any) => ({
     id: post.id,
-    userId: post.writer?.id,
     title: post.title,
     description: post.content,
-    createdAt: post.createdAt,
-    likes: post.like,
-    commentCount: post.commentCount ?? 0,
-    bookmarks: post.bookmarkCount ?? 0,
+    createdAt: post.date,
     author: {
-      nickname: post.writer?.nickname,
-      profilePic: post.writer?.profilePic ?? "",
+      id: post.user_id ?? 0,
+      nickname: post.nickname,
+      imageUri: post.profilePic ?? null,
     },
+    imageUri: post.image,
+    likes: post.like_count,
+    bookmarks: post.scrap_count,
+    userId: post.user_id,
   }));
 }
 
 // 게시글 상세 불러오기
-export async function fetchBoardDetail(postId: number) {
+export async function fetchBoardDetail(postId: number): Promise<Post> {
   const res = await api.get(`/board/${postId}/`);
   return {
     id: res.data.id,
     title: res.data.title,
     description: res.data.content,
-    createdAt: res.data.createdAt,
+    createdAt: res.data.date,
     author: {
-      nickname: res.data.writer?.nickname,
-      profilePic: res.data.writer?.profilePic ?? "",
+      id: res.data.user_id ?? 0,
+      nickname: res.data.nickname,
+      imageUri: res.data.profile_image ?? null, 
     },
+    imageUri: res.data.images?.[0] ?? null, 
+    likes: res.data.like_count,
+    bookmarks: res.data.scrap_count,
+    userId: res.data.user_id ?? 0,
   };
 }
 
@@ -71,8 +78,8 @@ export async function fetchComments(postId: number) {
     createdAt: c.createdAt,
     like: c.like ?? 0,
     writer: {
-      nickname: c.writer?.nickname,
-      profilePic: c.writer?.profilePic ?? "",
+      nickname: c.nickname,
+      username: c.username,
     },
   }));
 }
@@ -102,50 +109,54 @@ export async function deleteComment(postId: number, commentId: number) {
 }
 
 // 게시글 검색 (제목/내용)
-export async function searchBoardList(keyword: string) {
+export async function searchBoardList(keyword: string): Promise<Post[]> {
   const res = await api.get("/board/", {
     params: { search: keyword },
   });
 
   return res.data.map((post: any) => ({
     id: post.id,
-    userId: post.writer?.id,
     title: post.title,
     description: post.content,
-    createdAt: post.createdAt,
-    likes: post.like,
-    commentCount: post.commentCount ?? 0,
-    bookmarks: post.bookmarkCount ?? 0,
+    createdAt: post.date,
     author: {
-      nickname: post.writer?.nickname,
-      profilePic: post.writer?.profilePic ?? "",
+      username: post.username,
+      nickname: post.nickname,
     },
+    imageUri: post.image,
+    likes: post.like_count,
+    bookmarks: post.scrap_count,
   }));
 }
 
 // 게시글 수정
-export async function updatePost(postId: number, title: string, content: string) {
-  const config = await getAuthHeader();
-  const response = await axios.put(
-    `${BASE_URL}/board/${postId}/update/`,
-    {
-      title,
-      content,
-    },
-    config
-  );
-  return response.data;
+export async function updatePost(
+  postId: number,
+  title: string,
+  content: string
+) {
+  const res = await api.put(`/board/${postId}/update/`, {
+    title,
+    content,
+  });
+  return res.data;
 }
 
 // 댓글 수정
-export async function updateComment(postId: number, commentId: number, content: string) {
-  const config = await getAuthHeader();
-  const response = await axios.put(
-    `${BASE_URL}/board/${postId}/comments/${commentId}/`,
-    {
-      comment: content,
-    },
-    config
-  );
+export async function updateComment(
+  postId: number,
+  commentId: number,
+  content: string
+) {
+  const res = await api.put(`/board/${postId}/comments/${commentId}/`, {
+    comment: content,
+  });
+  return res.data;
+}
+
+//게시글 작성자 차단
+
+export async function blockPostAuthor(postId: number) {
+  const response = await api.post(`/board/${postId}/block-user/`);
   return response.data;
 }

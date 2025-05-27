@@ -21,7 +21,7 @@ import {
   requestLocationPermission,
   requestNotificationPermission,
 } from "@/utils/permissions";
-import CookieManager from "@react-native-cookies/cookies";
+//import CookieManager from "@react-native-cookies/cookies";
 import ensureValidToken from "../api/tokenManager";
 
 export default function Home() {
@@ -45,7 +45,7 @@ export default function Home() {
       const token = await ensureValidToken();
       if (!token) {
         await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-        await CookieManager.clearAll();
+       // await CookieManager.clearAll();
         router.replace("/auth/signIn");
       }
     };
@@ -153,7 +153,7 @@ export default function Home() {
         style={[styles.button, styles.logoutButton]}
         onPress={async () => {
           await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-          await CookieManager.clearAll();
+          //await CookieManager.clearAll();
           router.replace("/auth/signIn");
         }}
       >

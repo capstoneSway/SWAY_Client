@@ -1,11 +1,13 @@
+import React from "react";
 import { fetchBoardList } from "@/app/api/board";
 import { colors } from "@/constants/color";
 import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import FeedItem from "./FeedItem";
+import type { Post } from "@/app/type/types";
 
 export default function FeedList() {
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<Post[]>([]);
 
   useEffect(() => {
     const load = async () => {

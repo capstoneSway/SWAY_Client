@@ -5,7 +5,8 @@ import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { Post } from "@/app/type/types";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,11 +19,13 @@ import {
 
 export default function BoardScreen() {
   const navigation = useNavigation();
-  const [posts, setPosts] = useState([]);
-  const [filteredPosts, setFilteredPosts] = useState([]);
+  const params = useLocalSearchParams();
+
+  // 타입 명시 추가
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
-  const params = useLocalSearchParams();
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -82,7 +85,7 @@ export default function BoardScreen() {
           <View style={styles.searchContainer}>
             <TextInput
               placeholder="Search"
-              placeholderTextColor={colors.GRAY_400}
+              placeholderTextColor={colors.GRAY_500}
               value={searchText}
               onChangeText={setSearchText}
               onSubmitEditing={handleSearch}
@@ -102,7 +105,19 @@ export default function BoardScreen() {
           <FlatList
             data={filteredPosts}
             keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => <FeedItem post={item} />}
+            renderItem={({ item }) => (
+              
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/board/[id]",
+                    params: { id: item.id.toString() },
+                  })
+                }
+              >
+                <FeedItem post={item} />
+              </Pressable>
+            )}
             ListEmptyComponent={
               <Text style={{ padding: 16 }}>No posts available.</Text>
             }

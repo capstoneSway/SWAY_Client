@@ -21,7 +21,7 @@ function DescriptionInput() {
         <TextInput
           style={styles.input}
           placeholder="Please follow our community guidelines when you are posting"
-          placeholderTextColor={colors.GRAY_400}
+          placeholderTextColor={colors.GRAY_500}
           onChangeText={onChange}
           value={value}
           multiline

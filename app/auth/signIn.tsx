@@ -2,7 +2,7 @@
 import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
+//import CookieManager from "@react-native-cookies/cookies";
 import { Buffer } from "buffer";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -222,8 +222,8 @@ export default function AuthHome() {
           try {
             await AsyncStorage.clear();
             console.log("🟢 AsyncStorage 초기화 완료");
-            await CookieManager.clearAll();
-            console.log("🟢 쿠키 초기화 완료");
+            //await CookieManager.clearAll();
+            //console.log("🟢 쿠키 초기화 완료");
           } catch (e) {
             console.error("❌ 초기화 실패:", e);
           }

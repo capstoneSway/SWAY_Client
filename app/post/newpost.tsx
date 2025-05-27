@@ -1,4 +1,4 @@
-import { postNewPost, updatePost } from "@/app/api/board";
+import { createPost, updatePost } from "@/app/api/board";
 import DescriptionInput from "@/components/DescriptionInput";
 import TitleInput from "@/components/TitleInput";
 import { colors } from "@/constants/color";
@@ -97,7 +97,7 @@ export default function NewPostScreen() {
         Alert.alert("Updated", "Post updated successfully.");
         router.back();
       } else {
-        await postNewPost(title, description);
+        await createPost(title, description);
         router.push("/(tabs)/board");
       }
     } catch (error) {
@@ -282,3 +282,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
 });
+
+export const options = {
+  headerShown: false,
+};

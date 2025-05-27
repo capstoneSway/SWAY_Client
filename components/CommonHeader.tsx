@@ -2,8 +2,10 @@ import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native"; 
 import { router } from "expo-router";
+import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 const logoImage = require("@/assets/images/logo_letter.png");
 

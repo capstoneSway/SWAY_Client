@@ -28,82 +28,80 @@ import CommentList from "@/components/CommentList";
 import CommonHeader from "@/components/CommonHeader";
 import FeedItem from "@/components/FeedItem";
 import { colors } from "@/constants/color";
+import { Post, Comment } from "@/app/type/types";
+import React from "react";
+import { TextInput as RNTextInput } from "react-native";
 
 export default function BoardDetailScreen() {
   const { id } = useLocalSearchParams();
   const navigation = useNavigation();
 
-  const [post, setPost] = useState(null);
-  const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState("");
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [selectedCommentId, setSelectedCommentId] = useState(null);
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [replyTo, setReplyTo] = useState(null);
-  const [confirmReplyVisible, setConfirmReplyVisible] = useState(false);
-  const inputRef = useRef(null);
+  const [post, setPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState<string>("");
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [menuVisible, setMenuVisible] = useState<boolean>(false);
+  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(
+    null
+  );
+  const [confirmVisible, setConfirmVisible] = useState<boolean>(false);
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [confirmReplyVisible, setConfirmReplyVisible] =
+    useState<boolean>(false);
+  const inputRef = useRef<RNTextInput | null>(null);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, []);
 
-  const handleDeletePost = async () => {
+  useEffect(() => {
+  const loadPost = async () => {
+    if (!id || isNaN(Number(id))) {
+      console.warn("⚠️ 잘못된 게시글 ID:", id);
+      Alert.alert("Error", "Invalid post ID.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await deletePost(Number(id));
-      Alert.alert("Delete Complete", "The post has been deleted.");
-      router.back();
+      const numericId = Number(id);
+      const postData = await fetchBoardDetail(numericId);
+      const commentData: any[] = await fetchComments(numericId);
+
+      const structured: Comment[] = commentData
+        .filter((c) => !c.parent_id)
+        .map((parent) => ({
+          id: parent.id,
+          content: parent.comment,
+          createdAt: new Date(parent.created_at).toISOString(),
+          user: parent.user,
+          likes: parent.like,
+          isLiked: parent.isLiked,
+          replies: commentData
+            .filter((c) => c.parent_id === parent.id)
+            .map((reply) => ({
+              id: reply.id,
+              content: reply.comment,
+              createdAt: new Date(reply.created_at).toISOString(),
+              user: reply.user,
+              likes: reply.like,
+              isLiked: reply.isLiked,
+            })),
+        }));
+
+      setPost(postData);
+      setComments(structured);
     } catch (err) {
-      console.error("Post deletion failed:", err);
-      Alert.alert("Deletion Failed", "Please try again.");
+      console.error("❌ 상세 정보 가져오기 실패", err);
+      Alert.alert("Error", "Failed to load post.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEditPost = () => {
-    if (!post) return;
-    router.push({
-      pathname: "/post/newpost",
-      params: {
-        edit: "true",
-        id: post.id.toString(),
-        title: post.title,
-        description: post.description,
-      },
-    });
-  };
-
-  useEffect(() => {
-    const loadPost = async () => {
-      try {
-        const postData = await fetchBoardDetail(Number(id));
-        const commentData = await fetchComments(Number(id));
-
-        const structured = commentData
-          .filter((c) => !c.parent_id)
-          .map((parent) => ({
-            ...parent,
-            createdAt: new Date(parent.created_at),
-            replies: commentData
-              .filter((c) => c.parent_id === parent.id)
-              .map((reply) => ({
-                ...reply,
-                createdAt: new Date(reply.created_at),
-              })),
-          }));
-
-        setPost(postData);
-        setComments(structured);
-      } catch (err) {
-        console.error("❌ 상세 정보 가져오기 실패", err);
-        Alert.alert("Error", "Failed to load post.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPost();
-  }, [id]);
+  loadPost();
+}, [id]);
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -118,31 +116,39 @@ export default function BoardDetailScreen() {
         setComments((prev) =>
           prev.map((parent) => {
             if (parent.id === editingCommentId) {
-              return { ...parent, comment: updated.comment };
+              return { ...parent, content: updated.comment };
             }
             return {
               ...parent,
-              replies: parent.replies.map((r) =>
-                r.id === editingCommentId
-                  ? { ...r, comment: updated.comment }
-                  : r
-              ),
+              replies:
+                parent.replies?.map((r) =>
+                  r.id === editingCommentId
+                    ? { ...r, content: updated.comment }
+                    : r
+                ) ?? [],
             };
           })
         );
         setEditingCommentId(null);
       } else {
         const result = await postComment(Number(id), newComment, replyTo);
-        const commentWithDate = {
-          ...result,
-          createdAt: new Date(result.created_at),
+        const commentWithDate: Comment = {
+          id: result.id,
+          content: result.comment,
+          createdAt: new Date(result.created_at).toISOString(),
+          user: result.user,
+          likes: result.like,
+          isLiked: result.isLiked,
         };
 
         setComments((prev) => {
           if (replyTo) {
             return prev.map((parent) =>
               parent.id === replyTo
-                ? { ...parent, replies: [...parent.replies, commentWithDate] }
+                ? {
+                    ...parent,
+                    replies: [...(parent.replies ?? []), commentWithDate],
+                  }
                 : parent
             );
           } else {
@@ -158,7 +164,7 @@ export default function BoardDetailScreen() {
     }
   };
 
-  const handleEditComment = (commentId, content) => {
+  const handleEditComment = (commentId: number, content: string) => {
     setEditingCommentId(commentId);
     setNewComment(content);
     inputRef.current?.focus();
@@ -167,17 +173,18 @@ export default function BoardDetailScreen() {
   const handleDeleteComment = async () => {
     if (selectedCommentId !== null) {
       try {
-        await deleteComment(selectedCommentId);
-        setComments((prev) =>
-          prev
-            .map((c) => {
-              if (c.id === selectedCommentId) return null;
-              const updatedReplies = c.replies?.filter(
-                (r) => r.id !== selectedCommentId
-              );
-              return { ...c, replies: updatedReplies };
-            })
-            .filter(Boolean)
+        await deleteComment(Number(id), selectedCommentId);
+        setComments(
+          (prev) =>
+            prev
+              .map((c) => {
+                if (c.id === selectedCommentId) return null;
+                const updatedReplies = c.replies?.filter(
+                  (r) => r.id !== selectedCommentId
+                );
+                return { ...c, replies: updatedReplies };
+              })
+              .filter(Boolean) as Comment[]
         );
       } catch (err) {
         console.error("❌ 댓글 삭제 실패", err);
@@ -192,11 +199,15 @@ export default function BoardDetailScreen() {
   const handlePostLikeToggle = async () => {
     try {
       const updated = await toggleLike(Number(id));
-      setPost((prev) => ({
-        ...prev,
-        likes: updated.like,
-        isLiked: updated.isLiked,
-      }));
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              likes: updated.like,
+              isLiked: updated.isLiked,
+            }
+          : prev
+      );
     } catch (err) {
       console.error("게시글 좋아요 실패:", err);
     }
@@ -205,36 +216,41 @@ export default function BoardDetailScreen() {
   const handlePostScrapToggle = async () => {
     try {
       const updated = await toggleScrap(Number(id));
-      setPost((prev) => ({
-        ...prev,
-        bookmarks: updated.bookmarkCount,
-        isBookmarked: updated.isBookmarked,
-      }));
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              bookmarks: updated.bookmarkCount,
+              isBookmarked: updated.isBookmarked,
+            }
+          : prev
+      );
     } catch (err) {
       console.error("스크랩 실패:", err);
     }
   };
 
-  const handleReplyRequest = (parentId) => {
+  const handleReplyRequest = (parentId: number) => {
     setReplyTo(parentId);
     setConfirmReplyVisible(true);
   };
 
-  const handleLikeToggle = async (commentId, isReply = false) => {
+  const handleLikeToggle = async (commentId: number, isReply = false) => {
     try {
       const updated = await toggleCommentLike(commentId);
       setComments((prev) =>
         prev.map((parent) => {
           if (parent.id === commentId) {
-            return { ...parent, like: updated.like, isLiked: updated.isLiked };
+            return { ...parent, likes: updated.like, isLiked: updated.isLiked };
           } else if (isReply) {
             return {
               ...parent,
-              replies: parent.replies.map((r) =>
-                r.id === commentId
-                  ? { ...r, like: updated.like, isLiked: updated.isLiked }
-                  : r
-              ),
+              replies:
+                parent.replies?.map((r) =>
+                  r.id === commentId
+                    ? { ...r, likes: updated.like, isLiked: updated.isLiked }
+                    : r
+                ) ?? [],
             };
           }
           return parent;
@@ -245,7 +261,18 @@ export default function BoardDetailScreen() {
     }
   };
 
-  const handleOpenMenu = (id) => {
+  const handleDeletePost = async () => {
+    try {
+      await deletePost(Number(id));
+      Alert.alert("Delete Complete", "The post has been deleted.");
+      router.back();
+    } catch (err) {
+      console.error("Post deletion failed:", err);
+      Alert.alert("Deletion Failed", "Please try again.");
+    }
+  };
+
+  const handleOpenMenu = (id: number) => {
     setSelectedCommentId(id);
     setMenuVisible(true);
   };
@@ -280,10 +307,21 @@ export default function BoardDetailScreen() {
             }}
             onLikePress={handlePostLikeToggle}
             onScrapPress={handlePostScrapToggle}
-            onEdit={handleEditPost}
+            onEdit={() => {
+              router.push({
+                pathname: "/post/newpost",
+                params: {
+                  edit: "true",
+                  id: post.id.toString(),
+                  title: post.title,
+                  description: post.description,
+                },
+              });
+            }}
           />
           <Text style={styles.commentTitle}>{comments.length} Comments</Text>
           <CommentList
+            postId={post.id}
             comments={comments}
             onPressLike={handleLikeToggle}
             onPressMenu={handleOpenMenu}
@@ -298,7 +336,7 @@ export default function BoardDetailScreen() {
             value={newComment}
             onChangeText={setNewComment}
             placeholder="Enter your comment..."
-            placeholderTextColor={colors.GRAY_400}
+            placeholderTextColor={colors.GRAY_500}
             style={styles.input}
             multiline
           />

@@ -1,7 +1,8 @@
-import { toggleLike, toggleScrap } from "@/app/api/board";
+import { toggleLike, toggleScrap, blockPostAuthor } from "@/app/api/board";
 import { colors } from "@/constants/color";
-import Post from "@/type/types";
+import { Post } from "@/app/type/types";
 import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,7 +13,6 @@ import {
   Text,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Profile from "./Profile";
 
 interface FeedItemProps {
@@ -21,6 +21,8 @@ interface FeedItemProps {
   onCommentPress?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  onLikePress?: () => void;
+  onScrapPress?: () => void;
 }
 
 const FeedItem = ({
@@ -89,21 +91,32 @@ const FeedItem = ({
     ]);
   };
 
-const handleEdit = () => {
-  router.push({
-    pathname: "/post/newpost",
-    params: {
-      edit: "true",
-      id: post.id.toString(),
-      title: post.title,
-      description: post.description,
-    },
-  });
-};
+  const handleEdit = () => {
+    router.push({
+      pathname: "/post/newpost",
+      params: {
+        edit: "true",
+        id: post.id.toString(),
+        title: post.title,
+        description: post.description,
+      },
+    });
+  };
 
   const handleReport = () => {
     Alert.alert("Report submitted", "Thank you for your feedback.");
     setShowMenu(false);
+  };
+
+  const handleBlock = async () => {
+    try {
+      await blockPostAuthor(post.id);
+      Alert.alert("User Blocked", "You will no longer see posts from this user.");
+      setShowMenu(false);
+    } catch (err) {
+      console.error("Failed to block user:", err);
+      Alert.alert("Error", "Failed to block the author.");
+    }
   };
 
   return (
@@ -156,7 +169,6 @@ const handleEdit = () => {
         </Pressable>
       </View>
 
-      {/* Modal for ⋮ menu */}
       <Modal transparent visible={showMenu} animationType="fade">
         <Pressable style={styles.modalBackground} onPress={() => setShowMenu(false)}>
           <View style={styles.modalBox}>
@@ -170,9 +182,14 @@ const handleEdit = () => {
                 </Pressable>
               </>
             ) : (
-              <Pressable style={styles.menuItem} onPress={handleReport}>
-                <Text style={styles.menuTextOnly}>Report Post</Text>
-              </Pressable>
+              <>
+                <Pressable style={styles.menuItem} onPress={handleReport}>
+                  <Text style={styles.menuTextOnly}>Report Post</Text>
+                </Pressable>
+                <Pressable style={styles.menuItem} onPress={handleBlock}>
+                  <Text style={[styles.menuTextOnly, { color: "red" }]}>Block Author</Text>
+                </Pressable>
+              </>
             )}
           </View>
         </Pressable>
@@ -229,7 +246,7 @@ const styles = StyleSheet.create({
   },
   activeMenuText: {
     fontWeight: "600",
-    color: colors.RED,
+    color: colors.RED_500,
     marginLeft: 4,
   },
   modalBackground: {
