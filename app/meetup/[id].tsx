@@ -1,6 +1,7 @@
 import FixedBottomCTA from "@/components/FixedBottomCTA";
 import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import {
   Stack,
@@ -26,9 +27,16 @@ function formatKSTDate(dateStr: string): string {
 }
 
 export default function MeetUpDetail() {
+  const defaultProfile = require("@/assets/images/default_profile.png");
+
   const navigation = useNavigation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  const getFlagByCode = (code: string) => {
+    const found = countries.find((c) => c.code === code);
+    return found ? found.flag : null;
+  };
 
   const meetup = CARDS.find((card) => card.id === Number(id));
   if (!meetup) {
@@ -73,7 +81,7 @@ export default function MeetUpDetail() {
               name="chevron-back"
               size={24}
               color={colors.BLACK}
-              style={{ paddingBottom: 16 }}
+              style={{ paddingBottom: 16, marginLeft: -4 }}
             />
           </Pressable>
 
@@ -91,7 +99,14 @@ export default function MeetUpDetail() {
           </Pressable>
         </View>
 
-        <Image source={{ uri: meetup.image }} style={styles.image} />
+        <Image
+          source={
+            typeof meetup.image === "string"
+              ? { uri: meetup.image }
+              : meetup.image
+          }
+          style={styles.image}
+        />
 
         <View style={styles.infoBox}>
           <View style={styles.titleRow}>
@@ -99,13 +114,25 @@ export default function MeetUpDetail() {
               [{meetup.title}, {titleDate}]
             </Text>
             <View style={styles.avatars}>
-              {meetup.participantAvatars.slice(0, 3).map((uri, i) => (
-                <Image
-                  key={`${uri}-${i}`}
-                  source={{ uri }}
-                  style={[styles.avatar, { marginLeft: i === 0 ? 0 : -10 }]}
-                  resizeMode="cover"
-                />
+              {meetup.participantAvatars.slice(0, 3).map((p, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.avatarWrapper,
+                    { marginLeft: i === 0 ? 0 : -10 },
+                  ]}
+                >
+                  <Image
+                    source={defaultProfile} // ✅ 고정 이미지
+                    style={styles.avatar}
+                    resizeMode="cover"
+                  />
+                  <Image
+                    source={getFlagByCode(p.countryCode)}
+                    style={styles.flag}
+                    resizeMode="cover"
+                  />
+                </View>
               ))}
               {meetup.participantAvatars.length > 3 && (
                 <View style={styles.moreBadge}>
@@ -120,44 +147,53 @@ export default function MeetUpDetail() {
           <View style={styles.tagRow}>
             <Text style={styles.tag}>#{meetup.tag}</Text>
             {meetup.gender === "Male" && (
-              <FontAwesome5
-                name="mars"
-                size={22}
-                color={colors.PURPLE_300}
-                style={{ paddingTop: 10 }}
-              />
+              <>
+                <Text style={styles.tag}>#</Text>
+                <FontAwesome5
+                  name="mars"
+                  size={22}
+                  color={colors.PURPLE_300}
+                  style={{ paddingTop: 8 }}
+                />
+              </>
             )}
             {meetup.gender === "Female" && (
-              <FontAwesome5
-                name="venus"
-                size={22}
-                color={colors.PURPLE_300}
-                style={{ paddingTop: 10 }}
-              />
+              <>
+                <Text style={styles.tag}>#</Text>
+                <FontAwesome5
+                  name="venus"
+                  size={22}
+                  color={colors.PURPLE_300}
+                  style={{ paddingTop: 8 }}
+                />
+              </>
             )}
             {meetup.gender === "All" && (
-              <FontAwesome5
-                name="transgender"
-                size={22}
-                color={colors.PURPLE_300}
-                style={{ paddingTop: 10 }}
-              />
+              <>
+                <Text style={styles.tag}>#</Text>
+                <FontAwesome5
+                  name="transgender"
+                  size={22}
+                  color={colors.PURPLE_300}
+                  style={{ paddingTop: 8 }}
+                />
+              </>
             )}
           </View>
 
           <Text style={styles.description}>{meetup.content}</Text>
-        </View>
-        <View style={styles.openUntilRow}>
-          <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
-          <Text style={styles.openUntilText}>
-            Open Until: {formatKSTDate(meetup.expiresAt)}
-          </Text>
         </View>
 
         {meetup.status !== "closed" && (
           <FixedBottomCTA label="Join" enabled={true} onPress={handleJoin} />
         )}
       </SafeAreaView>
+      <View style={styles.openUntilRow}>
+        <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
+        <Text style={styles.openUntilText}>
+          Open Until: {formatKSTDate(meetup.expiresAt)}
+        </Text>
+      </View>
     </>
   );
 }
@@ -190,7 +226,7 @@ const styles = StyleSheet.create({
 
   image: {
     width: "100%",
-    aspectRatio: 1.6,
+    height: 360,
     backgroundColor: colors.GRAY_200,
   },
 
@@ -201,7 +237,9 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
-    marginTop: -15,
+    marginTop: -30,
+    zIndex: 2,
+    position: "relative",
   },
 
   titleRow: {
@@ -215,28 +253,66 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flexShrink: 1,
   },
+
+  avatarWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    position: "relative",
+    overflow: "visible",
+    zIndex: 2,
+    marginBottom: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4, // Android용
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderColor: colors.WHITE,
+    backgroundColor: colors.GRAY_200, // 혹시 이미지 로딩 안 될 때 대비
+    zIndex: 1,
+  },
+
   avatars: {
     flexDirection: "row",
     zIndex: 2,
   },
-
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 50,
-    borderWidth: 2,
+  flag: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    position: "absolute",
+    bottom: -2,
+    right: 0,
+    borderWidth: 0,
     borderColor: colors.WHITE,
-    zIndex: 1, // <- 추가
+    zIndex: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4, // Android용
   },
 
   moreBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.PURPLE_100,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: -10,
+    zIndex: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4, // Android용
+    marginTop: 1,
   },
   moreText: {
     fontSize: 12,
@@ -253,6 +329,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: colors.PURPLE_300,
+    fontWeight: "600",
   },
   gender: {
     fontSize: 16,
@@ -267,17 +344,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  openUntilWrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    backgroundColor: colors.WHITE,
-  },
-
   openUntilRow: {
+    position: "absolute",
+    bottom: 110,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
+    backgroundColor: colors.WHITE,
   },
 
   openUntilText: {

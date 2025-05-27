@@ -1,5 +1,4 @@
-// app/meetup/createMeetUp.tsx
-
+import { addCard } from "@/constants/cards"; // ✅ 추가
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
@@ -27,7 +26,6 @@ export default function CreateMeetUp() {
   const [category, setCategory] = useState<string | null>("Travel");
   const [gender, setGender] = useState<string | null>("All");
   const [count, setCount] = useState<number | null>(5);
-  // 세 개는 기본값 있도록.
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date());
@@ -44,8 +42,25 @@ export default function CreateMeetUp() {
     ) {
       return;
     }
-    console.log({ category, gender, count, title, content, date });
-    router.back();
+
+    const now = new Date();
+
+    const newCard = {
+      id: Date.now(),
+      title: title.trim(),
+      tag: category,
+      status: "register",
+      participants: `1/${count}`,
+      meetupTime: date.toISOString(),
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      content: content.trim(),
+      gender,
+      participantAvatars: [],
+    };
+
+    addCard(newCard);
+    router.replace("/");
   };
 
   const isPostDisabled =

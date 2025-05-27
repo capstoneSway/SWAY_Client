@@ -6,8 +6,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
 import * as Font from "expo-font"; // ✅ 폰트 import 추가
-import { useNavigation, useRouter } from "expo-router";
-import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -42,6 +48,15 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [timeTick, setTimeTick] = useState(0); // 실시간 갱신용
   const [fontsLoaded, setFontsLoaded] = useState(false); // ✅ 폰트 상태
+
+  const [cards, setCards] = useState([...CARDS]);
+
+  // 화면이 포커싱될 때마다 최신 CARDS 배열을 다시 적용
+  useFocusEffect(
+    useCallback(() => {
+      setCards([...CARDS]);
+    }, [])
+  );
 
   // ✅ GasoekOne 폰트 로딩
   useEffect(() => {

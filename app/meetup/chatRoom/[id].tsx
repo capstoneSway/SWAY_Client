@@ -1,6 +1,7 @@
 import ChatInput from "@/components/chatBottomCTA";
 import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -26,6 +27,8 @@ type Message = {
   id: number;
   text: string;
   sender: string;
+  profile?: string; // 프로필 이미지 URL
+  countryCode?: string; // ISO 코드 (예: "USA", "KRW")
 };
 
 function formatKSTDate(dateStr: string): string {
@@ -44,6 +47,8 @@ function formatKSTDate(dateStr: string): string {
 const currentUser = "Gildong"; // 하드코딩. 가져와야죠.
 
 export default function ChatRoom() {
+  const defaultProfile = require("@/assets/images/default_profile.png");
+
   const [isNearBottom, setIsNearBottom] = useState(true);
   const scrollOffset = useRef(0);
 
@@ -66,18 +71,77 @@ export default function ChatRoom() {
 
   const [chatText, setChatText] = useState("");
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Top", sender: "Eva" },
-    { id: 2, text: "Middle", sender: "Eva" },
-    { id: 3, text: "Bottom", sender: "Eva" },
-    { id: 4, text: "Single", sender: "John" },
-    { id: 5, text: "Single", sender: "Eva" },
-    { id: 6, text: "나랏말싸미", sender: "Kate" },
-    { id: 7, text: "듕귁에달아", sender: "Kate" },
-    { id: 8, text: "문댜와로서로", sender: "Kate" },
-    { id: 9, text: "사맛디아니홀쎄", sender: "Kate" },
+    {
+      id: 1,
+      text: "Top",
+      sender: "Eva",
+      profile: "default",
+      countryCode: "USD",
+    },
+    {
+      id: 2,
+      text: "Middle",
+      sender: "Eva",
+      profile: "default",
+      countryCode: "USD",
+    },
+    {
+      id: 3,
+      text: "Bottom",
+      sender: "Eva",
+      profile: "default",
+      countryCode: "USD",
+    },
+    {
+      id: 4,
+      text: "Single",
+      sender: "John",
+      profile: "default",
+      countryCode: "KRW",
+    },
+    {
+      id: 5,
+      text: "Single",
+      sender: "Eva",
+      profile: "default",
+      countryCode: "USD",
+    },
+    {
+      id: 6,
+      text: "나랏말싸미",
+      sender: "Kate",
+      profile: "default",
+      countryCode: "JPY",
+    },
+    {
+      id: 7,
+      text: "듕귁에달아",
+      sender: "Kate",
+      profile: "default",
+      countryCode: "JPY",
+    },
+    {
+      id: 8,
+      text: "문댜와로서로",
+      sender: "Kate",
+      profile: "default",
+      countryCode: "JPY",
+    },
+    {
+      id: 9,
+      text: "사맛디아니홀쎄",
+      sender: "Kate",
+      profile: "default",
+      countryCode: "JPY",
+    },
     { id: 10, text: ";;", sender: "Gildong" },
     { id: 11, text: "술드심?", sender: "Gildong" },
   ]);
+
+  function getFlagByCode(code?: string) {
+    return countries.find((c) => c.code === code)?.flag;
+  }
+
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", () => {
       if (isNearBottom) {
@@ -218,7 +282,11 @@ export default function ChatRoom() {
         <ScrollView
           ref={scrollRef}
           style={styles.container}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: 16,
+            paddingHorizontal: 0,
+          }}
           keyboardShouldPersistTaps="handled"
           bounces={false}
           overScrollMode="never"
@@ -235,60 +303,116 @@ export default function ChatRoom() {
             {messages.map((msg, index) => {
               const bubbleType = getBubbleType(index, messages);
               const isMine = msg.sender === currentUser;
-              const showSender =
+              const showProfile =
                 !isMine && (bubbleType === "single" || bubbleType === "top");
+              const isFirstOfGroup =
+                !isMine && (bubbleType === "top" || bubbleType === "single");
 
               return (
-                <View key={msg.id} style={{ marginBottom: 2 }}>
-                  {showSender && (
-                    <Text style={styles.sender}>{msg.sender}</Text>
-                  )}
-
-                  <View
-                    style={[
-                      styles.bubble,
-                      {
-                        //  정렬 방향 (내 챗, 님 챗)
-                        alignSelf: isMine ? "flex-end" : "flex-start",
-                        backgroundColor: isMine
-                          ? colors.PURPLE_300
-                          : colors.PURPLE_100, // 색상 분기
-                      },
-
-                      // 버블 모양 결정
-                      //  내 메시지면 무조건 둥글게
-                      isMine && {
-                        borderRadius: 18,
-                      },
-
-                      //  남 메시지면 bubbleType 기준 분기
-                      !isMine &&
-                        (bubbleType === "top" ||
-                          bubbleType === "middle" ||
-                          bubbleType === "single") && {
-                          borderTopLeftRadius: 0,
-                          borderTopRightRadius: 18,
-                          borderBottomLeftRadius: 0,
-                          borderBottomRightRadius: 18,
-                        },
-                      !isMine &&
-                        bubbleType === "bottom" && {
-                          borderTopLeftRadius: 0,
-                          borderTopRightRadius: 18,
-                          borderBottomLeftRadius: 18,
-                          borderBottomRightRadius: 18,
-                        },
-                    ]}
-                  >
-                    <Text
+                <View
+                  key={msg.id}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    marginBottom: 4,
+                    marginLeft: isMine ? "auto" : -24,
+                    paddingLeft: 8,
+                  }}
+                >
+                  {/* 왼쪽: 프로필/닉네임/국기 - 그룹 시작일 때만 보여줌 */}
+                  {!isMine && (
+                    <View
                       style={{
-                        textAlign: "center",
-                        color: isMine ? colors.WHITE : colors.BLACK,
-                        lineHeight: 20,
+                        width: 32,
+                        marginRight: 8,
+                        position: "relative",
                       }}
                     >
-                      {msg.text}
-                    </Text>
+                      {isFirstOfGroup ? (
+                        <>
+                          <Image
+                            source={
+                              msg.profile === "default"
+                                ? defaultProfile
+                                : { uri: msg.profile }
+                            }
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              borderWidth: 0.1,
+                              overflow: "hidden",
+                              resizeMode: "contain",
+                            }}
+                          />
+                          {msg.countryCode && (
+                            <Image
+                              source={getFlagByCode(msg.countryCode)}
+                              style={{
+                                width: 15,
+                                height: 15,
+                                borderRadius: 7.5,
+                                position: "absolute",
+                                bottom: 0,
+                                right: 0,
+                                borderWidth: 0.5,
+                                borderColor: "white",
+                              }}
+                              resizeMode="contain"
+                            />
+                          )}
+                        </>
+                      ) : null}
+                    </View>
+                  )}
+
+                  {/* 오른쪽: 말풍선 그룹 */}
+                  <View style={{ flex: 1 }}>
+                    {isFirstOfGroup && (
+                      <Text style={[styles.sender, { marginBottom: 4 }]}>
+                        {msg.sender}
+                      </Text>
+                    )}
+
+                    <View
+                      style={[
+                        styles.bubble,
+                        {
+                          alignSelf: isMine ? "flex-end" : "flex-start",
+                          backgroundColor: isMine
+                            ? colors.PURPLE_300
+                            : colors.PURPLE_100,
+                          marginTop: 2,
+                        },
+                        isMine && { borderRadius: 18 },
+                        !isMine &&
+                          (bubbleType === "top" ||
+                            bubbleType === "middle" ||
+                            bubbleType === "single") && {
+                            borderTopLeftRadius: 0,
+                            borderTopRightRadius: 18,
+                            borderBottomLeftRadius: 0,
+                            borderBottomRightRadius: 18,
+                          },
+                        !isMine &&
+                          bubbleType === "bottom" && {
+                            borderTopLeftRadius: 0,
+                            borderTopRightRadius: 18,
+                            borderBottomLeftRadius: 18,
+                            borderBottomRightRadius: 18,
+                          },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          textAlign: "left",
+                          color: isMine ? colors.WHITE : colors.BLACK,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {msg.text}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               );
