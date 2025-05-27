@@ -3,27 +3,6 @@ import { colors } from "@/constants/color";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-
-import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import * as Notifications from "expo-notifications";
-
-import {
-  PermissionState,
-  requestCameraPermission,
-  requestGalleryPermission,
-  requestLocationPermission,
-  requestNotificationPermission,
-} from "@/utils/permissions";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
 import * as Font from "expo-font"; // ✅ 폰트 import 추가
@@ -98,7 +77,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    (async () => {
       const token = await ensureValidToken();
       if (!token) {
         await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
@@ -161,71 +140,7 @@ export default function Home() {
         await CookieManager.clearAll();
         router.replace("/auth/signIn");
       }
-    };
-    checkAuth();
-  }, []);
-
-  // 📌 권한 요청
-  const requestAllPermissions = async () => {
-    const updatedStatuses = { ...permStatuses };
-
-    if (updatedStatuses.camera === "undetermined") {
-      updatedStatuses.camera = await requestCameraPermission();
-    }
-
-    if (updatedStatuses.gallery === "undetermined") {
-      updatedStatuses.gallery = await requestGalleryPermission();
-    }
-
-    if (updatedStatuses.location === "undetermined") {
-      updatedStatuses.location = await requestLocationPermission();
-    }
-
-    if (updatedStatuses.notifications === "undetermined") {
-      updatedStatuses.notifications = await requestNotificationPermission();
-    }
-
-    setPermStatuses(updatedStatuses);
-    await AsyncStorage.setItem("@permissions", JSON.stringify(updatedStatuses));
-  };
-
-  // 📌 권한 상태 로드
-  const loadPermissions = async () => {
-    const savedStatuses = await AsyncStorage.getItem("@permissions");
-    if (savedStatuses) {
-      setPermStatuses(JSON.parse(savedStatuses));
-    } else {
-      const camera = (await ImagePicker.getCameraPermissionsAsync())
-        .status as PermissionState;
-      const gallery = (await ImagePicker.getMediaLibraryPermissionsAsync())
-        .status as PermissionState;
-      const location = (await Location.getForegroundPermissionsAsync())
-        .status as PermissionState;
-      const notifications = (await Notifications.getPermissionsAsync())
-        .status as PermissionState;
-
-      const initialStatuses = { camera, gallery, location, notifications };
-      setPermStatuses(initialStatuses);
-      await AsyncStorage.setItem(
-        "@permissions",
-        JSON.stringify(initialStatuses)
-      );
-    }
-    setIsLoading(false);
-  };
-
-  // 📌 초기 실행 시 권한 및 방문 여부 확인
-  useEffect(() => {
-    const init = async () => {
-      const visited = await AsyncStorage.getItem("@isVisited");
-      if (!visited) {
-        await requestAllPermissions();
-        await AsyncStorage.setItem("@isVisited", "true");
-      }
-      await loadPermissions();
-    };
-
-    init();
+    })();
   }, []);
 
   //  포커싱 대상 판단 함수 (KST 기준으로 3시간 이하 남았는지 확인)

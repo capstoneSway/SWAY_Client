@@ -75,9 +75,7 @@ export default function CurrencyScreen() {
 
   // 금액 & 메모 상태
   const [fromAmt, setFromAmt] = useState("");
-  const [toAmt, setToAmt] = useState("");
-  const [currentRate, setCurrentRate] = useState<number>(0);
-
+  const [toAmt, setToAmt] = useState("" as string);
   const [memoModalVisible, setMemoModalVisible] = useState(false);
   const [memoText, setMemoText] = useState("");
   const [memos, setMemos] = useState<MemoDTO[]>([]);
@@ -231,11 +229,12 @@ export default function CurrencyScreen() {
     setSearchText("");
     setModalVisible(true);
   };
+
+  // 통화 교환
   const swap = () => {
     setFromCur(toCur);
     setToCur(fromCur);
     setFromAmt(toAmt);
-    setToAmt(fromAmt);
   };
 
   // === Last Update 표시용 날짜 계산 ===
@@ -346,7 +345,7 @@ export default function CurrencyScreen() {
                   style={styles.selector}
                   onPress={() => openSheet("from")}
                 >
-                  <Image source={fromCur.flag} style={styles.selectorFlag} />
+                  <Image source={fromCur.flag} style={styles.flagIcon} />
                   <Text style={styles.selectorText}>{fromCur.code}</Text>
                   <Ionicons name="chevron-down" size={16} />
                 </TouchableOpacity>
@@ -375,7 +374,7 @@ export default function CurrencyScreen() {
                   style={styles.selector}
                   onPress={() => openSheet("to")}
                 >
-                  <Image source={toCur.flag} style={styles.selectorFlag} />
+                  <Image source={toCur.flag} style={styles.flagIcon} />
                   <Text style={styles.selectorText}>{toCur.code}</Text>
                   <Ionicons name="chevron-down" size={16} />
                 </TouchableOpacity>
@@ -548,11 +547,10 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 16 },
   selector: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
   selectorText: { fontSize: 16, marginRight: 4 },
-  selectorFlag: {
+  flagIcon: {
     width: 24,
     height: 24,
     marginRight: 6,
-    resizeMode: "contain",
   },
   swapWrapper: {
     position: "absolute",

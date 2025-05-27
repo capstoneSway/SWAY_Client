@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet } from "react-native";
 import CommonHeader from "@/components/CommonHeader";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function NotificationScreen() {
   return (

@@ -28,6 +28,7 @@ import CommentList from "@/components/CommentList";
 import CommonHeader from "@/components/CommonHeader";
 import FeedItem from "@/components/FeedItem";
 import { colors } from "@/constants/color";
+import React from "react";
 
 export default function BoardDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -167,7 +168,7 @@ export default function BoardDetailScreen() {
   const handleDeleteComment = async () => {
     if (selectedCommentId !== null) {
       try {
-        await deleteComment(selectedCommentId);
+        await deleteComment(Number(id), selectedCommentId);
         setComments((prev) =>
           prev
             .map((c) => {
@@ -288,7 +289,7 @@ export default function BoardDetailScreen() {
             onPressLike={handleLikeToggle}
             onPressMenu={handleOpenMenu}
             onPressReply={handleReplyRequest}
-            onPressEdit={handleEditComment}
+            // onPressEdit={handleEditComment}
           />
         </ScrollView>
 
@@ -298,7 +299,7 @@ export default function BoardDetailScreen() {
             value={newComment}
             onChangeText={setNewComment}
             placeholder="Enter your comment..."
-            placeholderTextColor={colors.GRAY_400}
+            placeholderTextColor={colors.GRAY_300}
             style={styles.input}
             multiline
           />

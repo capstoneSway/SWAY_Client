@@ -1,5 +1,5 @@
 // api/board.ts
-import { api } from "./axios";
+import { api, getAuthHeader } from "./axios";
 
 // 게시글 목록 불러오기
 export async function fetchBoardList() {
@@ -124,10 +124,14 @@ export async function searchBoardList(keyword: string) {
 }
 
 // 게시글 수정
-export async function updatePost(postId: number, title: string, content: string) {
+export async function updatePost(
+  postId: number,
+  title: string,
+  content: string
+) {
   const config = await getAuthHeader();
-  const response = await axios.put(
-    `${BASE_URL}/board/${postId}/update/`,
+  const response = await api.put(
+    `/board/${postId}/update/`,
     {
       title,
       content,
@@ -138,10 +142,14 @@ export async function updatePost(postId: number, title: string, content: string)
 }
 
 // 댓글 수정
-export async function updateComment(postId: number, commentId: number, content: string) {
+export async function updateComment(
+  postId: number,
+  commentId: number,
+  content: string
+) {
   const config = await getAuthHeader();
-  const response = await axios.put(
-    `${BASE_URL}/board/${postId}/comments/${commentId}/`,
+  const response = await api.put(
+    `/board/${postId}/comments/${commentId}/`,
     {
       comment: content,
     },

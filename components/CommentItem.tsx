@@ -129,7 +129,7 @@ export default function CommentItem({
                 <AntDesign
                   name={isLiked ? "heart" : "hearto"}
                   size={14}
-                  color={isLiked ? colors.RED_500 : colors.GRAY_400}
+                  color={isLiked ? colors.RED_500 : colors.GRAY_300}
                 />
               </Pressable>
               <Text style={styles.separator}>|</Text>

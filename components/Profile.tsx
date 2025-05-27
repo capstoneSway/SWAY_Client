@@ -1,5 +1,6 @@
 import { colors } from "@/constants/color";
 import { formatDate } from "@/utils/formatDate";
+import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 interface ProfileProps {

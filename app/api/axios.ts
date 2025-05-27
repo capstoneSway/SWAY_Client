@@ -15,3 +15,13 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// utils/auth.ts
+export const getAuthHeader = async () => {
+  const token = await AsyncStorage.getItem("accessToken");
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};

@@ -1,7 +1,8 @@
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native"; 
+import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
+import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,7 +18,7 @@ export default function CommonHeader({
   showBackButton = false,
 }: CommonHeaderProps) {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation(); 
+  const navigation = useNavigation();
 
   return (
     <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
@@ -36,7 +37,7 @@ export default function CommonHeader({
 
         {/* 오른쪽: 알림 아이콘 */}
         <Pressable
-          onPress={() => router.push("/notification")}
+          onPress={() => router.push("./notification")}
           hitSlop={10}
           style={styles.iconButton}
         >
