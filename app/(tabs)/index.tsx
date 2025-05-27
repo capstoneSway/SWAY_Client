@@ -1,13 +1,16 @@
 import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
+import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
+import * as Notifications from "expo-notifications";
 import { useNavigation, useRouter } from "expo-router";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getFcmToken } from "../api/getFcmToken";
 import ensureValidToken from "../api/tokenManager";
 
 const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
@@ -38,6 +41,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    requestInitialPermissions();
+  }, []);
+
+  useEffect(() => {
     try {
       const app = firebase.app();
       console.log("✅ Firebase Initialized:", app.name); // 보통 "[DEFAULT]"
@@ -62,6 +69,28 @@ export default function Home() {
         await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
         await CookieManager.clearAll();
         router.replace("/auth/signIn");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      // 1) 현재 알림 권한 상태를 확인한다.
+      const settings = await Notifications.getPermissionsAsync();
+
+      // 2) granted 또는 iOS의 provisional(임시 허용) 상태면 "알림 수신 가능한 상태"로 간주
+      const granted =
+        settings.granted ||
+        settings.ios?.status ===
+          Notifications.IosAuthorizationStatus.PROVISIONAL;
+
+      // 3) 권한이 있으면 → FCM 토큰을 요청해서 콘솔에 출력
+      if (granted) {
+        const token = await getFcmToken(); // messaging().getToken() 함수
+        console.log("최종 FCM 토큰:", token);
+      } else {
+        // 4) 권한이 없다면 → FCM 토큰 요청을 생략하고 안내 로그
+        console.log("알림 권한이 없어서 FCM 토큰 요청 생략");
       }
     })();
   }, []);
