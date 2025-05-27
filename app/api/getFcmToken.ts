@@ -28,10 +28,10 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 export const getFcmToken = async (): Promise<string | null> => {
   try {
     const token = await messaging().getToken();
-    console.log("✅ FCM Token:", token);
+    console.log("FCM Token:", token);
     return token;
   } catch (e) {
-    console.error("❌ FCM 토큰 가져오기 실패:", e);
+    console.error("FCM 토큰 가져오기 실패:", e);
     return null;
   }
 };

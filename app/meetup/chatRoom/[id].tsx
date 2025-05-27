@@ -220,7 +220,9 @@ export default function ChatRoom() {
 
               <View style={styles.header}>
                 {/* 좌측: 홈으로 라우팅 */}
-                <Pressable onPress={() => router.replace("/(tabs)")}>
+                <Pressable
+                  onPress={() => router.replace("/(tabs)?tab=current")}
+                >
                   <Ionicons
                     name="chevron-back"
                     size={24}

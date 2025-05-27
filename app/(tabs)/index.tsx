@@ -6,7 +6,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
 import * as Font from "expo-font"; // ✅ 폰트 import 추가
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import React, {
   useCallback,
   useEffect,
@@ -24,6 +29,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import fetchUserInfo from "../api/fetchUserInfo";
+import { getFcmToken } from "../api/getFcmToken";
 import ensureValidToken from "../api/tokenManager";
 
 const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
@@ -44,11 +50,13 @@ function formatKSTDate(dateStr: string): string {
 export default function Home() {
   const navigation = useNavigation();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"meetup" | "current">("meetup");
+  const { tab } = useLocalSearchParams<{ tab?: string }>(); // 뒤로가기 하면 탭 current 상태로 와야 해서.
+  const [activeTab, setActiveTab] = useState<"meetup" | "current">(
+    tab === "current" ? "current" : "meetup"
+  );
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [timeTick, setTimeTick] = useState(0); // 실시간 갱신용
   const [fontsLoaded, setFontsLoaded] = useState(false); // ✅ 폰트 상태
-
   const [cards, setCards] = useState([...CARDS]);
 
   // 화면이 포커싱될 때마다 최신 CARDS 배열을 다시 적용
@@ -134,28 +142,6 @@ export default function Home() {
       }
     })();
   }, []);
-
-  // useEffect(() => {
-  //   (async () => {
-  //     // 1) 현재 알림 권한 상태를 확인한다.
-  //     const settings = await Notifications.getPermissionsAsync();
-
-  //     // 2) granted 또는 iOS의 provisional(임시 허용) 상태면 "알림 수신 가능한 상태"로 간주
-  //     const granted =
-  //       settings.granted ||
-  //       settings.ios?.status ===
-  //         Notifications.IosAuthorizationStatus.PROVISIONAL;
-
-  //     // 3) 권한이 있으면 → FCM 토큰을 요청해서 콘솔에 출력
-  //     if (granted) {
-  //       const token = await getFcmToken(); // messaging().getToken() 함수
-  //       console.log("최종 FCM 토큰:", token);
-  //     } else {
-  //       // 4) 권한이 없다면 → FCM 토큰 요청을 생략하고 안내 로그
-  //       console.log("알림 권한이 없어서 FCM 토큰 요청 생략");
-  //     }
-  //   })();
-  // }, []);
 
   //  포커싱 대상 판단 함수 (KST 기준으로 3시간 이하 남았는지 확인)
   function isExpiringSoon(expiresAt: string): boolean {
@@ -339,6 +325,30 @@ export default function Home() {
       >
         <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
           🔐 로그인 창으로 가기
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={{
+          position: "absolute",
+          bottom: 80,
+          alignSelf: "center",
+          backgroundColor: colors.YELLOW_500,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 20,
+        }}
+        onPress={async () => {
+          const token = await getFcmToken();
+          if (token) {
+            console.log("[FCM 테스트 버튼] 토큰:", token);
+          } else {
+            console.log("[FCM 테스트 버튼] 토큰 발급 실패");
+          }
+        }}
+      >
+        <Text style={{ color: colors.BLACK, fontWeight: "600" }}>
+          FCM 토큰 테스트
         </Text>
       </Pressable>
 

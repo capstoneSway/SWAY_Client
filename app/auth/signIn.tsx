@@ -1,5 +1,6 @@
 import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import { Buffer } from "buffer";
@@ -308,9 +309,25 @@ export default function AuthHome() {
 
       {showWebView && (
         <View style={styles.webviewContainer}>
+          {/* ✅ WebView 전용 닫기 헤더 */}
+          <View style={styles.webviewHeader}>
+            <Pressable onPress={() => setShowWebView(false)}>
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={colors.BLACK}
+                style={{ marginLeft: 8 }}
+              />
+            </Pressable>
+            <Text style={styles.headerText}>Back</Text>
+          </View>
           <WebView
+            style={{ marginTop: 48, backgroundColor: colors.WHITE }}
             source={{ uri: KAKAO_AUTH_URL }}
             incognito
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             cacheEnabled={false}
             onLoadStart={() => setLoading(true)}
             onLoadEnd={() => setLoading(false)}
@@ -321,6 +338,7 @@ export default function AuthHome() {
             javaScriptEnabled
             domStorageEnabled
           />
+
           {loading && (
             <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
           )}
@@ -370,7 +388,27 @@ const styles = StyleSheet.create({
   link: { color: colors.BLACK, fontWeight: "400" },
   webviewContainer: {
     ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    marginTop: 22,
     backgroundColor: colors.WHITE,
     zIndex: 10,
+    marginBottom: 0,
+  },
+
+  webviewHeader: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.GRAY_300,
+    backgroundColor: colors.WHITE,
+    zIndex: 100,
+  },
+
+  headerText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });
