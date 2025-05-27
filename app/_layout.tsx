@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import { colors } from "@/constants/color";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -9,16 +10,14 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  if (!loaded) return null;
 
   return (
     <Stack
       screenOptions={{
+        headerShown: false, // 모든 화면 기본 헤더 감추기
         contentStyle: {
-          backgroundColor: colors.BLACK,
+          backgroundColor: colors.WHITE,
         },
       }}
     >
@@ -34,7 +33,7 @@ export default function RootLayout() {
           title: "Login",
           headerShown: true,
           headerTintColor: colors.BLACK,
-          headerBackTitle: "ㅤ",
+          headerBackTitle: "ㅤ", // ← iOS에서 뒤로가기 텍스트 없애기
         }}
       />
       <Stack.Screen

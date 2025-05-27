@@ -1,6 +1,7 @@
+import { colors } from "@/constants/color";
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import InputField from "./InputField";
+import { StyleSheet, TextInput } from "react-native";
 
 function DescriptionInput() {
   const { control } = useFormContext();
@@ -16,20 +17,31 @@ function DescriptionInput() {
           }
         },
       }}
-      render={({ field: { ref, onChange, value }, fieldState: { error } }) => (
-        <InputField
-          ref={ref}
-          label="Content"
+      render={({ field: { onChange, value } }) => (
+        <TextInput
+          style={styles.input}
           placeholder="Please follow our community guidelines when you are posting"
-          returnKeyType="next"
-          value={value}
+          placeholderTextColor={colors.GRAY_400}
           onChangeText={onChange}
-          error={error?.message}
+          value={value}
           multiline
         />
       )}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  input: {
+    backgroundColor: colors.GRAY_100,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    fontSize: 14,
+    color: colors.BLACK,
+    textAlignVertical: "top", // for multiline alignment
+    minHeight: 120,
+  },
+});
 
 export default DescriptionInput;

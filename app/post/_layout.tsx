@@ -4,7 +4,7 @@ import { router, Stack } from "expo-router";
 import React from "react";
 import { Pressable } from "react-native";
 
-export default function NewPostLayout() {
+export default function PostLayout() {
   return (
     <Stack
       screenOptions={{

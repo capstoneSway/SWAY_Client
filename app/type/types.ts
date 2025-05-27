@@ -18,6 +18,7 @@ interface Post {
   author: User;
   imageUris: ImageUri[];
   likes: { userId: number }[];
+  bookmarks: number;
   commentCount: number;
   comments?: PostComment[];
 }
@@ -26,7 +27,7 @@ interface Comment {
   id: number;
   content: string;
   createdAt: string;
-  user: User;/////
+  user: User;
   isDeleted: boolean;
 }
 
@@ -34,8 +35,4 @@ interface PostComment extends Comment {
   replies: Comment[];
 }
 
-export type {
-  Post,
-  Comment,
-  ImageUri,
-};
+export type { Comment, ImageUri, Post };

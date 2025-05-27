@@ -1,5 +1,5 @@
 // ProfileScreen.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -15,6 +15,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/color";
 import { useFonts } from "expo-font";
+import fetchUserInfo from "@/app/api/fetchUserInfo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { countries } from "@/constants/country";
+import { useRouter } from "expo-router";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -26,6 +30,13 @@ interface Meetup {
   time: string;
   tag: string;
   joined: number;
+  status: "In progress" | "Done" | "Canceled";
+}
+
+interface User {
+  profileImageUrl: string;
+  country: string;
+  nickname: string;
 }
 
 type TabKey = "meetups" | "posts" | "book";
@@ -44,6 +55,7 @@ const dummyMeetups: Meetup[] = [
     time: "6pm",
     tag: "Foodie",
     joined: 5,
+    status: "In progress",
   },
   {
     id: "2",
@@ -52,6 +64,7 @@ const dummyMeetups: Meetup[] = [
     time: "3pm",
     tag: "WorkOut",
     joined: 3,
+    status: "Done",
   },
   {
     id: "3",
@@ -60,6 +73,7 @@ const dummyMeetups: Meetup[] = [
     time: "4pm",
     tag: "Culture",
     joined: 8,
+    status: "Canceled",
   },
 ];
 
@@ -70,11 +84,38 @@ const tabs: Tab[] = [
 ];
 
 const ProfileScreen: React.FC = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("meetups");
   const [fontsLoaded] = useFonts({
     GasoekOne: require("@/assets/fonts/GasoekOne-Regular.ttf"),
   });
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const token = await AsyncStorage.getItem("jwtAccessToken");
+        if (!token) return;
+        const data = await fetchUserInfo(token);
+        if (data)
+          setUser({
+            profileImageUrl: data.profileImageUrl,
+            country: data.country,
+            nickname: data.nickname,
+          });
+      } catch (error) {
+        console.error("Failed to load user info:", error);
+      }
+    };
+    loadUser();
+  }, []);
+
   if (!fontsLoaded) return null;
+
+  // 국가 코드에 맞는 flag, name 찾기
+  const countryData = user
+    ? countries.find((c) => c.code.toLowerCase() === user.country.toLowerCase())
+    : undefined;
 
   const renderMeetup = ({ item }: ListRenderItemInfo<Meetup>) => (
     <View style={styles.card}>
@@ -90,6 +131,15 @@ const ProfileScreen: React.FC = () => {
           <Ionicons name="people" size={12} style={{ marginRight: 4 }} />
           <Text style={styles.countText}>{item.joined} joined</Text>
         </View>
+        <View
+          style={[
+            styles.statusBadge,
+            item.status === "Done" && styles.statusDone,
+            item.status === "Canceled" && styles.statusCancel,
+          ]}
+        >
+          <Text style={styles.statusText}>{item.status}</Text>
+        </View>
       </View>
     </View>
   );
@@ -100,7 +150,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/profile/settings")}>
           <Ionicons name="settings-outline" size={24} />
         </TouchableOpacity>
       </View>
@@ -292,4 +342,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.BLACK,
   },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.YELLOW_300,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 7,
+  },
+  statusText: { fontSize: 12 },
+  statusDone: { backgroundColor: colors.GRAY_100 },
+  statusCancel: { backgroundColor: colors.RED_100 },
 });

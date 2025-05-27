@@ -1,6 +1,7 @@
+import { colors } from "@/constants/color";
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import InputField from "./InputField";
+import { StyleSheet, TextInput } from "react-native";
 
 function TitleInput() {
   const { control, setFocus } = useFormContext();
@@ -16,21 +17,31 @@ function TitleInput() {
           }
         },
       }}
-      render={({ field: { onChange, value }, fieldState: { error } }) => (
-        <InputField
-          autoFocus
-          label="Title"
+      render={({ field: { onChange, value } }) => (
+        <TextInput
+          style={styles.input}
           placeholder="Enter your title here"
+          placeholderTextColor={colors.GRAY_400}
           returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => setFocus("description")}
-          value={value}
+          autoFocus
           onChangeText={onChange}
-          error={error?.message}
+          value={value}
+          onSubmitEditing={() => setFocus("description")}
         />
       )}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  input: {
+    backgroundColor: colors.GRAY_100,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+    fontSize: 14,
+    color: colors.BLACK,
+  },
+});
 
 export default TitleInput;
