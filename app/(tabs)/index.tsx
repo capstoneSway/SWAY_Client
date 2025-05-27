@@ -5,12 +5,19 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
-import * as Notifications from "expo-notifications";
+import * as Font from "expo-font"; // ✅ 폰트 import 추가
 import { useNavigation, useRouter } from "expo-router";
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getFcmToken } from "../api/getFcmToken";
+import fetchUserInfo from "../api/fetchUserInfo";
 import ensureValidToken from "../api/tokenManager";
 
 const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
@@ -34,6 +41,46 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<"meetup" | "current">("meetup");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [timeTick, setTimeTick] = useState(0); // 실시간 갱신용
+  const [fontsLoaded, setFontsLoaded] = useState(false); // ✅ 폰트 상태
+
+  // ✅ GasoekOne 폰트 로딩
+  useEffect(() => {
+    (async () => {
+      await Font.loadAsync({
+        GasoekOne: require("@/assets/fonts/GasoekOne-Regular.ttf"),
+      });
+      setFontsLoaded(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const token = await ensureValidToken();
+      if (!token) {
+        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+        await CookieManager.clearAll();
+        router.replace("/auth/signIn");
+        return;
+      }
+
+      // 사용자 정보로 분기처리 재활용
+      try {
+        const userInfo = await fetchUserInfo(token);
+        if (!userInfo.nickname) {
+          console.log("🚧 닉네임 미설정 → /auth/signUsername");
+          router.replace("/auth/signUsername");
+        } else if (!userInfo.nationality) {
+          console.log("🚧 국적 미설정 → /auth/signNationality");
+          router.replace("/auth/signNationality");
+        } else {
+          console.log("✅ 모든 정보 설정 완료 → 홈 화면 진입");
+        }
+      } catch (err) {
+        console.error("❌ 사용자 정보 조회 실패:", err);
+        router.replace("/auth/signIn");
+      }
+    })();
+  }, []);
 
   //  기본 헤더 제거
   useLayoutEffect(() => {
@@ -73,27 +120,27 @@ export default function Home() {
     })();
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      // 1) 현재 알림 권한 상태를 확인한다.
-      const settings = await Notifications.getPermissionsAsync();
+  // useEffect(() => {
+  //   (async () => {
+  //     // 1) 현재 알림 권한 상태를 확인한다.
+  //     const settings = await Notifications.getPermissionsAsync();
 
-      // 2) granted 또는 iOS의 provisional(임시 허용) 상태면 "알림 수신 가능한 상태"로 간주
-      const granted =
-        settings.granted ||
-        settings.ios?.status ===
-          Notifications.IosAuthorizationStatus.PROVISIONAL;
+  //     // 2) granted 또는 iOS의 provisional(임시 허용) 상태면 "알림 수신 가능한 상태"로 간주
+  //     const granted =
+  //       settings.granted ||
+  //       settings.ios?.status ===
+  //         Notifications.IosAuthorizationStatus.PROVISIONAL;
 
-      // 3) 권한이 있으면 → FCM 토큰을 요청해서 콘솔에 출력
-      if (granted) {
-        const token = await getFcmToken(); // messaging().getToken() 함수
-        console.log("최종 FCM 토큰:", token);
-      } else {
-        // 4) 권한이 없다면 → FCM 토큰 요청을 생략하고 안내 로그
-        console.log("알림 권한이 없어서 FCM 토큰 요청 생략");
-      }
-    })();
-  }, []);
+  //     // 3) 권한이 있으면 → FCM 토큰을 요청해서 콘솔에 출력
+  //     if (granted) {
+  //       const token = await getFcmToken(); // messaging().getToken() 함수
+  //       console.log("최종 FCM 토큰:", token);
+  //     } else {
+  //       // 4) 권한이 없다면 → FCM 토큰 요청을 생략하고 안내 로그
+  //       console.log("알림 권한이 없어서 FCM 토큰 요청 생략");
+  //     }
+  //   })();
+  // }, []);
 
   //  포커싱 대상 판단 함수 (KST 기준으로 3시간 이하 남았는지 확인)
   function isExpiringSoon(expiresAt: string): boolean {
@@ -177,6 +224,22 @@ export default function Home() {
     );
   };
 
+  // ✅ 폰트 로딩 안 됐을 때 기본 UI 제공
+  if (!fontsLoaded) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.WHITE,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.PURPLE_300} />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/*  커스텀 헤더 */}
@@ -246,6 +309,24 @@ export default function Home() {
         </View>
       )}
 
+      {/* ✅ 임시 로그인창 이동 버튼 */}
+      <Pressable
+        style={{
+          position: "absolute",
+          bottom: 8,
+          alignSelf: "center",
+          backgroundColor: colors.PURPLE_300,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 20,
+        }}
+        onPress={() => router.replace("./auth")}
+      >
+        <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
+          🔐 로그인 창으로 가기
+        </Text>
+      </Pressable>
+
       {/* 플로팅 버튼 */}
       {activeTab === "meetup" && (
         <Pressable
@@ -273,7 +354,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: "bold",
     color: colors.PURPLE_300,
-    fontFamily: "GasoekOne",
+    fontFamily: "GasoekOne", // ✅ 폰트 적용
   },
   headerTitle: {
     position: "absolute",

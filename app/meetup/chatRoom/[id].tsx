@@ -3,8 +3,15 @@ import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -37,6 +44,21 @@ function formatKSTDate(dateStr: string): string {
 const currentUser = "Gildong"; // 하드코딩. 가져와야죠.
 
 export default function ChatRoom() {
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const scrollOffset = useRef(0);
+
+  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const contentHeight = event.nativeEvent.contentSize.height;
+    const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+
+    scrollOffset.current = offsetY;
+
+    // 얼마나 아래까지 내려와 있는지 판단 (오차 범위 30~50px 허용)
+    const threshold = 50;
+    const isBottom = contentHeight - layoutHeight - offsetY < threshold;
+    setIsNearBottom(isBottom);
+  }
   const { id } = useLocalSearchParams<{ id?: string }>();
   const numericId = Number(id);
   const meetup = CARDS.find((card) => card.id === numericId);
@@ -56,6 +78,29 @@ export default function ChatRoom() {
     { id: 10, text: ";;", sender: "Gildong" },
     { id: 11, text: "술드심?", sender: "Gildong" },
   ]);
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      if (isNearBottom) {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    });
+
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      if (isNearBottom) {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [isNearBottom]);
+
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
 
   const [remainingSeconds, setRemainingSeconds] = useState(24 * 60 * 60); // 24시간(초)
 
@@ -108,21 +153,55 @@ export default function ChatRoom() {
           header: () => (
             <SafeAreaView edges={["top"]} style={{ backgroundColor: "white" }}>
               <StatusBar barStyle="dark-content" backgroundColor="white" />
+
               <View style={styles.header}>
-                <Text style={styles.headerTitle}>{meetup.title}</Text>
+                {/* 좌측: 홈으로 라우팅 */}
+                <Pressable onPress={() => router.replace("/(tabs)")}>
+                  <Ionicons
+                    name="chevron-back"
+                    size={24}
+                    color={colors.BLACK}
+                    style={{ marginLeft: 4 }}
+                  />
+                </Pressable>
+
+                {/* 중앙: 타이틀 */}
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  {meetup.title}
+                </Text>
+
+                {/* 우측: 타이머 + 닫기 버튼 */}
                 <View style={styles.rightSection}>
                   <View style={styles.timerContainer}>
                     <FontAwesome5
                       name="history"
-                      size={16}
+                      size={14}
                       color={colors.YELLOW_500}
                     />
                     <Text style={styles.timerText}>
                       {formatTime(remainingSeconds)}
                     </Text>
                   </View>
-                  <Pressable onPress={() => router.back()}>
-                    <Ionicons name="close" size={20} color="#000" />
+                  {/* 우측 나가기: 번개모임 및 채팅방 떠나기  */}
+                  <Pressable
+                    onPress={() =>
+                      Alert.alert(
+                        "Leave the meet-up?",
+                        "You'll also exit the chat room permanently. Are you sure?",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Exit",
+                            style: "destructive",
+                            onPress: () => router.back(),
+                          },
+                        ],
+                        { cancelable: true }
+                      )
+                    }
+                    style={{ marginRight: 8 }}
+                  >
+                    <Image source={require("@/assets/images/fire-exit.png")} />
                   </Pressable>
                 </View>
               </View>
@@ -131,91 +210,110 @@ export default function ChatRoom() {
         }}
       />
 
-      <View style={styles.container}>
-        <ScrollView style={styles.chatArea}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <ScrollView
+          ref={scrollRef}
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+          overScrollMode="never"
+          onScroll={handleScroll}
+        >
           <Text style={styles.date}>{formatKSTDate(meetup.meetupTime)}</Text>
 
           <View style={styles.notice}>
             <Text style={styles.noticeText}>{"<채팅방 안내사항>"}</Text>
             <Text style={styles.noticeText}>{"말하기 전에 생각했나요?"}</Text>
           </View>
-          {messages.map((msg, index) => {
-            const bubbleType = getBubbleType(index, messages);
-            const isMine = msg.sender === currentUser;
-            const showSender =
-              !isMine && (bubbleType === "single" || bubbleType === "top");
 
-            return (
-              <View key={msg.id} style={{ marginBottom: 2 }}>
-                {showSender && <Text style={styles.sender}>{msg.sender}</Text>}
+          <View style={styles.chatArea}>
+            {messages.map((msg, index) => {
+              const bubbleType = getBubbleType(index, messages);
+              const isMine = msg.sender === currentUser;
+              const showSender =
+                !isMine && (bubbleType === "single" || bubbleType === "top");
 
-                <View
-                  style={[
-                    styles.bubble,
-                    {
-                      //  정렬 방향 (내 챗, 님 챗)
-                      alignSelf: isMine ? "flex-end" : "flex-start",
-                      backgroundColor: isMine
-                        ? colors.PURPLE_300
-                        : colors.PURPLE_100, // 색상 분기
-                    },
+              return (
+                <View key={msg.id} style={{ marginBottom: 2 }}>
+                  {showSender && (
+                    <Text style={styles.sender}>{msg.sender}</Text>
+                  )}
 
-                    // 버블 모양 결정
-                    //  내 메시지면 무조건 둥글게
-                    isMine && {
-                      borderRadius: 18,
-                    },
-
-                    //  남 메시지면 bubbleType 기준 분기
-                    !isMine &&
-                      (bubbleType === "top" ||
-                        bubbleType === "middle" ||
-                        bubbleType === "single") && {
-                        borderTopLeftRadius: 0,
-                        borderTopRightRadius: 18,
-                        borderBottomLeftRadius: 0,
-                        borderBottomRightRadius: 18,
+                  <View
+                    style={[
+                      styles.bubble,
+                      {
+                        //  정렬 방향 (내 챗, 님 챗)
+                        alignSelf: isMine ? "flex-end" : "flex-start",
+                        backgroundColor: isMine
+                          ? colors.PURPLE_300
+                          : colors.PURPLE_100, // 색상 분기
                       },
-                    !isMine &&
-                      bubbleType === "bottom" && {
-                        borderTopLeftRadius: 0,
-                        borderTopRightRadius: 18,
-                        borderBottomLeftRadius: 18,
-                        borderBottomRightRadius: 18,
+
+                      // 버블 모양 결정
+                      //  내 메시지면 무조건 둥글게
+                      isMine && {
+                        borderRadius: 18,
                       },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      textAlign: isMine ? "right" : "left",
-                      color: isMine ? colors.WHITE : colors.BLACK,
-                    }}
+
+                      //  남 메시지면 bubbleType 기준 분기
+                      !isMine &&
+                        (bubbleType === "top" ||
+                          bubbleType === "middle" ||
+                          bubbleType === "single") && {
+                          borderTopLeftRadius: 0,
+                          borderTopRightRadius: 18,
+                          borderBottomLeftRadius: 0,
+                          borderBottomRightRadius: 18,
+                        },
+                      !isMine &&
+                        bubbleType === "bottom" && {
+                          borderTopLeftRadius: 0,
+                          borderTopRightRadius: 18,
+                          borderBottomLeftRadius: 18,
+                          borderBottomRightRadius: 18,
+                        },
+                    ]}
                   >
-                    {msg.text}
-                  </Text>
+                    <Text
+                      style={{
+                        textAlign: "center",
+                        color: isMine ? colors.WHITE : colors.BLACK,
+                        lineHeight: 20,
+                      }}
+                    >
+                      {msg.text}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
         </ScrollView>
-      </View>
 
-      <View style={{ paddingHorizontal: 16 }}>
-        <ChatInput
-          value={chatText}
-          onChangeText={setChatText}
-          onSend={(text) => {
-            if (text.trim() === "") return;
-            const newMessage: Message = {
-              id: messages.length + 1,
-              text,
-              sender: currentUser,
-            };
-            setMessages((prev) => [...prev, newMessage]);
-            setChatText("");
-          }}
-        />
-      </View>
+        {/* ✅ 입력창: 키보드 위에 잘 위치되도록 */}
+        <View style={{ paddingHorizontal: 16, paddingRight: 14 }}>
+          <ChatInput
+            value={chatText}
+            onChangeText={setChatText}
+            onSend={(text) => {
+              if (text.trim() === "") return;
+              const newMessage: Message = {
+                id: messages.length + 1,
+                text,
+                sender: currentUser,
+              };
+              setMessages((prev) => [...prev, newMessage]);
+              setChatText("");
+            }}
+          />
+        </View>
+      </KeyboardAvoidingView>
     </>
   );
 }
@@ -227,7 +325,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 22,
+    paddingBottom: 18,
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
@@ -250,6 +348,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     gap: 4,
+    marginRight: 12,
   },
   timerText: {
     color: colors.YELLOW_500,
@@ -300,7 +399,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginVertical: 2,
     minHeight: 30,
-    maxHeight: 30,
+    maxHeight: undefined,
     justifyContent: "center",
     alignSelf: "flex-start",
   },

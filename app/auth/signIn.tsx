@@ -1,4 +1,3 @@
-// auth/AuthHome.tsx
 import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,6 +7,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -17,7 +17,9 @@ import {
 import { WebView } from "react-native-webview";
 import { api } from "../api/axios";
 import fetchUserInfo from "../api/fetchUserInfo";
+import logout from "../api/logout";
 import refreshToken from "../api/refreshToken";
+import deleteAccount from "../api/unregister";
 
 const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
 const REDIRECT_URI =
@@ -237,6 +239,66 @@ export default function AuthHome() {
       >
         <Text style={styles.kakaoText}>🧹 AsyncStorage + 쿠키 초기화</Text>
       </Pressable>
+
+      {/* ✅ 로그아웃 + 회원탈퇴 버튼 묶음 */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 150,
+          alignSelf: "center",
+          alignItems: "center",
+        }}
+      >
+        {/* 로그아웃 버튼 */}
+        <Pressable
+          style={{
+            backgroundColor: colors.GRAY_500,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 20,
+            marginBottom: 12, // 버튼 간 여백
+            minWidth: 200,
+            alignItems: "center",
+          }}
+          onPress={async () => {
+            await logout();
+            router.replace("./auth");
+          }}
+        >
+          <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
+            로그아웃
+          </Text>
+        </Pressable>
+
+        {/* 회원탈퇴 버튼 */}
+        <Pressable
+          onPress={() => {
+            Alert.alert("회원탈퇴", "정말 탈퇴하시겠습니까?", [
+              { text: "취소", style: "cancel" },
+              {
+                text: "탈퇴",
+                style: "destructive",
+                onPress: async () => {
+                  await deleteAccount();
+                  router.replace("./auth");
+                },
+              },
+            ]);
+          }}
+          style={{
+            backgroundColor: "crimson",
+            paddingVertical: 10,
+            paddingHorizontal: 8,
+            borderRadius: 20,
+            minWidth: 200,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "600" }}>
+            회원탈퇴 (카카오 연결 끊기)
+          </Text>
+        </Pressable>
+      </View>
 
       <Text style={styles.termsText}>
         By clicking continue, you agree to our{" "}

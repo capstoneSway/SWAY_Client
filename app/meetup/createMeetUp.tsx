@@ -24,9 +24,10 @@ const PARTICIPANT_COUNTS = [2, 3, 4, 5, 6];
 export default function CreateMeetUp() {
   const router = useRouter();
 
-  const [category, setCategory] = useState<string | null>(null);
-  const [gender, setGender] = useState<string | null>(null);
-  const [count, setCount] = useState<number | null>(null);
+  const [category, setCategory] = useState<string | null>("Travel");
+  const [gender, setGender] = useState<string | null>("All");
+  const [count, setCount] = useState<number | null>(5);
+  // 세 개는 기본값 있도록.
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date());
