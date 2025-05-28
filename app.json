@@ -14,7 +14,6 @@
       "resizemode": "cover",
       "backgroundColor": "#6F4AE2"
     },
-    "enableFullScreenImage_legacy": "true",
     "newArchEnabled": true,
     "ios": {
       "infoPlist": {

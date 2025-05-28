@@ -21,7 +21,7 @@ function TitleInput() {
         <TextInput
           style={styles.input}
           placeholder="Enter your title here"
-          placeholderTextColor={colors.GRAY_400}
+          placeholderTextColor={colors.GRAY_600}
           returnKeyType="next"
           autoFocus
           onChangeText={onChange}

@@ -19,6 +19,8 @@ import fetchUserInfo from "@/app/api/fetchUserInfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { countries } from "@/constants/country";
 import { useRouter } from "expo-router";
+import { api } from "@/app/api/axios";
+import eventEmitter from "@/utils/eventEmitter";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -40,6 +42,12 @@ interface User {
 }
 
 type TabKey = "meetups" | "posts" | "book";
+
+type PostItem = {
+  id: number;
+  title: string;
+  content: string;
+};
 
 interface Tab {
   key: TabKey;
@@ -91,31 +99,69 @@ const ProfileScreen: React.FC = () => {
   });
   const [user, setUser] = useState<User | null>(null);
 
+  const [myPosts, setMyPosts] = useState<PostItem[]>([]);
+  const [scrappedPosts, setScrappedPosts] = useState<PostItem[]>([]);
+
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const token = await AsyncStorage.getItem("jwtAccessToken");
+        const token = await AsyncStorage.getItem("@jwt");
+        //console.log("토큰:", token);
         if (!token) return;
         const data = await fetchUserInfo(token);
+        //console.log("유저 정보:", data);
         if (data)
           setUser({
-            profileImageUrl: data.profileImageUrl,
-            country: data.country,
+            profileImageUrl: data.profile_image,
+            country: data.nationality,
             nickname: data.nickname,
           });
       } catch (error) {
-        console.error("Failed to load user info:", error);
+        console.error("유저 정보 로드 실패:", error);
       }
     };
     loadUser();
+
+    // 닉네임 변경 시 반영
+    const handleNicknameChange = () => {
+      console.log("🔄 nicknameChanged 이벤트 수신 -> 사용자 정보 갱신");
+      loadUser();
+    };
+
+    eventEmitter.on("nicknameChanged", handleNicknameChange);
+
+    return () => {
+      eventEmitter.off("nicknameChanged", handleNicknameChange);
+    };
   }, []);
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    const fetchMyPage = async () => {
+      try {
+        const token = await AsyncStorage.getItem("@jwt");
+        if (!token) return;
+
+        const res = await api.get("/mypage/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setMyPosts(res.data.my_posts);
+        setScrappedPosts(res.data.scrapped_posts);
+      } catch (err) {
+        console.error("마이페이지 데이터 불러오기 실패", err);
+      }
+    };
+
+    fetchMyPage();
+  }, []);
 
   // 국가 코드에 맞는 flag, name 찾기
-  const countryData = user
-    ? countries.find((c) => c.code.toLowerCase() === user.country.toLowerCase())
-    : undefined;
+  const countryData =
+    user && user.country
+      ? countries.find(
+          (c) => c.name.toLowerCase() === user.country.toLowerCase()
+        )
+      : undefined;
 
   const renderMeetup = ({ item }: ListRenderItemInfo<Meetup>) => (
     <View style={styles.card}>
@@ -150,7 +196,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => router.push("/profile/settings")}>
+        <TouchableOpacity onPress={() => router.push("/setting/settings")}>
           <Ionicons name="settings-outline" size={24} />
         </TouchableOpacity>
       </View>
@@ -158,11 +204,16 @@ const ProfileScreen: React.FC = () => {
       {/* 프로필 */}
       <View style={styles.profileSection}>
         <Image
-          // 실제 URI로 교체하거나 require() 사용
-          source={require("@/assets/images/default_profile.png")}
+          source={
+            user?.profileImageUrl
+              ? { uri: user.profileImageUrl }
+              : require("@/assets/images/default_profile.png")
+          }
           style={styles.avatar}
         />
-        <Text style={styles.username}>🇺🇸 Kristen</Text>
+        <Text style={styles.username}>
+          {countryData?.emoji || "🌐"} {user?.nickname || "User"}
+        </Text>
       </View>
 
       {/* 탭 */}
@@ -189,18 +240,52 @@ const ProfileScreen: React.FC = () => {
       {/* 콘텐츠 */}
       <View style={styles.content}>
         {activeTab === "meetups" ? (
-          <FlatList<Meetup>
-            data={dummyMeetups}
-            keyExtractor={(item) => item.id}
-            renderItem={renderMeetup}
+          dummyMeetups.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={{ color: colors.GRAY_700 }}>No meetups yet.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={dummyMeetups}
+              keyExtractor={(item) => item.id}
+              renderItem={renderMeetup}
+              contentContainerStyle={{ paddingBottom: 80 }}
+            />
+          )
+        ) : activeTab === "posts" ? (
+          myPosts.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={{ color: colors.GRAY_700 }}>No posts yet.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={myPosts}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text style={styles.cardSubtitle}>{item.content}</Text>
+                </View>
+              )}
+              contentContainerStyle={{ paddingBottom: 80 }}
+            />
+          )
+        ) : scrappedPosts.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={{ color: colors.GRAY_700 }}>No bookmarks yet.</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={scrappedPosts}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardSubtitle}>{item.content}</Text>
+              </View>
+            )}
             contentContainerStyle={{ paddingBottom: 80 }}
           />
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={{ color: colors.GRAY_700 }}>
-              {activeTab === "posts" ? "No posts yet." : "No bookmarks yet."}
-            </Text>
-          </View>
         )}
       </View>
     </SafeAreaView>
@@ -211,6 +296,12 @@ export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.WHITE },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+  },
 
   header: {
     flexDirection: "row",
@@ -285,12 +376,6 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     backgroundColor: "#fbfbfb",
   },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   card: {
     backgroundColor: colors.WHITE,
     borderRadius: 8,

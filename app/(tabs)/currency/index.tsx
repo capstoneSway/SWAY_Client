@@ -169,7 +169,7 @@ export default function CurrencyScreen() {
     (async () => {
       try {
         const all = await fetchAllMemos();
-        console.log("📥 fetchAllMemos 응답:", all);
+        //console.log("📥 fetchAllMemos 응답:", all);
         setMemos(all);
       } catch (e) {
         console.error("메모 로드 실패", e);
