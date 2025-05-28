@@ -1,9 +1,14 @@
-import { addCard } from "@/constants/cards"; // ✅ 추가
+// app/meetup/editMeetUp.tsx
+// ✅ 번개모임 수정 화면
+// ✅ 인원 수 1은 비활성화 처리됨
+// ✅ 모든 필드가 기존과 동일하거나 변경 없음 시 update 버튼 비활성화
+
 import { categoryImages } from "@/constants/categoryImages";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useRouter } from "expo-router";
+import axios from "axios";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -18,112 +23,132 @@ import {
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import createLightningMeetUp from "../api/createMeetUp";
+import updateLightningMeetUp from "../api/updateLightning";
 
 const CATEGORY_OPTIONS = ["Travel", "Foodie", "WorkOut", "Others"];
 const GENDER_OPTIONS = ["All", "Female", "Male"];
-const PARTICIPANT_COUNTS = [2, 3, 4, 5, 6];
+const PARTICIPANT_COUNTS = [1, 2, 3, 4, 5, 6];
 
-/**
- * hostId는 제외하고, 참가자 중복 제거
- */
-const uniqueParticipantsStrict = (participants: any[], hostId: number) => {
-  const filtered = participants.filter((p) => p.id !== hostId);
-  const uniqueMap = new Map<number, any>();
-  for (const p of filtered) {
-    if (!uniqueMap.has(p.id)) uniqueMap.set(p.id, p);
-  }
-  return Array.from(uniqueMap.values());
-};
-
-export default function CreateMeetUp() {
+export default function EditMeetUp() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
   const [token, setToken] = useState<string | null>(null);
-  const [category, setCategory] = useState<string | null>("Travel");
-  const [gender, setGender] = useState<string | null>("All");
-  const [count, setCount] = useState<number | null>(5);
+  const [category, setCategory] = useState<string | null>(null);
+  const [gender, setGender] = useState<string | null>(null);
+  const [count, setCount] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-  const [showOptions, setShowOptions] = useState(true);
+  const [showOptions, setShowOptions] = useState(false);
+
+  // 원본 데이터 저장용
+  const [originalData, setOriginalData] = useState<{
+    category: string | null;
+    gender: string | null;
+    max_participant: number | null;
+    title: string;
+    content: string;
+    meeting_date: Date;
+  } | null>(null);
 
   useEffect(() => {
     const loadToken = async () => {
-      try {
-        const jwt = await AsyncStorage.getItem("@jwt");
-        setToken(jwt);
-      } catch (e) {
-        console.error("토큰 불러오기 실패:", e);
-      }
+      const jwt = await AsyncStorage.getItem("@jwt");
+      setToken(jwt);
     };
     loadToken();
   }, []);
 
-  const isPostDisabled =
-    !category || !gender || count === null || !title.trim() || !content.trim();
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const onPost = async () => {
-    const images = categoryImages[category] || [];
-    const randomImage = images[Math.floor(Math.random() * images.length)] || "";
+  useEffect(() => {
+    if (!id) return;
 
-    if (isPostDisabled) return;
+    (async () => {
+      try {
+        const res = await axios.get(
+          `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
+        );
+        const data = res.data;
+        const cat = data.category ? capitalize(data.category) : "Travel";
+        const gen = data.gender ? capitalize(data.gender) : "All";
+        const maxP = data.max_participant || 5;
+        const t = data.title || "";
+        const c = data.content || "";
+        const d = data.meeting_date ? new Date(data.meeting_date) : new Date();
+
+        setCategory(cat);
+        setGender(gen);
+        setCount(maxP);
+        setTitle(t);
+        setContent(c);
+        setDate(d);
+        setShowOptions(false);
+
+        // 원본 데이터 저장
+        setOriginalData({
+          category: cat,
+          gender: gen,
+          max_participant: maxP,
+          title: t,
+          content: c,
+          meeting_date: d,
+        });
+      } catch (error) {
+        Alert.alert("오류", "모임 정보를 불러오는데 실패했습니다.");
+      }
+    })();
+  }, [id]);
+
+  // 변경 사항 없는지 확인
+  const isDataUnchanged = () => {
+    if (!originalData) return false;
+    return (
+      originalData.category === category &&
+      originalData.gender === gender &&
+      originalData.max_participant === count &&
+      originalData.title === title.trim() &&
+      originalData.content === content.trim() &&
+      originalData.meeting_date.getTime() === date.getTime()
+    );
+  };
+
+  // 필수 입력 + 변경 감지 여부 체크
+  const isUpdateDisabled =
+    !category ||
+    !gender ||
+    count === null ||
+    !title.trim() ||
+    !content.trim() ||
+    isDataUnchanged();
+
+  const onUpdate = async () => {
+    if (isUpdateDisabled) return;
     if (!token) {
       Alert.alert("로그인 필요", "먼저 로그인을 해주세요.");
       return;
     }
+    const images = categoryImages[category] || [];
+    const randomImage = images[Math.floor(Math.random() * images.length)] || "";
 
-    const postData = {
+    const updateData = {
       title: title.trim(),
       content: content.trim(),
       max_participant: count,
       gender: gender.toLowerCase(),
       category: category.toLowerCase(),
       background_pic: randomImage,
+      meeting_date: date.toISOString(),
     };
 
     try {
-      console.log("API 요청 시작");
-      const response = await createLightningMeetUp(token, postData);
-      console.log("API 요청 성공:", response);
-      console.log("hostId:", response.host?.id);
-      console.log("participants 원본:", response.participants);
-
-      const filteredParticipants = uniqueParticipantsStrict(
-        response.participants || [],
-        response.host?.id
-      );
-      console.log(
-        "filteredParticipants (host 제외 중복 제거):",
-        filteredParticipants
-      );
-
-      const totalParticipantsCount =
-        filteredParticipants.length + (response.host ? 1 : 0);
-      console.log(
-        `totalParticipantsCount (filtered + host): ${totalParticipantsCount}`
-      );
-
-      addCard({
-        id: response.id || Date.now(),
-        title: title.trim(),
-        tag: category,
-        status: "register",
-        participants: `${totalParticipantsCount}/${count}`,
-        meetupTime: date.toISOString(),
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        content: content.trim(),
-        gender,
-        participantAvatars: filteredParticipants,
-        image: response.background_pic,
-      });
-
-      router.replace("/");
+      await updateLightningMeetUp(id!, token, updateData);
+      Alert.alert("Success", "The meetup has been updated.");
+      router.replace(`/meetup/${id}`);
     } catch (error) {
-      console.error("API 요청 실패:", error);
-      Alert.alert("Error", "Failed to create the meetup. Please try again.");
+      Alert.alert("Error", "Failed to update the meetup. Please try again.");
     }
   };
 
@@ -133,7 +158,7 @@ export default function CreateMeetUp() {
       <SafeAreaView style={{ backgroundColor: colors.WHITE }}>
         <View style={styles.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)?tab=current")}
             style={{ paddingLeft: 4, zIndex: 10 }}
           >
             <Ionicons
@@ -144,23 +169,23 @@ export default function CreateMeetUp() {
             />
           </Pressable>
 
-          <Text style={styles.headerTitle}>Open New Meet Up</Text>
+          <Text style={styles.headerTitle}>Edit Meet Up</Text>
 
           <Pressable
-            onPress={onPost}
-            disabled={isPostDisabled}
+            onPress={onUpdate}
+            disabled={isUpdateDisabled}
             style={{ paddingRight: 16, paddingBottom: 16 }}
           >
             <Text
               style={{
-                color: isPostDisabled ? colors.GRAY_600 : colors.PURPLE_300,
+                color: isUpdateDisabled ? colors.GRAY_600 : colors.PURPLE_300,
                 fontWeight: "600",
-                opacity: isPostDisabled ? 0.5 : 1,
+                opacity: isUpdateDisabled ? 0.5 : 1,
                 fontSize: 16,
                 paddingBottom: 4,
               }}
             >
-              Post
+              Update
             </Text>
           </Pressable>
         </View>
@@ -213,64 +238,72 @@ export default function CreateMeetUp() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Category</Text>
             <View style={styles.row}>
-              {CATEGORY_OPTIONS.map((opt) => {
-                const sel = opt === category;
-                return (
-                  <Pressable
-                    key={opt}
+              {CATEGORY_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt}
+                  style={[
+                    styles.chipFixed,
+                    styles.chip,
+                    opt === category && styles.chipSelected,
+                  ]}
+                  onPress={() => setCategory(opt)}
+                >
+                  <Text
                     style={[
-                      styles.chipFixed,
-                      styles.chip,
-                      sel && styles.chipSelected,
+                      styles.chipText,
+                      opt === category && styles.chipTextSel,
                     ]}
-                    onPress={() => setCategory(opt)}
                   >
-                    <Text style={[styles.chipText, sel && styles.chipTextSel]}>
-                      {opt}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                    {opt}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             <Text style={styles.modalTitle}>Gender</Text>
             <View style={styles.row}>
-              {GENDER_OPTIONS.map((opt) => {
-                const sel = opt === gender;
-                return (
-                  <Pressable
-                    key={opt}
+              {GENDER_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt}
+                  style={[
+                    styles.chipFixed,
+                    styles.chip,
+                    opt === gender && styles.chipSelected,
+                  ]}
+                  onPress={() => setGender(opt)}
+                >
+                  <Text
                     style={[
-                      styles.chipFixed,
-                      styles.chip,
-                      sel && styles.chipSelected,
+                      styles.chipText,
+                      opt === gender && styles.chipTextSel,
                     ]}
-                    onPress={() => setGender(opt)}
                   >
-                    <Text style={[styles.chipText, sel && styles.chipTextSel]}>
-                      {opt}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                    {opt}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             <Text style={styles.modalTitle}>Number of Participants</Text>
             <View style={styles.row}>
-              {PARTICIPANT_COUNTS.map((n) => {
-                const sel = n === count;
-                return (
-                  <Pressable
-                    key={n}
-                    style={[styles.chip, sel && styles.chipSelected]}
-                    onPress={() => setCount(n)}
+              {PARTICIPANT_COUNTS.map((n) => (
+                <Pressable
+                  key={n}
+                  style={[
+                    styles.chip,
+                    n === count && styles.chipSelected,
+                    n === 1 && { opacity: 0.3 },
+                  ]}
+                  disabled={n === 1}
+                  onPress={() => setCount(n)}
+                >
+                  <Text
+                    style={[styles.chipText, n === count && styles.chipTextSel]}
                   >
-                    <Text style={[styles.chipText, sel && styles.chipTextSel]}>
-                      {n}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                    {n}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
 
             <Text style={styles.modalTitle}>Meeting Date</Text>
@@ -293,7 +326,6 @@ export default function CreateMeetUp() {
                 style={styles.calendarIcon}
               />
             </Pressable>
-
             <DateTimePickerModal
               isVisible={showPicker}
               mode="date"

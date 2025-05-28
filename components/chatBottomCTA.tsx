@@ -1,7 +1,9 @@
 import { colors } from "@/constants/color";
-import { Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import React from "react";
 import {
+  Alert,
   Pressable,
   StyleSheet,
   TextInput,
@@ -15,6 +17,7 @@ interface ChatBottomCTAProps {
   value: string;
   onChangeText: (text: string) => void;
   onSend: (text: string) => void;
+  onImagePicked?: (uri: string) => void;
   containerStyle?: ViewStyle;
   inputStyle?: TextStyle;
 }
@@ -25,10 +28,37 @@ const ChatInput: React.FC<ChatBottomCTAProps> = ({
   onSend,
   containerStyle,
   inputStyle,
+  onImagePicked,
 }) => {
   const insets = useSafeAreaInsets();
 
   const isEnabled = value.length > 0;
+
+  // 갤러리 권한 체크 후 이미지 선택 함수
+  const pickImage = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("권한 필요", "갤러리 접근 권한이 필요합니다.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        onImagePicked?.(uri); // ✅ 상위에 콜백 전달
+      }
+    } catch (error) {
+      Alert.alert("오류", "이미지 선택 중 오류가 발생했습니다.");
+      console.error(error);
+    }
+  };
 
   return (
     <View
@@ -41,6 +71,16 @@ const ChatInput: React.FC<ChatBottomCTAProps> = ({
       <View style={styles.hairline} />
 
       <View style={styles.inputWrapper}>
+        <Pressable
+          onPress={pickImage}
+          style={({ pressed }) => [
+            styles.imageButton,
+            { opacity: pressed ? 0.5 : 1 },
+          ]}
+        >
+          <Feather name="image" size={28} color="black" />
+        </Pressable>
+
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -48,15 +88,21 @@ const ChatInput: React.FC<ChatBottomCTAProps> = ({
           multiline
           underlineColorAndroid="transparent"
           textAlignVertical="center"
+          autoCapitalize="none"
+          spellCheck={false}
+          importantForAutofill="no"
+          autoComplete="off"
+          autoCorrect={false}
         />
 
         <Pressable
           onPress={() => onSend(value)}
           disabled={!isEnabled}
-          style={[
+          style={({ pressed }) => [
             styles.sendButton,
             {
               backgroundColor: isEnabled ? colors.PURPLE_300 : colors.GRAY_300,
+              opacity: pressed && isEnabled ? 0.5 : 1,
             },
           ]}
         >
@@ -88,18 +134,19 @@ const styles = StyleSheet.create({
     height: 50,
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: 14,
+    paddingLeft: 4,
     paddingRight: 40,
     borderWidth: 1,
     borderColor: colors.GRAY_300,
     borderRadius: 12,
     backgroundColor: colors.WHITE,
-    // ✅ 핵심 수정
-    width: "100%", // 부모의 padding 반영됨
-    // ❌ alignSelf: "center" 제거!
-    // ❌ maxWidth도 제거! (PC 화면 아닌 이상 필요 없음)
+    width: "100%",
   },
-
+  imageButton: {
+    marginRight: 8,
+    paddingHorizontal: 4,
+    left: 6,
+  },
   input: {
     flex: 1,
     fontSize: 16,
@@ -109,7 +156,7 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     position: "absolute",
-    right: 8,
+    right: 16,
     top: "50%",
     transform: [{ translateY: -14 }],
     width: 28,

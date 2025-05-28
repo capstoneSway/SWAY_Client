@@ -1,11 +1,11 @@
-import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
-import * as Font from "expo-font"; // ✅ 폰트 import 추가
+import * as Clipboard from "expo-clipboard";
+import * as Font from "expo-font";
 import {
   useFocusEffect,
   useLocalSearchParams,
@@ -16,57 +16,53 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useState,
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Modal,
   Pressable,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { deleteLightning } from "../api/deleteLightning";
+import { fetchLightningCards } from "../api/fetchLightningList";
+import fetchMyLightningCards from "../api/fetchMyLightningCards";
 import fetchUserInfo from "../api/fetchUserInfo";
 import { getFcmToken } from "../api/getFcmToken";
+import { leaveLightning } from "../api/leaveLightning"; // 탈퇴 API import 추가
 import ensureValidToken from "../api/tokenManager";
 
 const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
 
-//  KST 기준 "May 24, 2025 7pm" 스타일 포맷 함수
-function formatKSTDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    hour12: true,
-  }).format(date);
-}
-
 export default function Home() {
   const navigation = useNavigation();
   const router = useRouter();
-  const { tab } = useLocalSearchParams<{ tab?: string }>(); // 뒤로가기 하면 탭 current 상태로 와야 해서.
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<"meetup" | "current">(
     tab === "current" ? "current" : "meetup"
   );
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [timeTick, setTimeTick] = useState(0); // 실시간 갱신용
-  const [fontsLoaded, setFontsLoaded] = useState(false); // ✅ 폰트 상태
-  const [cards, setCards] = useState([...CARDS]);
+  const [timeTick, setTimeTick] = useState(0);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [filteredCards, setFilteredCards] = useState<any[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [currentLoading, setCurrentLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
-  // 화면이 포커싱될 때마다 최신 CARDS 배열을 다시 적용
-  useFocusEffect(
-    useCallback(() => {
-      setCards([...CARDS]);
-    }, [])
-  );
+  function extractEmail(fullUsername: string): string {
+    const parts = fullUsername.split("_");
+    return parts.length > 1 ? parts.slice(1).join("_") : fullUsername;
+  }
 
-  // ✅ GasoekOne 폰트 로딩
   useEffect(() => {
     (async () => {
       await Font.loadAsync({
@@ -75,6 +71,81 @@ export default function Home() {
       setFontsLoaded(true);
     })();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        setCurrentLoading(true);
+        try {
+          let data;
+
+          if (activeTab === "current") {
+            const token = await ensureValidToken();
+
+            // 사용자 정보 먼저 받아서 이메일 추출
+            const userInfo = await fetchUserInfo(token);
+            const email = extractEmail(userInfo?.username || "");
+            setUserEmail(email);
+
+            // 참여중인 번개 가져오기
+            data = await fetchMyLightningCards();
+
+            // 이메일 기준으로 필터링
+            data = data.filter(
+              (item: any) =>
+                Array.isArray(item.participants) &&
+                item.participants.some((p: any) => p.email === email)
+            );
+
+            // 호스트 여부 태그 지정
+            data = data.map((item: any) => {
+              const tags: string[] = [];
+              if (
+                item.host?.email === email &&
+                item.participants.some((p: any) => p.email === email)
+              ) {
+                tags.push("hosted");
+              } else if (
+                item.host?.email !== email &&
+                item.participants.some((p: any) => p.email === email)
+              ) {
+                tags.push("participated");
+              }
+              return { ...item, tags };
+            });
+          } else {
+            data = await fetchLightningCards(selectedTag || undefined);
+          }
+
+          // 정렬 및 시급한 항목 강조 표시
+          const result = data
+            .map((c: any) => ({
+              ...c,
+              isFocused: isExpiringSoon(c.expiresAt),
+              expiryTime: new Date(c.expiresAt),
+            }))
+            .sort((a: any, b: any) => {
+              if (a.isFocused && !b.isFocused) return -1;
+              if (!a.isFocused && b.isFocused) return 1;
+              if (a.isFocused && b.isFocused) {
+                const aTime = a.expiryTime.getTime();
+                const bTime = b.expiryTime.getTime();
+                if (aTime !== bTime) return aTime - bTime;
+                return a.title.localeCompare(b.title);
+              }
+              return 0;
+            });
+
+          setFilteredCards(result);
+          setHasFetched(true);
+        } catch (err) {
+          console.error("⚠️ 번개모임 불러오기 실패", err);
+        } finally {
+          setCurrentLoading(false);
+        }
+      })();
+    }, [selectedTag, timeTick, activeTab])
+  );
 
   useEffect(() => {
     (async () => {
@@ -86,26 +157,19 @@ export default function Home() {
         return;
       }
 
-      // 사용자 정보로 분기처리 재활용
       try {
         const userInfo = await fetchUserInfo(token);
         if (!userInfo.nickname) {
-          console.log("🚧 닉네임 미설정 → /auth/signUsername");
           router.replace("/auth/signUsername");
         } else if (!userInfo.nationality) {
-          console.log("🚧 국적 미설정 → /auth/signNationality");
           router.replace("/auth/signNationality");
-        } else {
-          console.log("✅ 모든 정보 설정 완료 → 홈 화면 진입");
         }
       } catch (err) {
-        console.error("❌ 사용자 정보 조회 실패:", err);
         router.replace("/auth/signIn");
       }
     })();
   }, []);
 
-  //  기본 헤더 제거
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, []);
@@ -117,115 +181,267 @@ export default function Home() {
   useEffect(() => {
     try {
       const app = firebase.app();
-      console.log("✅ Firebase Initialized:", app.name); // 보통 "[DEFAULT]"
+      console.log("✅ Firebase Initialized:", app.name);
     } catch (e) {
       console.log("❌ Firebase not initialized", e);
     }
   }, []);
 
-  //  1분마다 포커싱 갱신을 위한 시간 트리거
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeTick((prev) => prev + 1);
-    }, 60 * 1000); // 1분 간격
+    }, 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // 로그인 토큰 검사
-  useEffect(() => {
-    (async () => {
-      const token = await ensureValidToken();
-      if (!token) {
-        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-        await CookieManager.clearAll();
-        router.replace("/auth/signIn");
-      }
-    })();
-  }, []);
-
-  //  포커싱 대상 판단 함수 (KST 기준으로 3시간 이하 남았는지 확인)
   function isExpiringSoon(expiresAt: string): boolean {
     const now = new Date();
     const endTime = new Date(expiresAt);
-    const remaining = endTime.getTime() - now.getTime(); // ⬅️ 여기만 쓰면 됨!
-    return remaining > 0 && remaining <= 3 * 60 * 60 * 1000;
+    const diffMs = endTime.getTime() - now.getTime();
+    return diffMs > 0 && diffMs <= 3 * 60 * 60 * 1000; // 3시간 이내 true
   }
 
-  // 필터링 + 정렬된 카드 목록 생성
-  const filteredCards = useMemo(() => {
-    return CARDS.filter((c) => !selectedTag || c.tag === selectedTag)
-      .map((c) => {
-        const endTime = new Date(c.expiresAt);
-        return {
-          ...c,
-          isFocused: isExpiringSoon(c.expiresAt),
-          expiryTime: endTime,
-        };
-      })
-      .sort((a, b) => {
-        if (a.isFocused && !b.isFocused) return -1;
-        if (!a.isFocused && b.isFocused) return 1;
-        if (a.isFocused && b.isFocused) {
-          const aTime = a.expiryTime.getTime();
-          const bTime = b.expiryTime.getTime();
-          if (aTime !== bTime) return aTime - bTime;
-          return a.title.localeCompare(b.title);
-        }
-        return 0;
-      });
-  }, [selectedTag, timeTick]); //  시간 변화 감지
-
-  const renderCard = ({ item }: { item: (typeof filteredCards)[0] }) => {
+  const renderCard = ({ item }: { item: any }) => {
     const isFocused = item.isFocused;
+    const endTimeString = item.expiresAt || item.end_time;
+    const endTime = new Date(endTimeString);
+    const isValidDate = !isNaN(endTime.getTime());
+
+    const participantsText = Array.isArray(item.participants)
+      ? `${item.participants.length}/${item.max_participant}`
+      : item.participants;
+
+    const isHost = item.host?.email === userEmail;
+    const isParticipated = item.tags?.includes("participated");
+
+    const handleDelete = async (id: number) => {
+      try {
+        await deleteLightning(id);
+        Alert.alert("Close Successful", "The meetup has been closed");
+        setFilteredCards((prev) => prev.filter((card) => card.id !== id));
+      } catch (error) {
+        Alert.alert(
+          "Delete Failed",
+          "Failed to delete the meetup for some reason. Please try again."
+        );
+      }
+    };
+
+    const handleLeave = async (id: number) => {
+      try {
+        await leaveLightning(id);
+        Alert.alert("Left", "You have successfully left the meetup.");
+        setFilteredCards((prev) => prev.filter((card) => card.id !== id));
+      } catch (error) {
+        Alert.alert("Error", "Failed to leave the meetup. Please try again.");
+      }
+    };
 
     return (
       <View style={[styles.card, isFocused && styles.cardFocused]}>
         <Text style={[styles.title, isFocused && styles.titleFocused]}>
           {item.title}
         </Text>
-
         <Text style={[styles.sub, isFocused && styles.subFocused]}>
-          Open until {formatKSTDate(item.expiresAt)}
+          {isValidDate
+            ? `Open until ${endTime.toLocaleString()}`
+            : "Open until N/A"}
         </Text>
-
         <Text
           style={[styles.participants, isFocused && styles.participantsFocused]}
         >
-          Participants: {item.participants}
+          Participants: {participantsText}
+          {"  "}
+          {item.tags?.map((tag: string, i: number) => (
+            <Text
+              key={i}
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: tag === "hosted" ? colors.PURPLE_300 : colors.YELLOW_500,
+                marginLeft: 8,
+              }}
+            >
+              {tag === "hosted" ? "Hosted" : "Participated"}
+            </Text>
+          ))}
         </Text>
 
-        <Pressable
-          disabled={item.status === "closed"}
-          onPress={() =>
-            router.push({
-              pathname: "/meetup/[id]",
-              params: { id: item.id.toString() },
-            })
-          }
-          style={[
-            styles.btn,
-            item.status === "closed"
-              ? styles.btnClosed
-              : isFocused
-              ? styles.btnFocused
-              : styles.btnDefault,
-          ]}
-        >
-          <Text
+        {activeTab === "current" ? (
+          <View style={{ flexDirection: "row", marginTop: 8 }}>
+            <Pressable
+              disabled={item.status === "closed"}
+              onPress={() =>
+                router.push({
+                  pathname: "/meetup/[id]",
+                  params: { id: item.id.toString() },
+                })
+              }
+              style={[
+                styles.btn,
+                item.status === "closed"
+                  ? styles.btnClosed
+                  : isFocused
+                  ? styles.btnFocused
+                  : styles.btnDefault,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.btnText,
+                  isFocused && styles.btnTextFocused,
+                  item.status === "closed" && styles.btnTextClosed,
+                ]}
+              >
+                {item.status === "closed"
+                  ? "Closed"
+                  : activeTab === "current"
+                  ? "Info"
+                  : "Register"}
+              </Text>
+            </Pressable>
+
+            {isHost && (
+              <>
+                <Pressable
+                  style={[
+                    styles.btn,
+                    styles.btnDefault,
+                    {
+                      backgroundColor: colors.GRAY_300,
+                      marginLeft: 8,
+                      alignSelf: "flex-end",
+                    },
+                  ]}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/meetup/editMeetUp",
+                      params: { id: item.id.toString() },
+                    })
+                  }
+                >
+                  <Text style={[styles.btnText, { color: colors.BLACK }]}>
+                    Edit
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.btn,
+                    styles.btnDefault,
+                    {
+                      backgroundColor: colors.RED_500,
+                      marginLeft: 8,
+                      alignSelf: "flex-end",
+                    },
+                  ]}
+                  onPress={() => {
+                    Alert.alert(
+                      "Delete Confirmation",
+                      "Are you sure you want to delete this meetup?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: () => handleDelete(item.id),
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.btnText, { color: colors.WHITE }]}>
+                    Close
+                  </Text>
+                </Pressable>
+              </>
+            )}
+
+            {!isHost && isParticipated && item.status !== "closed" && (
+              <Pressable
+                style={[
+                  styles.btn,
+                  {
+                    backgroundColor: colors.RED_500,
+                    marginLeft: 8,
+                    alignSelf: "flex-end",
+                  },
+                ]}
+                onPress={() => {
+                  Alert.alert(
+                    "Leave Confirmation",
+                    "Are you sure you want to leave this meetup?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Leave",
+                        style: "destructive",
+                        onPress: () => handleLeave(item.id),
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.btnText, { color: colors.WHITE }]}>
+                  Leave
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        ) : (
+          <Pressable
+            disabled={item.status === "closed"}
+            onPress={() =>
+              router.push({
+                pathname: "/meetup/[id]",
+                params: { id: item.id.toString() },
+              })
+            }
             style={[
-              styles.btnText,
-              isFocused && styles.btnTextFocused,
-              item.status === "closed" && styles.btnTextClosed,
+              styles.btn,
+              item.status === "closed"
+                ? styles.btnClosed
+                : isFocused
+                ? styles.btnFocused
+                : styles.btnDefault,
             ]}
           >
-            {item.status === "closed" ? "Closed" : "Register"}
-          </Text>
-        </Pressable>
+            <Text
+              style={[
+                styles.btnText,
+                isFocused && styles.btnTextFocused,
+                item.status === "closed" && styles.btnTextClosed,
+              ]}
+            >
+              {item.status === "closed" ? "Closed" : "Register"}
+            </Text>
+          </Pressable>
+        )}
       </View>
     );
   };
 
-  // ✅ 폰트 로딩 안 됐을 때 기본 UI 제공
+  const handleFcmTest = async () => {
+    try {
+      const token = await getFcmToken();
+      if (token) {
+        setFcmToken(token);
+        setTokenError(null);
+        Clipboard.setStringAsync(token);
+        Alert.alert("복사됨", "FCM 토큰이 클립보드에 복사되었습니다.");
+      } else {
+        setFcmToken(null);
+        setTokenError("토큰 발급에 실패했습니다.");
+        Clipboard.setStringAsync("failed!!");
+      }
+    } catch (e) {
+      setFcmToken(null);
+      setTokenError("토큰 발급 중 에러가 발생했습니다.");
+    } finally {
+      setModalVisible(true);
+    }
+  };
+
   if (!fontsLoaded) {
     return (
       <View
@@ -243,7 +459,7 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/*  커스텀 헤더 */}
+      {/* 헤더 */}
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>Home</Text>
@@ -294,27 +510,42 @@ export default function Home() {
       )}
 
       {/* 카드 리스트 */}
-      {activeTab === "meetup" ? (
+      {currentLoading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={colors.PURPLE_300} />
+        </View>
+      ) : (
         <FlatList
           data={filteredCards}
           renderItem={renderCard}
           keyExtractor={(i) => i.id.toString()}
           contentContainerStyle={styles.cardList}
+          ListEmptyComponent={
+            !currentLoading && hasFetched ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>
+                  {activeTab === "current"
+                    ? "You're not in any chat rooms right now."
+                    : "No meet ups found."}
+                </Text>
+                {activeTab === "current" && (
+                  <Text style={styles.emptyText}>
+                    Join a meet up to get started!
+                  </Text>
+                )}
+              </View>
+            ) : null
+          }
         />
-      ) : (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>
-            You're not in any chat rooms right now.
-          </Text>
-          <Text style={styles.emptyText}>Join a meet up to get started!</Text>
-        </View>
       )}
 
-      {/* ✅ 임시 로그인창 이동 버튼 */}
+      {/* 로그인 창 이동 버튼 */}
       <Pressable
         style={{
           position: "absolute",
-          bottom: 8,
+          bottom: 12,
           alignSelf: "center",
           backgroundColor: colors.PURPLE_300,
           paddingHorizontal: 16,
@@ -328,31 +559,24 @@ export default function Home() {
         </Text>
       </Pressable>
 
+      {/* FCM 테스트 버튼 */}
       <Pressable
         style={{
           position: "absolute",
-          bottom: 80,
+          bottom: 64,
           alignSelf: "center",
           backgroundColor: colors.YELLOW_500,
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderRadius: 20,
         }}
-        onPress={async () => {
-          const token = await getFcmToken();
-          if (token) {
-            console.log("[FCM 테스트 버튼] 토큰:", token);
-          } else {
-            console.log("[FCM 테스트 버튼] 토큰 발급 실패");
-          }
-        }}
+        onPress={handleFcmTest}
       >
         <Text style={{ color: colors.BLACK, fontWeight: "600" }}>
           FCM 토큰 테스트
         </Text>
       </Pressable>
 
-      {/* 플로팅 버튼 */}
       {activeTab === "meetup" && (
         <Pressable
           style={styles.fab}
@@ -361,6 +585,41 @@ export default function Home() {
           <Ionicons name="pencil" size={32} color={colors.WHITE} />
         </Pressable>
       )}
+
+      {/* FCM 모달 */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>FCM 토큰 정보</Text>
+            <ScrollView
+              style={{ maxHeight: 150, marginVertical: 10 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {tokenError ? (
+                <Text style={styles.errorText}>{tokenError}</Text>
+              ) : (
+                <Text selectable style={styles.tokenText}>
+                  {fcmToken}
+                </Text>
+              )}
+            </ScrollView>
+            <Pressable
+              onPress={() => {
+                Clipboard.setStringAsync(fcmToken || "failed");
+                Alert.alert("복사됨", "FCM 토큰이 클립보드에 복사되었습니다.");
+              }}
+            >
+              <Text>복사하기</Text>
+            </Pressable>
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeText}>닫기</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -379,7 +638,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     fontWeight: "bold",
     color: colors.PURPLE_300,
-    fontFamily: "GasoekOne", // ✅ 폰트 적용
+    fontFamily: "GasoekOne",
   },
   headerTitle: {
     position: "absolute",
@@ -464,11 +723,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     minWidth: 80,
     alignItems: "center",
+    height: 30,
   },
   btnDefault: { backgroundColor: colors.PURPLE_300 },
   btnFocused: { backgroundColor: colors.YELLOW_500 },
   btnClosed: { backgroundColor: colors.GRAY_500 },
-  btnText: { fontSize: 14, fontWeight: "600", color: colors.WHITE },
+  btnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.WHITE,
+    textAlign: "center",
+    lineHeight: 15,
+  },
   btnTextFocused: { color: colors.PURPLE_300 },
   btnTextClosed: { color: colors.WHITE },
   empty: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -478,6 +744,46 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 4,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    width: "85%",
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  tokenText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.RED_500,
+    textAlign: "center",
+  },
+  closeButton: {
+    marginTop: 15,
+    backgroundColor: colors.PURPLE_300,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  closeText: {
+    color: "white",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
   fab: {
     position: "absolute",
     bottom: 16,

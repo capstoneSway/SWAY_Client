@@ -85,6 +85,6 @@ export function addCard(newCard) {
 
   CARDS.unshift({
     ...newCard,
-    image: randomImage,
+    image: newCard.image,
   });
 }

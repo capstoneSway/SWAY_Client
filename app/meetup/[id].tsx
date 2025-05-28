@@ -1,72 +1,115 @@
+// MeetUpDetail.tsx
 import FixedBottomCTA from "@/components/FixedBottomCTA";
-import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
-import {
-  Stack,
-  useLocalSearchParams,
-  useNavigation,
-  useRouter,
-} from "expo-router";
-import React from "react";
+import axios from "axios";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-function formatKSTDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
-  }).format(date);
-}
+import { joinLightning } from "../api/joinLightning";
 
 export default function MeetUpDetail() {
   const defaultProfile = require("@/assets/images/default_profile.png");
-
-  const navigation = useNavigation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [meetup, setMeetup] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const getFlagByCode = (code: string) => {
     const found = countries.find((c) => c.code === code);
     return found ? found.flag : null;
   };
 
-  const meetup = CARDS.find((card) => card.id === Number(id));
+  // 임시 계산용: createdAt + 24시간
+  const calculateExpiresAt = (createdAt: string) => {
+    const base = new Date(createdAt);
+    return new Date(base.getTime() + 24 * 60 * 60 * 1000);
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const res = await axios.get(
+          `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
+        );
+        console.log("API 응답 res.data:", res.data);
+        setMeetup(res.data);
+      } catch (e) {
+        console.error("❌ 모임 정보 불러오기 실패", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  useEffect(() => {
+    console.log("participantAvatars:", meetup?.participantAvatars);
+  }, [meetup]);
+
+  const handleJoin = async () => {
+    if (meetup.status === "closed") {
+      Alert.alert("The meetup is closed.");
+      return;
+    }
+
+    try {
+      const res = await joinLightning(meetup.id);
+      console.log("✅ 참가 성공 응답 데이터:", res);
+
+      // 새로 받은 participants로 상태 업데이트하거나 필요 시 다시 fetch
+      if (res.participants) {
+        setMeetup((prev: any) => ({
+          ...prev,
+          participants: res.participants.map((p: any) => p.username || p.email),
+          participantAvatars: res.participants, // 필요에 따라
+        }));
+      }
+
+      router.push({
+        pathname: "/meetup/chatRoom/[id]",
+        params: { id: meetup.id.toString() },
+      });
+    } catch (err: any) {
+      console.error(
+        "❌ 번개 참가 실패:",
+        err.response?.data || err.message || err
+      );
+      Alert.alert(
+        "Join Failed",
+        err.response?.data?.message || "Unable to join the meetup."
+      );
+    }
+  };
+
   if (!meetup) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>해당 모임을 찾을 수 없습니다.</Text>
+        <Text>The requested meetup could not be found.</Text>
       </SafeAreaView>
     );
   }
 
-  const handleJoin = () => {
-    if (meetup.status === "closed") {
-      Alert.alert("모임이 마감되었습니다", "죄송해요. 방금 마감되었어요.");
-      return;
-    }
-    router.push({
-      pathname: "/meetup/chatRoom/[id]",
-      params: { id: meetup.id.toString() },
-    });
-  };
+  function capitalizeFirstLetter(str: string) {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 
-  const titleDate = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    month: "long",
+  const titleDate = new Date(meetup.meeting_date).toLocaleDateString("en-US", {
+    month: "short",
     day: "numeric",
-  }).format(new Date(meetup.meetupTime));
-
-  let genderIcon = "⚧";
-  if (meetup.gender === "Male") genderIcon = "♂";
-  else if (meetup.gender === "Female") genderIcon = "♀";
+  });
+  const expiresAt = meetup.expiresAt
+    ? new Date(meetup.expiresAt)
+    : calculateExpiresAt(meetup.created_at);
+  const imageSource =
+    typeof meetup.background_pic === "string" &&
+    meetup.background_pic.startsWith("http")
+      ? { uri: meetup.background_pic }
+      : defaultProfile;
 
   return (
     <>
@@ -74,39 +117,23 @@ export default function MeetUpDetail() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Pressable
-            onPress={() => navigation.goBack()}
-            style={{ paddingLeft: 4, zIndex: 10 }}
+            onPress={() => {
+              router.replace("/(tabs)");
+            }}
+            style={{
+              width: 44,
+              height: 28,
+              justifyContent: "center",
+              zIndex: 10,
+            }}
           >
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color={colors.BLACK}
-              style={{ paddingBottom: 16, marginLeft: -4 }}
-            />
+            <Ionicons name="chevron-back" size={24} color={colors.BLACK} />
           </Pressable>
-
           <Text style={styles.headerTitle}>Meet Up</Text>
-
-          <Pressable
-            onPress={() => {}}
-            style={{ paddingRight: 0, paddingBottom: 16 }}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={colors.BLACK}
-            />
-          </Pressable>
+          <View style={{ width: 24 }} />
         </View>
 
-        <Image
-          source={
-            typeof meetup.image === "string"
-              ? { uri: meetup.image }
-              : meetup.image
-          }
-          style={styles.image}
-        />
+        <Image source={imageSource} style={styles.image} />
 
         <View style={styles.infoBox}>
           <View style={styles.titleRow}>
@@ -114,71 +141,45 @@ export default function MeetUpDetail() {
               [{meetup.title}, {titleDate}]
             </Text>
             <View style={styles.avatars}>
-              {meetup.participantAvatars.slice(0, 3).map((p, i) => (
+              {meetup.participants?.slice(0, 3).map((p: any, i: number) => (
                 <View
-                  key={i}
+                  key={p.id ?? i}
                   style={[
                     styles.avatarWrapper,
                     { marginLeft: i === 0 ? 0 : -10 },
                   ]}
                 >
                   <Image
-                    source={defaultProfile} // ✅ 고정 이미지
+                    source={
+                      p.profile_image
+                        ? { uri: p.profile_image }
+                        : defaultProfile
+                    }
                     style={styles.avatar}
                     resizeMode="cover"
                   />
-                  <Image
-                    source={getFlagByCode(p.countryCode)}
-                    style={styles.flag}
-                    resizeMode="cover"
-                  />
+                  {/* countryCode 정보가 없으므로 국기는 생략하거나 호스트 프로필에만 띄우기 */}
                 </View>
               ))}
-              {meetup.participantAvatars.length > 3 && (
-                <View style={styles.moreBadge}>
-                  <Text style={styles.moreText}>
-                    +{meetup.participantAvatars.length - 3}
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
 
           <View style={styles.tagRow}>
-            <Text style={styles.tag}>#{meetup.tag}</Text>
-            {meetup.gender === "Male" && (
-              <>
-                <Text style={styles.tag}>#</Text>
-                <FontAwesome5
-                  name="mars"
-                  size={22}
-                  color={colors.PURPLE_300}
-                  style={{ paddingTop: 8 }}
-                />
-              </>
-            )}
-            {meetup.gender === "Female" && (
-              <>
-                <Text style={styles.tag}>#</Text>
-                <FontAwesome5
-                  name="venus"
-                  size={22}
-                  color={colors.PURPLE_300}
-                  style={{ paddingTop: 8 }}
-                />
-              </>
-            )}
-            {meetup.gender === "All" && (
-              <>
-                <Text style={styles.tag}>#</Text>
-                <FontAwesome5
-                  name="transgender"
-                  size={22}
-                  color={colors.PURPLE_300}
-                  style={{ paddingTop: 8 }}
-                />
-              </>
-            )}
+            <Text style={styles.tag}>
+              #{capitalizeFirstLetter(meetup.category)}
+            </Text>
+            <FontAwesome5
+              name={
+                meetup.gender === "Male"
+                  ? "mars"
+                  : meetup.gender === "Female"
+                  ? "venus"
+                  : "transgender"
+              }
+              size={22}
+              color={colors.PURPLE_300}
+              style={{ paddingTop: 8, marginLeft: 4 }}
+            />
           </View>
 
           <Text style={styles.description}>{meetup.content}</Text>
@@ -188,10 +189,11 @@ export default function MeetUpDetail() {
           <FixedBottomCTA label="Join" enabled={true} onPress={handleJoin} />
         )}
       </SafeAreaView>
+
       <View style={styles.openUntilRow}>
         <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
         <Text style={styles.openUntilText}>
-          Open Until: {formatKSTDate(meetup.expiresAt)}
+          Open Until: {expiresAt.toLocaleString()}
         </Text>
       </View>
     </>
@@ -199,11 +201,7 @@ export default function MeetUpDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.WHITE,
-  },
-
+  container: { flex: 1, backgroundColor: colors.WHITE },
   header: {
     marginTop: 4,
     flexDirection: "row",
@@ -212,7 +210,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.GRAY_300,
-    paddingBottom: 4,
   },
   headerTitle: {
     position: "absolute",
@@ -221,15 +218,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 18,
     fontWeight: "600",
-    paddingBottom: 8,
   },
-
   image: {
     width: "100%",
     height: 360,
     backgroundColor: colors.GRAY_200,
   },
-
   infoBox: {
     backgroundColor: colors.WHITE,
     paddingHorizontal: 16,
@@ -241,7 +235,6 @@ const styles = StyleSheet.create({
     zIndex: 2,
     position: "relative",
   },
-
   titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -253,34 +246,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flexShrink: 1,
   },
-
   avatarWrapper: {
     width: 40,
     height: 40,
     borderRadius: 20,
     position: "relative",
     overflow: "visible",
-    zIndex: 2,
     marginBottom: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4, // Android용
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     borderColor: colors.WHITE,
-    backgroundColor: colors.GRAY_200, // 혹시 이미지 로딩 안 될 때 대비
-    zIndex: 1,
+    backgroundColor: colors.GRAY_200,
   },
-
-  avatars: {
-    flexDirection: "row",
-    zIndex: 2,
-  },
+  avatars: { flexDirection: "row" },
   flag: {
     width: 18,
     height: 18,
@@ -288,16 +269,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -2,
     right: 0,
-    borderWidth: 0,
-    borderColor: colors.WHITE,
-    zIndex: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4, // Android용
   },
-
   moreBadge: {
     width: 40,
     height: 40,
@@ -306,19 +278,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: -10,
-    zIndex: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4, // Android용
     marginTop: 1,
   },
-  moreText: {
-    fontSize: 12,
-    color: colors.BLACK,
-  },
-
+  moreText: { fontSize: 12, color: colors.BLACK },
   tagRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -331,11 +293,6 @@ const styles = StyleSheet.create({
     color: colors.PURPLE_300,
     fontWeight: "600",
   },
-  gender: {
-    fontSize: 16,
-    color: colors.PURPLE_300,
-  },
-
   description: {
     marginTop: 10,
     fontSize: 14,
@@ -343,7 +300,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 16,
   },
-
   openUntilRow: {
     position: "absolute",
     bottom: 110,
@@ -352,7 +308,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: colors.WHITE,
   },
-
   openUntilText: {
     fontSize: 18,
     color: colors.BLACK,

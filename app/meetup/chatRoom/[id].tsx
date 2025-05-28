@@ -29,6 +29,7 @@ type Message = {
   sender: string;
   profile?: string; // 프로필 이미지 URL
   countryCode?: string; // ISO 코드 (예: "USA", "KRW")
+  image?: string;
 };
 
 function formatKSTDate(dateStr: string): string {
@@ -214,6 +215,7 @@ export default function ChatRoom() {
     <>
       <Stack.Screen
         options={{
+          headerShown: true,
           header: () => (
             <SafeAreaView edges={["top"]} style={{ backgroundColor: "white" }}>
               <StatusBar barStyle="dark-content" backgroundColor="white" />
@@ -381,10 +383,13 @@ export default function ChatRoom() {
                         styles.bubble,
                         {
                           alignSelf: isMine ? "flex-end" : "flex-start",
-                          backgroundColor: isMine
+                          backgroundColor: msg.image
+                            ? "transparent"
+                            : isMine
                             ? colors.PURPLE_300
                             : colors.PURPLE_100,
                           marginTop: 2,
+                          padding: msg.image ? 0 : 6, // 이미지면 padding 제거
                         },
                         isMine && { borderRadius: 18 },
                         !isMine &&
@@ -405,15 +410,39 @@ export default function ChatRoom() {
                           },
                       ]}
                     >
-                      <Text
-                        style={{
-                          textAlign: "left",
-                          color: isMine ? colors.WHITE : colors.BLACK,
-                          lineHeight: 20,
-                        }}
-                      >
-                        {msg.text}
-                      </Text>
+                      {msg.image ? (
+                        <Pressable
+                          onPress={() =>
+                            router.push({
+                              pathname: "/viewer/imageFullView", // ✅ 여기에 imageFullView가 아니라 /viewer/image
+                              params: { src: msg.image ?? "" },
+                            })
+                          }
+                        >
+                          <Image
+                            source={{ uri: msg.image }}
+                            style={{
+                              marginRight: -12,
+                              width: 180,
+                              height: 180,
+                              borderRadius: 12,
+                              resizeMode: "cover",
+                              marginTop: -6,
+                              marginBottom: -5,
+                            }}
+                          />
+                        </Pressable>
+                      ) : (
+                        <Text
+                          style={{
+                            textAlign: "left",
+                            color: isMine ? colors.WHITE : colors.BLACK,
+                            lineHeight: 20,
+                          }}
+                        >
+                          {msg.text}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -436,6 +465,15 @@ export default function ChatRoom() {
               };
               setMessages((prev) => [...prev, newMessage]);
               setChatText("");
+            }}
+            onImagePicked={(uri) => {
+              const newImageMessage: Message = {
+                id: messages.length + 1,
+                text: "",
+                sender: currentUser,
+                image: uri,
+              };
+              setMessages((prev) => [...prev, newImageMessage]);
             }}
           />
         </View>

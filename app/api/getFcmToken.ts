@@ -1,7 +1,7 @@
 import messaging from "@react-native-firebase/messaging";
 import { PermissionsAndroid, Platform } from "react-native";
 
-// 🔔 FCM 권한 요청
+// FCM 권한 요청
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (Platform.OS === "ios") {
     const authStatus = await messaging().requestPermission();
@@ -24,7 +24,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   return true;
 };
 
-// 📦 FCM 토큰 요청
+// FCM 토큰 요청
 export const getFcmToken = async (): Promise<string | null> => {
   try {
     const token = await messaging().getToken();

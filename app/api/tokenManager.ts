@@ -9,8 +9,8 @@ export default async function ensureValidToken(): Promise<string | null> {
   const refresh = await AsyncStorage.getItem("@refreshToken");
 
   console.log("Stored tokens:");
-  console.log("  - access:", access?.slice(0, 20) + "..." || "없음");
-  console.log("  - refresh:", refresh?.slice(0, 20) + "..." || "없음");
+  console.log("  - access:", access || "없음");
+  console.log("  - refresh:", refresh || "없음");
 
   if (!access) {
     console.log("Access 토큰 없음 → null 반환");
