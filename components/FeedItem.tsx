@@ -1,18 +1,11 @@
-import { toggleLike, toggleScrap, blockPostAuthor } from "@/app/api/board";
-import { colors } from "@/constants/color";
+import { blockPostAuthor, toggleLike, toggleScrap } from "@/app/api/board";
 import { Post } from "@/app/type/types";
+import { colors } from "@/constants/color";
 import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Profile from "./Profile";
 
 interface FeedItemProps {
@@ -23,6 +16,7 @@ interface FeedItemProps {
   onEdit?: () => void;
   onLikePress?: () => void;
   onScrapPress?: () => void;
+  hideMenu?: boolean;
 }
 
 const FeedItem = ({
@@ -31,15 +25,25 @@ const FeedItem = ({
   onCommentPress,
   onDelete,
   onEdit,
+  onLikePress,
+  onScrapPress,
+  hideMenu = false,
 }: FeedItemProps) => {
   const [isLiked, setIsLiked] = useState(post.isLiked ?? false);
   const [likeCount, setLikeCount] = useState(post.likes ?? 0);
   const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked ?? false);
   const [bookmarkCount, setBookmarkCount] = useState(post.bookmarks ?? 0);
   const [commentCount, setCommentCount] = useState(post.commentCount ?? 0);
-
   const [showMenu, setShowMenu] = useState(false);
   const [isMyPost, setIsMyPost] = useState(false);
+
+  // ✅ 최초 한 번만 상태 초기화
+  useEffect(() => {
+    setIsLiked(post.isLiked ?? false);
+    setLikeCount(post.likes ?? 0);
+    setIsBookmarked(post.isBookmarked ?? false);
+    setBookmarkCount(post.bookmarks ?? 0);
+  }, []);
 
   useEffect(() => {
     const checkIsMyPost = async () => {
@@ -53,7 +57,13 @@ const FeedItem = ({
 
   const handlePressFeed = () => {
     if (!isDetail) {
-      router.push(`/board/${post.id}`);
+      router.push({
+        pathname: "/board/[id]",
+        params: {
+          id: String(post.id),
+          post: JSON.stringify(post),
+        },
+      });
     }
   };
 
@@ -111,7 +121,10 @@ const FeedItem = ({
   const handleBlock = async () => {
     try {
       await blockPostAuthor(post.id);
-      Alert.alert("User Blocked", "You will no longer see posts from this user.");
+      Alert.alert(
+        "User Blocked",
+        "You will no longer see posts from this user."
+      );
       setShowMenu(false);
     } catch (err) {
       console.error("Failed to block user:", err);
@@ -128,10 +141,13 @@ const FeedItem = ({
             nickname={post?.author?.nickname ?? "Anonymous"}
             createdAt={post?.createdAt ?? new Date().toISOString()}
           />
-
-          {isDetail && (
+          {isDetail && !hideMenu && (
             <Pressable onPress={() => setShowMenu(true)}>
-              <Ionicons name="ellipsis-vertical" size={20} color={colors.BLACK} />
+              <Ionicons
+                name="ellipsis-vertical"
+                size={20}
+                color={colors.BLACK}
+              />
             </Pressable>
           )}
         </View>
@@ -143,7 +159,7 @@ const FeedItem = ({
       </View>
 
       <View style={styles.menuContainer}>
-        <Pressable style={styles.menu} onPress={handleLike}>
+        <Pressable style={styles.menu} onPress={onLikePress ?? handleLike}>
           <AntDesign
             name={isLiked ? "heart" : "hearto"}
             size={20}
@@ -159,18 +175,29 @@ const FeedItem = ({
           <Text style={styles.menuText}>{commentCount}</Text>
         </Pressable>
 
-        <Pressable style={styles.menu} onPress={handleScrap}>
+        <Pressable style={styles.menu} onPress={onScrapPress ?? handleScrap}>
           <Ionicons
             name={isBookmarked ? "bookmark" : "bookmark-outline"}
             size={20}
             color={isBookmarked ? colors.PURPLE_300 : colors.BLACK}
           />
-          <Text style={styles.menuText}>{bookmarkCount}</Text>
+          <Text
+            style={{
+              marginLeft: 4,
+              fontSize: 14,
+              color: isBookmarked ? colors.PURPLE_300 : colors.GRAY_700,
+            }}
+          >
+            {bookmarkCount > 0 ? bookmarkCount : ""}
+          </Text>
         </Pressable>
       </View>
 
       <Modal transparent visible={showMenu} animationType="fade">
-        <Pressable style={styles.modalBackground} onPress={() => setShowMenu(false)}>
+        <Pressable
+          style={styles.modalBackground}
+          onPress={() => setShowMenu(false)}
+        >
           <View style={styles.modalBox}>
             {isMyPost ? (
               <>
@@ -178,7 +205,9 @@ const FeedItem = ({
                   <Text style={styles.menuTextOnly}>Edit Post</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleDelete}>
-                  <Text style={[styles.menuTextOnly, { color: "red" }]}>Delete Post</Text>
+                  <Text style={[styles.menuTextOnly, { color: "red" }]}>
+                    Delete Post
+                  </Text>
                 </Pressable>
               </>
             ) : (
@@ -187,7 +216,9 @@ const FeedItem = ({
                   <Text style={styles.menuTextOnly}>Report Post</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleBlock}>
-                  <Text style={[styles.menuTextOnly, { color: "red" }]}>Block Author</Text>
+                  <Text style={[styles.menuTextOnly, { color: "red" }]}>
+                    Block Author
+                  </Text>
                 </Pressable>
               </>
             )}

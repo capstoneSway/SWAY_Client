@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
+//import CookieManager from "@react-native-cookies/cookies";
 import { router } from "expo-router";
 import { api } from "./axios";
 
@@ -37,7 +37,7 @@ const deleteAccount = async () => {
     }
   } finally {
     await AsyncStorage.clear();
-    await CookieManager.clearAll();
+    //await CookieManager.clearAll();
     console.log("로컬 토큰/쿠키 제거");
     router.replace("./auth");
   }

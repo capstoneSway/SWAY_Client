@@ -3,8 +3,9 @@ import { colors } from "@/constants/color";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
-import firebase from "@react-native-firebase/app";
+//import CookieManager from "@react-native-cookies/cookies";
+//import firebase from "@react-native-firebase/app";
+import "@/app/api/interceptors";
 import * as Font from "expo-font"; // ✅ 폰트 import 추가
 import {
   useFocusEffect,
@@ -28,7 +29,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import fetchUserInfo from "../api/fetchUserInfo";
+import { fetchUserInfo } from "@/app/api/fetchUserInfo";
 import { getFcmToken } from "../api/getFcmToken";
 import ensureValidToken from "../api/tokenManager";
 
@@ -81,7 +82,7 @@ export default function Home() {
       const token = await ensureValidToken();
       if (!token) {
         await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-        await CookieManager.clearAll();
+        //await CookieManager.clearAll();
         router.replace("/auth/signIn");
         return;
       }
@@ -116,8 +117,8 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const app = firebase.app();
-      console.log("✅ Firebase Initialized:", app.name); // 보통 "[DEFAULT]"
+      //const app = firebase.app();
+     // console.log("✅ Firebase Initialized:", app.name); // 보통 "[DEFAULT]"
     } catch (e) {
       console.log("❌ Firebase not initialized", e);
     }

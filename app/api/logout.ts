@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
+//import CookieManager from "@react-native-cookies/cookies";
 import { router } from "expo-router";
 import { api } from "./axios";
 
@@ -43,7 +43,7 @@ const logout = async () => {
   } finally {
     try {
       await AsyncStorage.clear();
-      await CookieManager.clearAll();
+      //await CookieManager.clearAll();
       console.log("로컬 토큰 + 쿠키 삭제 완료");
     } catch (cleanupErr) {
       console.error("로컬 삭제 중 에러:", cleanupErr);

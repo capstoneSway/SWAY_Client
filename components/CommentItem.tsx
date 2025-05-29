@@ -15,7 +15,7 @@ interface CommentItemProps {
   profileUri?: string;
   nationality?: string;
   onPressReply?: () => void;
-  userId: number;
+  username: string;
   commentId: number;
   postId: number;
   isReply?: boolean;
@@ -31,36 +31,42 @@ export default function CommentItem({
   content,
   createdAt,
   likes = 0,
+  isLiked: initialIsLiked,
   profileUri,
   nationality,
   onPressReply,
-  userId,
+  username,
   commentId,
   postId,
   isReply = false,
+  mostLiked = false,
   onEdit,
   onDelete,
+  onPressLike,
 }: CommentItemProps) {
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [likeCount, setLikeCount] = useState(likes);
   const [menuVisible, setMenuVisible] = useState(false);
   const [isMyComment, setIsMyComment] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const myId = await AsyncStorage.getItem("@userId");
-      setIsMyComment(myId === String(userId));
+    const checkUsername = async () => {
+      const myUsername = await AsyncStorage.getItem("myUsername");
+      if (myUsername && myUsername === username) {
+        setIsMyComment(true);
+      }
     };
-    checkUser();
-  }, [userId]);
+    checkUsername();
+  }, [username]);
 
   const toggleLike = async () => {
     try {
       const updated = await toggleCommentLike(commentId);
       setIsLiked(updated.isLiked);
       setLikeCount(updated.like);
+      onPressLike?.();
     } catch (err) {
-      console.error("댓글 좋아요 실패:", err);
+      console.error("Failed to like comment:", err);
     }
   };
 
@@ -70,21 +76,8 @@ export default function CommentItem({
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            onDelete?.();
-            setMenuVisible(false);
-          },
-        },
-      ]
-    );
+    setMenuVisible(false);
+    onDelete?.();
   };
 
   const handleReport = () => {
@@ -100,7 +93,7 @@ export default function CommentItem({
         "You will no longer see comments from this user."
       );
     } catch (err) {
-      console.error("댓글 작성자 차단 실패:", err);
+      console.error("Failed to block comment author:", err);
       Alert.alert("Error", "Failed to block the comment author.");
     } finally {
       setMenuVisible(false);
@@ -108,6 +101,7 @@ export default function CommentItem({
   };
 
   const formattedDate = new Date(createdAt).toLocaleString("en-US", {
+    year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -122,7 +116,7 @@ export default function CommentItem({
           {isReply && (
             <Feather
               name="corner-down-right"
-              size={24}
+              size={20}
               color="black"
               style={styles.arrowIcon}
             />
@@ -136,6 +130,10 @@ export default function CommentItem({
         </View>
 
         <View style={styles.rightContent}>
+          {mostLiked && (
+            <Text style={styles.mostLikedLabel}>🌟 Most liked comment</Text>
+          )}
+
           <View style={styles.topRow}>
             <View style={styles.iconGroup}>
               <Pressable onPress={toggleLike} style={styles.iconButton}>
@@ -190,23 +188,21 @@ export default function CommentItem({
             {isMyComment ? (
               <>
                 <Pressable style={styles.menuItem} onPress={handleEdit}>
-                  <Text style={styles.menuText}>Edit Comment</Text>
+                  <Text style={styles.menuText}>Edit</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleDelete}>
                   <Text style={[styles.menuText, { color: "red" }]}>
-                    Delete Comment
+                    Delete
                   </Text>
                 </Pressable>
               </>
             ) : (
               <>
                 <Pressable style={styles.menuItem} onPress={handleReport}>
-                  <Text style={styles.menuText}>Report Comment</Text>
+                  <Text style={styles.menuText}>Report</Text>
                 </Pressable>
                 <Pressable style={styles.menuItem} onPress={handleBlock}>
-                  <Text style={[styles.menuText, { color: "red" }]}>
-                    Block Comment Author
-                  </Text>
+                  <Text style={[styles.menuText, { color: "red" }]}>Block</Text>
                 </Pressable>
               </>
             )}
@@ -238,6 +234,11 @@ const styles = StyleSheet.create({
   },
   rightContent: {
     flex: 1,
+  },
+  mostLikedLabel: {
+    fontSize: 12,
+    color: colors.PURPLE_200,
+    marginBottom: 4,
   },
   topRow: {
     flexDirection: "row",

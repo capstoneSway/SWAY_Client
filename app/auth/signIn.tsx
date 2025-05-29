@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { api } from "../api/axios";
-import fetchUserInfo from "../api/fetchUserInfo";
+import {fetchUserInfo} from "../api/fetchUserInfo";
 import logout from "../api/logout";
 import refreshToken from "../api/refreshToken";
 import deleteAccount from "../api/unregister";
@@ -134,6 +134,9 @@ export default function AuthHome() {
         // 8) 사용자 정보 조회 후 라우팅
         const userInfo = await fetchUserInfo(jwt_access);
         console.log("🟢 fetchUserInfo 결과:", userInfo);
+        if (userInfo?.id) {
+        console.log("🟢 로그인한 사용자 ID:", userInfo.id);
+}
 
         if (userInfo) {
           if (!userInfo.nickname) router.replace("/auth/signUsername");

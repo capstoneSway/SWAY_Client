@@ -6,7 +6,6 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
 const logoImage = require("@/assets/images/logo_letter.png");
 
 interface CommonHeaderProps {
@@ -68,8 +67,8 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   logo: {
-    height: 100,
-    width: 100,
+    height: 80,
+    width: 80,
   },
   iconButton: {
     paddingLeft: 8,
