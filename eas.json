@@ -1,15 +1,19 @@
 {
   "cli": {
-    "version": ">= 16.4.1",
+    "version": ">= 3.13.0",
     "appVersionSource": "remote"
   },
   "build": {
     "preview": {
-      "distribution": "store"
+      "distribution": "internal",
+      "developmentClient": false
     },
     "production": {
       "ios": {
         "distribution": "store"
+      },
+      "android": {
+        "buildType": "apk"
       },
       "autoIncrement": true
     }

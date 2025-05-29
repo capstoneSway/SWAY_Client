@@ -1,8 +1,13 @@
+// ✅ 실시간 채팅으로 대체한 ChatRoom.tsx
+// ❗️하드코딩된 UI 코드 절대 수정하지 않음
+
+import useChatSocket from "@/app/api/chatSocket";
+import fetchUserInfo from "@/app/api/fetchUserInfo";
 import ChatInput from "@/components/chatBottomCTA";
-import { CARDS } from "@/constants/cards";
 import { colors } from "@/constants/color";
-import { countries } from "@/constants/country";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -22,34 +27,22 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// 메시지 타입 선언 어차피 빼둘 것.
-type Message = {
+const defaultProfile = require("@/assets/images/default_profile.png");
+
+export type ChatMessage = {
   id: number;
-  text: string;
-  sender: string;
-  profile?: string; // 프로필 이미지 URL
-  countryCode?: string; // ISO 코드 (예: "USA", "KRW")
-  image?: string;
+  room: number;
+  sender_info: {
+    nickname: string;
+    profile_image: string | null;
+  };
+  message: string;
+  picture: string | null;
+  picture_url: string | null;
+  created_at: string;
 };
 
-function formatKSTDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
-  }).format(date);
-}
-
-const currentUser = "Gildong"; // 하드코딩. 가져와야죠.
-
 export default function ChatRoom() {
-  const defaultProfile = require("@/assets/images/default_profile.png");
-
   const [isNearBottom, setIsNearBottom] = useState(true);
   const scrollOffset = useRef(0);
 
@@ -57,124 +50,83 @@ export default function ChatRoom() {
     const offsetY = event.nativeEvent.contentOffset.y;
     const contentHeight = event.nativeEvent.contentSize.height;
     const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-
     scrollOffset.current = offsetY;
-
-    // 얼마나 아래까지 내려와 있는지 판단 (오차 범위 30~50px 허용)
     const threshold = 50;
     const isBottom = contentHeight - layoutHeight - offsetY < threshold;
     setIsNearBottom(isBottom);
   }
+
   const { id } = useLocalSearchParams<{ id?: string }>();
   const numericId = Number(id);
-  const meetup = CARDS.find((card) => card.id === numericId);
+  const [meetup, setMeetup] = useState<any>(null);
   const router = useRouter();
 
-  const [chatText, setChatText] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Top",
-      sender: "Eva",
-      profile: "default",
-      countryCode: "USD",
-    },
-    {
-      id: 2,
-      text: "Middle",
-      sender: "Eva",
-      profile: "default",
-      countryCode: "USD",
-    },
-    {
-      id: 3,
-      text: "Bottom",
-      sender: "Eva",
-      profile: "default",
-      countryCode: "USD",
-    },
-    {
-      id: 4,
-      text: "Single",
-      sender: "John",
-      profile: "default",
-      countryCode: "KRW",
-    },
-    {
-      id: 5,
-      text: "Single",
-      sender: "Eva",
-      profile: "default",
-      countryCode: "USD",
-    },
-    {
-      id: 6,
-      text: "나랏말싸미",
-      sender: "Kate",
-      profile: "default",
-      countryCode: "JPY",
-    },
-    {
-      id: 7,
-      text: "듕귁에달아",
-      sender: "Kate",
-      profile: "default",
-      countryCode: "JPY",
-    },
-    {
-      id: 8,
-      text: "문댜와로서로",
-      sender: "Kate",
-      profile: "default",
-      countryCode: "JPY",
-    },
-    {
-      id: 9,
-      text: "사맛디아니홀쎄",
-      sender: "Kate",
-      profile: "default",
-      countryCode: "JPY",
-    },
-    { id: 10, text: ";;", sender: "Gildong" },
-    { id: 11, text: "술드심?", sender: "Gildong" },
-  ]);
-
-  function getFlagByCode(code?: string) {
-    return countries.find((c) => c.code === code)?.flag;
-  }
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => {
-      if (isNearBottom) {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }
-    });
-
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      if (isNearBottom) {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [isNearBottom]);
-
   const scrollRef = useRef<ScrollView>(null);
+  const [chatText, setChatText] = useState("");
+  const [currentUser, setCurrentUser] = useState("");
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+  const { messages, sendMessage } = useChatSocket(numericId);
+
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+    const fetchUser = async () => {
+      const token = await AsyncStorage.getItem("@jwt");
+      if (!token) return;
+      const me = await fetchUserInfo(token);
+      if (me) setCurrentUser(me.username);
+    };
+    fetchUser();
+  }, []);
 
-  const [remainingSeconds, setRemainingSeconds] = useState(24 * 60 * 60); // 24시간(초)
+  useEffect(() => {
+    if (!id) return;
 
+    (async () => {
+      try {
+        const res = await axios.get(
+          `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
+        );
+        console.log("✅ API 응답:", res.data);
+
+        const created = new Date(res.data.created_at).getTime(); // 로컬 기준 Date
+        const now = Date.now();
+        const remainingMs = 24 * 60 * 60 * 1000 - (now - created);
+        const initialSeconds = Math.max(Math.floor(remainingMs / 1000), 0);
+
+        console.log("✅ 생성 시간 (로컬):", new Date(created).toLocaleString());
+        console.log("⏳ 남은 시간 (초):", initialSeconds);
+
+        setMeetup(res.data);
+        setRemainingSeconds(initialSeconds);
+      } catch (e) {
+        console.error("❌ 모임 정보 불러오기 실패", e);
+      }
+    })();
+  }, [id]);
+
+  // 째깍째깍
   useEffect(() => {
     const interval = setInterval(() => {
       setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      if (isNearBottom) scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      if (isNearBottom) scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [isNearBottom]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
 
   function formatTime(seconds: number) {
     const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
@@ -183,32 +135,21 @@ export default function ChatRoom() {
     return `${h}:${m}:${s}`;
   }
 
-  //  버블 타입 결정 함수
   function getBubbleType(
-    index: number,
-    messages: Message[]
+    index: number
   ): "single" | "top" | "middle" | "bottom" {
     const current = messages[index];
     const prev = messages[index - 1];
     const next = messages[index + 1];
+    const isPrevSame =
+      prev?.sender_info?.nickname === current.sender_info?.nickname;
 
-    const isPrevSame = prev?.sender === current.sender;
-    const isNextSame = next?.sender === current.sender;
-
-    if (!isPrevSame && !isNextSame) return "single"; // 앞, 뒤가 불일치하면 단독 버블
-    if (!isPrevSame && isNextSame) return "top"; // 앞 다르고 뒤 같으면 발화 시작 버블
-    if (isPrevSame && isNextSame) return "middle"; // 앞 뒤 모두 같으면 중간 버블
-    return "bottom"; // 아니면 끝 버블
-  }
-
-  if (!id || isNaN(numericId) || !meetup) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.noticeText}>
-          채팅방 정보를 찾을 수 없습니다. (id: {id})
-        </Text>
-      </View>
-    );
+    const isNextSame =
+      next?.sender_info?.nickname === current.sender_info?.nickname;
+    if (!isPrevSame && !isNextSame) return "single";
+    if (!isPrevSame && isNextSame) return "top";
+    if (isPrevSame && isNextSame) return "middle";
+    return "bottom";
   }
 
   return (
@@ -219,9 +160,7 @@ export default function ChatRoom() {
           header: () => (
             <SafeAreaView edges={["top"]} style={{ backgroundColor: "white" }}>
               <StatusBar barStyle="dark-content" backgroundColor="white" />
-
               <View style={styles.header}>
-                {/* 좌측: 홈으로 라우팅 */}
                 <Pressable
                   onPress={() => router.replace("/(tabs)?tab=current")}
                 >
@@ -229,28 +168,25 @@ export default function ChatRoom() {
                     name="chevron-back"
                     size={24}
                     color={colors.BLACK}
-                    style={{ marginLeft: 4 }}
+                    style={{ marginLeft: 2 }}
                   />
                 </Pressable>
-
-                {/* 중앙: 타이틀 */}
                 <Text style={styles.headerTitle} numberOfLines={1}>
-                  {meetup.title}
+                  {(meetup && meetup.title) || "Chat Room"}
                 </Text>
 
-                {/* 우측: 타이머 + 닫기 버튼 */}
                 <View style={styles.rightSection}>
                   <View style={styles.timerContainer}>
                     <FontAwesome5
                       name="history"
                       size={14}
                       color={colors.YELLOW_500}
+                      style={{ marginRight: 2 }}
                     />
                     <Text style={styles.timerText}>
                       {formatTime(remainingSeconds)}
                     </Text>
                   </View>
-                  {/* 우측 나가기: 번개모임 및 채팅방 떠나기  */}
                   <Pressable
                     onPress={() =>
                       Alert.alert(
@@ -278,67 +214,65 @@ export default function ChatRoom() {
         }}
       />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
-        <ScrollView
-          ref={scrollRef}
-          style={styles.container}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingBottom: 16,
-            paddingHorizontal: 0,
-          }}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-          overScrollMode="never"
-          onScroll={handleScroll}
+      {/* ⚠️ 조건에 따라 콘텐츠 분기 */}
+      {!id || isNaN(numericId) || !meetup ? (
+        <View style={styles.container}>
+          <Text style={styles.noticeText}>
+            채팅방 정보를 찾을 수 없습니다. (id: {id})
+          </Text>
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <Text style={styles.date}>{formatKSTDate(meetup.meetupTime)}</Text>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.container}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingBottom: 16,
+              paddingHorizontal: 0,
+            }}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            overScrollMode="never"
+            onScroll={handleScroll}
+          >
+            <View style={styles.chatArea}>
+              {messages.map((msg, index) => {
+                const bubbleType = getBubbleType(index);
+                const isMine = msg.sender_info?.nickname === currentUser;
+                const showProfile =
+                  !isMine && (bubbleType === "single" || bubbleType === "top");
+                const isFirstOfGroup =
+                  !isMine && (bubbleType === "top" || bubbleType === "single");
 
-          <View style={styles.notice}>
-            <Text style={styles.noticeText}>{"<채팅방 안내사항>"}</Text>
-            <Text style={styles.noticeText}>{"말하기 전에 생각했나요?"}</Text>
-          </View>
-
-          <View style={styles.chatArea}>
-            {messages.map((msg, index) => {
-              const bubbleType = getBubbleType(index, messages);
-              const isMine = msg.sender === currentUser;
-              const showProfile =
-                !isMine && (bubbleType === "single" || bubbleType === "top");
-              const isFirstOfGroup =
-                !isMine && (bubbleType === "top" || bubbleType === "single");
-
-              return (
-                <View
-                  key={msg.id}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "flex-start",
-                    marginBottom: 4,
-                    marginLeft: isMine ? "auto" : -24,
-                    paddingLeft: 8,
-                  }}
-                >
-                  {/* 왼쪽: 프로필/닉네임/국기 - 그룹 시작일 때만 보여줌 */}
-                  {!isMine && (
-                    <View
-                      style={{
-                        width: 32,
-                        marginRight: 8,
-                        position: "relative",
-                      }}
-                    >
-                      {isFirstOfGroup ? (
-                        <>
+                return (
+                  <View
+                    key={`${msg.id}-${index}`}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      marginBottom: 4,
+                      marginLeft: isMine ? "auto" : -24,
+                      paddingLeft: 8,
+                    }}
+                  >
+                    {!isMine && (
+                      <View
+                        style={{
+                          width: 32,
+                          marginRight: 8,
+                          position: "relative",
+                        }}
+                      >
+                        {isFirstOfGroup ? (
                           <Image
                             source={
-                              msg.profile === "default"
-                                ? defaultProfile
-                                : { uri: msg.profile }
+                              msg.sender_info?.profile_image
+                                ? { uri: msg.sender_info.profile_image }
+                                : defaultProfile
                             }
                             style={{
                               width: 32,
@@ -349,78 +283,52 @@ export default function ChatRoom() {
                               resizeMode: "contain",
                             }}
                           />
-                          {msg.countryCode && (
-                            <Image
-                              source={getFlagByCode(msg.countryCode)}
-                              style={{
-                                width: 15,
-                                height: 15,
-                                borderRadius: 7.5,
-                                position: "absolute",
-                                bottom: 0,
-                                right: 0,
-                                borderWidth: 0.5,
-                                borderColor: "white",
-                              }}
-                              resizeMode="contain"
-                            />
-                          )}
-                        </>
-                      ) : null}
-                    </View>
-                  )}
-
-                  {/* 오른쪽: 말풍선 그룹 */}
-                  <View style={{ flex: 1 }}>
-                    {isFirstOfGroup && (
-                      <Text style={[styles.sender, { marginBottom: 4 }]}>
-                        {msg.sender}
-                      </Text>
+                        ) : null}
+                      </View>
                     )}
 
-                    <View
-                      style={[
-                        styles.bubble,
-                        {
-                          alignSelf: isMine ? "flex-end" : "flex-start",
-                          backgroundColor: msg.image
-                            ? "transparent"
-                            : isMine
-                            ? colors.PURPLE_300
-                            : colors.PURPLE_100,
-                          marginTop: 2,
-                          padding: msg.image ? 0 : 6, // 이미지면 padding 제거
-                        },
-                        isMine && { borderRadius: 18 },
-                        !isMine &&
-                          (bubbleType === "top" ||
-                            bubbleType === "middle" ||
-                            bubbleType === "single") && {
-                            borderTopLeftRadius: 0,
-                            borderTopRightRadius: 18,
-                            borderBottomLeftRadius: 0,
-                            borderBottomRightRadius: 18,
+                    <View style={{ flex: 1 }}>
+                      {isFirstOfGroup && (
+                        <Text style={[styles.sender, { marginBottom: 4 }]}>
+                          {msg.sender_info?.nickname || ""}
+                        </Text>
+                      )}
+
+                      <View
+                        style={[
+                          styles.bubble,
+                          {
+                            alignSelf: isMine ? "flex-end" : "flex-start",
+                            backgroundColor: msg.picture_url
+                              ? "transparent"
+                              : isMine
+                              ? colors.PURPLE_300
+                              : colors.PURPLE_100,
+                            marginTop: 2,
+                            padding: msg.picture_url ? 0 : 6,
                           },
-                        !isMine &&
-                          bubbleType === "bottom" && {
-                            borderTopLeftRadius: 0,
-                            borderTopRightRadius: 18,
-                            borderBottomLeftRadius: 18,
-                            borderBottomRightRadius: 18,
-                          },
-                      ]}
-                    >
-                      {msg.image ? (
-                        <Pressable
-                          onPress={() =>
-                            router.push({
-                              pathname: "/viewer/imageFullView", // ✅ 여기에 imageFullView가 아니라 /viewer/image
-                              params: { src: msg.image ?? "" },
-                            })
-                          }
-                        >
+                          isMine && { borderRadius: 18 },
+                          !isMine &&
+                            (bubbleType === "top" ||
+                              bubbleType === "middle" ||
+                              bubbleType === "single") && {
+                              borderTopLeftRadius: 0,
+                              borderTopRightRadius: 18,
+                              borderBottomLeftRadius: 0,
+                              borderBottomRightRadius: 18,
+                            },
+                          !isMine &&
+                            bubbleType === "bottom" && {
+                              borderTopLeftRadius: 0,
+                              borderTopRightRadius: 18,
+                              borderBottomLeftRadius: 18,
+                              borderBottomRightRadius: 18,
+                            },
+                        ]}
+                      >
+                        {msg.picture_url ? (
                           <Image
-                            source={{ uri: msg.image }}
+                            source={{ uri: msg.picture_url }}
                             style={{
                               marginRight: -12,
                               width: 180,
@@ -431,57 +339,44 @@ export default function ChatRoom() {
                               marginBottom: -5,
                             }}
                           />
-                        </Pressable>
-                      ) : (
-                        <Text
-                          style={{
-                            textAlign: "left",
-                            color: isMine ? colors.WHITE : colors.BLACK,
-                            lineHeight: 20,
-                          }}
-                        >
-                          {msg.text}
-                        </Text>
-                      )}
+                        ) : (
+                          <Text
+                            style={{
+                              textAlign: "left",
+                              color: isMine ? colors.WHITE : colors.BLACK,
+                              lineHeight: 20,
+                            }}
+                          >
+                            {msg.message}
+                          </Text>
+                        )}
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
+                );
+              })}
+            </View>
+          </ScrollView>
 
-        {/* ✅ 입력창: 키보드 위에 잘 위치되도록 */}
-        <View style={{ paddingHorizontal: 16, paddingRight: 14 }}>
-          <ChatInput
-            value={chatText}
-            onChangeText={setChatText}
-            onSend={(text) => {
-              if (text.trim() === "") return;
-              const newMessage: Message = {
-                id: messages.length + 1,
-                text,
-                sender: currentUser,
-              };
-              setMessages((prev) => [...prev, newMessage]);
-              setChatText("");
-            }}
-            onImagePicked={(uri) => {
-              const newImageMessage: Message = {
-                id: messages.length + 1,
-                text: "",
-                sender: currentUser,
-                image: uri,
-              };
-              setMessages((prev) => [...prev, newImageMessage]);
-            }}
-          />
-        </View>
-      </KeyboardAvoidingView>
+          <View style={{ paddingHorizontal: 16, paddingRight: 14 }}>
+            <ChatInput
+              value={chatText}
+              onChangeText={setChatText}
+              onSend={(text) => {
+                if (text.trim() === "") return;
+                sendMessage(text, null);
+                setChatText("");
+              }}
+              onImagePicked={(uri) => {
+                sendMessage("", uri);
+              }}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      )}
     </>
   );
 }
-
 const styles = StyleSheet.create({
   header: {
     flexDirection: "row",

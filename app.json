@@ -24,7 +24,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sway",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "supportsTablet": true,
       "icon": {
         "light": "./assets/images/appLogo.png",
         "dark": "./assets/images/appLogo.png",

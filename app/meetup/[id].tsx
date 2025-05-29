@@ -2,12 +2,23 @@
 import FixedBottomCTA from "@/components/FixedBottomCTA";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
+import formatDateTime from "@/utils/formatDataTime";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import fetchUserInfo from "../api/fetchUserInfo";
 import { joinLightning } from "../api/joinLightning";
 
 export default function MeetUpDetail() {
@@ -23,7 +34,6 @@ export default function MeetUpDetail() {
     return found ? found.flag : null;
   };
 
-  // 임시 계산용: createdAt + 24시간
   const calculateExpiresAt = (createdAt: string) => {
     const base = new Date(createdAt);
     return new Date(base.getTime() + 24 * 60 * 60 * 1000);
@@ -46,10 +56,6 @@ export default function MeetUpDetail() {
     })();
   }, [id]);
 
-  useEffect(() => {
-    console.log("participantAvatars:", meetup?.participantAvatars);
-  }, [meetup]);
-
   const handleJoin = async () => {
     if (meetup.status === "closed") {
       Alert.alert("The meetup is closed.");
@@ -57,47 +63,77 @@ export default function MeetUpDetail() {
     }
 
     try {
-      const res = await joinLightning(meetup.id);
-      console.log("✅ 참가 성공 응답 데이터:", res);
+      const token = await AsyncStorage.getItem("@jwt");
+      if (!token) throw new Error("No access token found");
 
-      // 새로 받은 participants로 상태 업데이트하거나 필요 시 다시 fetch
-      if (res.participants) {
-        setMeetup((prev: any) => ({
-          ...prev,
-          participants: res.participants.map((p: any) => p.username || p.email),
-          participantAvatars: res.participants, // 필요에 따라
-        }));
+      const me = await fetchUserInfo(token);
+      if (!me?.username) throw new Error("No username found");
+
+      const alreadyJoined = meetup.participants?.some(
+        (p: any) => p.username === me.username
+      );
+
+      if (alreadyJoined) {
+        console.log("✅ 이미 참가 중 - 채팅방으로 이동");
+        router.push(`/meetup/chatRoom/${meetup.id}`);
+      } else {
+        Alert.alert(
+          "Join this meetup?",
+          "Would you like to join this meetup and enter the chat room?",
+          [
+            { text: "No", style: "cancel" },
+            {
+              text: "Yes",
+              onPress: async () => {
+                try {
+                  const res = await joinLightning(meetup.id);
+                  if (res.participants) {
+                    setMeetup((prev: any) => ({
+                      ...prev,
+                      participants: res.participants,
+                    }));
+                  }
+                  router.push(`/meetup/chatRoom/${meetup.id}`);
+                } catch (err: any) {
+                  console.error("❌ 참가 실패:", err);
+                  Alert.alert(
+                    "Error",
+                    err.message || "Failed to join the meetup."
+                  );
+                }
+              },
+            },
+          ]
+        );
       }
-
-      router.push({
-        pathname: "/meetup/chatRoom/[id]",
-        params: { id: meetup.id.toString() },
-      });
     } catch (err: any) {
-      console.error(
-        "❌ 번개 참가 실패:",
-        err.response?.data || err.message || err
-      );
-      Alert.alert(
-        "Join Failed",
-        err.response?.data?.message || "Unable to join the meetup."
-      );
+      console.error("❌ 오류:", err);
+      Alert.alert("Error", err.message || "Something went wrong.");
     }
   };
-
-  if (!meetup) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>The requested meetup could not be found.</Text>
-      </SafeAreaView>
-    );
-  }
 
   function capitalizeFirstLetter(str: string) {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  //  렌더 전에 meetup null 여부 확인
+  if (loading || !meetup) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: colors.WHITE,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.PURPLE_300} />
+      </SafeAreaView>
+    );
+  }
+
+  //  meetup이 확실히 존재하는 이후 실행되는 부분
   const titleDate = new Date(meetup.meeting_date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -158,7 +194,6 @@ export default function MeetUpDetail() {
                     style={styles.avatar}
                     resizeMode="cover"
                   />
-                  {/* countryCode 정보가 없으므로 국기는 생략하거나 호스트 프로필에만 띄우기 */}
                 </View>
               ))}
             </View>
@@ -178,7 +213,7 @@ export default function MeetUpDetail() {
               }
               size={22}
               color={colors.PURPLE_300}
-              style={{ paddingTop: 8, marginLeft: 4 }}
+              style={{ paddingTop: 0, marginLeft: 0 }}
             />
           </View>
 
@@ -193,7 +228,7 @@ export default function MeetUpDetail() {
       <View style={styles.openUntilRow}>
         <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
         <Text style={styles.openUntilText}>
-          Open Until: {expiresAt.toLocaleString()}
+          Open Until: {formatDateTime(expiresAt)}
         </Text>
       </View>
     </>
@@ -239,12 +274,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 2,
   },
   title: {
     fontSize: 26,
     fontWeight: "600",
     flexShrink: 1,
+    marginTop: -28,
   },
   avatarWrapper: {
     width: 40,
@@ -262,33 +298,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.GRAY_200,
   },
   avatars: { flexDirection: "row" },
-  flag: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    position: "absolute",
-    bottom: -2,
-    right: 0,
-  },
-  moreBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.PURPLE_100,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: -10,
-    marginTop: 1,
-  },
-  moreText: { fontSize: 12, color: colors.BLACK },
   tagRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginBottom: 8,
+    marginTop: -20,
   },
   tag: {
-    marginTop: 10,
     fontSize: 16,
     color: colors.PURPLE_300,
     fontWeight: "600",

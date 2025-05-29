@@ -1,4 +1,5 @@
 import { colors } from "@/constants/color";
+import formatDateTime from "@/utils/formatDataTime";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -115,6 +116,12 @@ export default function Home() {
             });
           } else {
             data = await fetchLightningCards(selectedTag || undefined);
+            //  participants가 0명인 번개는 필터링해서 삭제처리
+            data = data.filter((item: any) => {
+              return (
+                Array.isArray(item.participants) && item.participants.length > 0
+              );
+            });
           }
 
           // 정렬 및 시급한 항목 강조 표시
@@ -214,6 +221,11 @@ export default function Home() {
     const isHost = item.host?.email === userEmail;
     const isParticipated = item.tags?.includes("participated");
 
+    if (!item) {
+      console.log("❌ item is null or undefined!");
+      return null;
+    }
+
     const handleDelete = async (id: number) => {
       try {
         await deleteLightning(id);
@@ -244,7 +256,7 @@ export default function Home() {
         </Text>
         <Text style={[styles.sub, isFocused && styles.subFocused]}>
           {isValidDate
-            ? `Open until ${endTime.toLocaleString()}`
+            ? `Open until ${formatDateTime(endTime)}`
             : "Open until N/A"}
         </Text>
         <Text
