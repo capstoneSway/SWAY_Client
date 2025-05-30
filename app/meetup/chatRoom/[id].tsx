@@ -1,10 +1,11 @@
-// ✅ 실시간 채팅으로 대체한 ChatRoom.tsx
-// ❗️하드코딩된 UI 코드 절대 수정하지 않음
-
 import useChatSocket from "@/app/api/chatSocket";
 import fetchUserInfo from "@/app/api/fetchUserInfo";
+import { leaveChatRoom } from "@/app/api/leaveChatLightning";
+import { uploadImage } from "@/app/api/uploadImaage";
 import ChatInput from "@/components/chatBottomCTA";
 import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
+import formatKSTDate from "@/utils/formatKSTDate";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -32,19 +33,26 @@ const defaultProfile = require("@/assets/images/default_profile.png");
 export type ChatMessage = {
   id: number;
   room: number;
-  sender_info: {
+  sender: {
     nickname: string;
     profile_image: string | null;
+    national_code: string | null;
+    nationality: string | null;
   };
   message: string;
   picture: string | null;
   picture_url: string | null;
   created_at: string;
+  image_url: string | null;
 };
 
 export default function ChatRoom() {
   const [isNearBottom, setIsNearBottom] = useState(true);
   const scrollOffset = useRef(0);
+
+  function getFlagByCode(code?: string | null) {
+    return countries.find((c) => c.code === code)?.flag;
+  }
 
   function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -56,7 +64,11 @@ export default function ChatRoom() {
     setIsNearBottom(isBottom);
   }
 
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, joined } = useLocalSearchParams<{
+    id?: string;
+    joined?: string;
+  }>();
+
   const numericId = Number(id);
   const [meetup, setMeetup] = useState<any>(null);
   const router = useRouter();
@@ -67,13 +79,27 @@ export default function ChatRoom() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   const { messages, sendMessage } = useChatSocket(numericId);
+  const [joinTime, setJoinTime] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (joined === "true") {
+      const now = new Date();
+      console.log(
+        "🟣 새로 참가한 유저입니다. joinTime 설정:",
+        now.toLocaleString()
+      );
+      setJoinTime(now);
+    } else {
+      console.log("🟢 기존 참가자입니다. 모든 메시지를 표시합니다.");
+    }
+  }, [joined]);
 
   useEffect(() => {
     const fetchUser = async () => {
       const token = await AsyncStorage.getItem("@jwt");
       if (!token) return;
       const me = await fetchUserInfo(token);
-      if (me) setCurrentUser(me.username);
+      if (me) setCurrentUser(me.nickname);
     };
     fetchUser();
   }, []);
@@ -86,20 +112,20 @@ export default function ChatRoom() {
         const res = await axios.get(
           `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
         );
-        console.log("✅ API 응답:", res.data);
+        console.log("API 응답:", res.data);
 
         const created = new Date(res.data.created_at).getTime(); // 로컬 기준 Date
         const now = Date.now();
         const remainingMs = 24 * 60 * 60 * 1000 - (now - created);
         const initialSeconds = Math.max(Math.floor(remainingMs / 1000), 0);
 
-        console.log("✅ 생성 시간 (로컬):", new Date(created).toLocaleString());
-        console.log("⏳ 남은 시간 (초):", initialSeconds);
+        console.log("생성 시간 (로컬):", new Date(created).toLocaleString());
+        console.log("남은 시간 (초):", initialSeconds);
 
         setMeetup(res.data);
         setRemainingSeconds(initialSeconds);
       } catch (e) {
-        console.error("❌ 모임 정보 불러오기 실패", e);
+        console.error("모임 정보 불러오기 실패", e);
       }
     })();
   }, [id]);
@@ -141,11 +167,9 @@ export default function ChatRoom() {
     const current = messages[index];
     const prev = messages[index - 1];
     const next = messages[index + 1];
-    const isPrevSame =
-      prev?.sender_info?.nickname === current.sender_info?.nickname;
+    const isPrevSame = prev?.sender?.nickname === current.sender?.nickname;
 
-    const isNextSame =
-      next?.sender_info?.nickname === current.sender_info?.nickname;
+    const isNextSame = next?.sender?.nickname === current.sender?.nickname;
     if (!isPrevSame && !isNextSame) return "single";
     if (!isPrevSame && isNextSame) return "top";
     if (isPrevSame && isNextSame) return "middle";
@@ -197,7 +221,19 @@ export default function ChatRoom() {
                           {
                             text: "Exit",
                             style: "destructive",
-                            onPress: () => router.back(),
+                            onPress: async () => {
+                              try {
+                                await leaveChatRoom(numericId);
+                                router.replace("/(tabs)?tab=current");
+                              } catch (err: any) {
+                                const message =
+                                  err.response?.data?.detail ===
+                                  "호스트는 모임에서 나갈 수 없습니다."
+                                    ? "You are the host of this meet-up and cannot leave it."
+                                    : "Failed to leave the chat room. Please try again.";
+                                Alert.alert("Error", message);
+                              }
+                            },
                           },
                         ],
                         { cancelable: true }
@@ -217,7 +253,7 @@ export default function ChatRoom() {
       {/* ⚠️ 조건에 따라 콘텐츠 분기 */}
       {!id || isNaN(numericId) || !meetup ? (
         <View style={styles.container}>
-          <Text style={styles.noticeText}>
+          <Text style={styles.noticeTitle}>
             채팅방 정보를 찾을 수 없습니다. (id: {id})
           </Text>
         </View>
@@ -239,122 +275,170 @@ export default function ChatRoom() {
             overScrollMode="never"
             onScroll={handleScroll}
           >
+            {/* 현재 시간 표시 */}
+            <Text style={styles.date}>
+              {formatKSTDate(new Date().toISOString())}
+            </Text>
+
+            {/* 안내 문구 */}
+            <View style={styles.notice}>
+              <Text style={styles.noticeTitle}>{"<Chat Room Guidelines>"}</Text>
+              <Text style={styles.noticeContent}>
+                {
+                  "Welcome to your MeetUp chat room. You can connect and share messages with other members for 24 hours from the moment the MeetUp was created. After this period, the chat room will switch to read-only mode for your reference. Please be mindful and respectful in your conversations to help keep the community safe and enjoyable for everyone."
+                }
+              </Text>
+            </View>
             <View style={styles.chatArea}>
-              {messages.map((msg, index) => {
-                const bubbleType = getBubbleType(index);
-                const isMine = msg.sender_info?.nickname === currentUser;
-                const showProfile =
-                  !isMine && (bubbleType === "single" || bubbleType === "top");
-                const isFirstOfGroup =
-                  !isMine && (bubbleType === "top" || bubbleType === "single");
+              {messages
+                .filter(
+                  (msg) => !joinTime || new Date(msg.created_at) >= joinTime
+                )
+                .map((msg, index) => {
+                  const bubbleType = getBubbleType(index);
+                  const isMine = msg.sender?.nickname === currentUser;
+                  const showProfile =
+                    !isMine &&
+                    (bubbleType === "single" || bubbleType === "top");
+                  const isFirstOfGroup =
+                    !isMine &&
+                    (bubbleType === "top" || bubbleType === "single");
 
-                return (
-                  <View
-                    key={`${msg.id}-${index}`}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      marginBottom: 4,
-                      marginLeft: isMine ? "auto" : -24,
-                      paddingLeft: 8,
-                    }}
-                  >
-                    {!isMine && (
-                      <View
-                        style={{
-                          width: 32,
-                          marginRight: 8,
-                          position: "relative",
-                        }}
-                      >
-                        {isFirstOfGroup ? (
-                          <Image
-                            source={
-                              msg.sender_info?.profile_image
-                                ? { uri: msg.sender_info.profile_image }
-                                : defaultProfile
-                            }
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 16,
-                              borderWidth: 0.1,
-                              overflow: "hidden",
-                              resizeMode: "contain",
-                            }}
-                          />
-                        ) : null}
-                      </View>
-                    )}
+                  // console.log("👤 currentUser =", currentUser);
+                  // console.log("👤 sender.nickname =", msg.sender?.nickname);
+                  // console.log(
+                  //   "🟢 isMine =",
+                  //   msg.sender?.nickname === currentUser
+                  // );
 
-                    <View style={{ flex: 1 }}>
-                      {isFirstOfGroup && (
-                        <Text style={[styles.sender, { marginBottom: 4 }]}>
-                          {msg.sender_info?.nickname || ""}
-                        </Text>
+                  const imageUrl = msg.picture_url || msg.image_url;
+                  return (
+                    <View
+                      key={`${msg.id}-${index}`}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        marginBottom: 4,
+                        marginLeft: isMine ? "auto" : -24,
+                        paddingLeft: 8,
+                      }}
+                    >
+                      {!isMine && (
+                        <View
+                          style={{
+                            width: 32,
+                            marginRight: 8,
+                            position: "relative",
+                          }}
+                        >
+                          {isFirstOfGroup ? (
+                            <>
+                              <Image
+                                source={
+                                  msg.sender?.profile_image
+                                    ? { uri: msg.sender.profile_image }
+                                    : defaultProfile
+                                }
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 16,
+                                  borderWidth: 0.1,
+                                  overflow: "hidden",
+                                  resizeMode: "contain",
+                                }}
+                              />
+                              {msg.sender?.national_code && (
+                                <Image
+                                  source={getFlagByCode(
+                                    msg.sender.national_code
+                                  )}
+                                  style={{
+                                    width: 15,
+                                    height: 15,
+                                    borderRadius: 7.5,
+                                    position: "absolute",
+                                    bottom: 0,
+                                    right: 0,
+                                    borderWidth: 0.5,
+                                    borderColor: "white",
+                                  }}
+                                  resizeMode="contain"
+                                />
+                              )}
+                            </>
+                          ) : null}
+                        </View>
                       )}
 
-                      <View
-                        style={[
-                          styles.bubble,
-                          {
-                            alignSelf: isMine ? "flex-end" : "flex-start",
-                            backgroundColor: msg.picture_url
-                              ? "transparent"
-                              : isMine
-                              ? colors.PURPLE_300
-                              : colors.PURPLE_100,
-                            marginTop: 2,
-                            padding: msg.picture_url ? 0 : 6,
-                          },
-                          isMine && { borderRadius: 18 },
-                          !isMine &&
-                            (bubbleType === "top" ||
-                              bubbleType === "middle" ||
-                              bubbleType === "single") && {
-                              borderTopLeftRadius: 0,
-                              borderTopRightRadius: 18,
-                              borderBottomLeftRadius: 0,
-                              borderBottomRightRadius: 18,
-                            },
-                          !isMine &&
-                            bubbleType === "bottom" && {
-                              borderTopLeftRadius: 0,
-                              borderTopRightRadius: 18,
-                              borderBottomLeftRadius: 18,
-                              borderBottomRightRadius: 18,
-                            },
-                        ]}
-                      >
-                        {msg.picture_url ? (
-                          <Image
-                            source={{ uri: msg.picture_url }}
-                            style={{
-                              marginRight: -12,
-                              width: 180,
-                              height: 180,
-                              borderRadius: 12,
-                              resizeMode: "cover",
-                              marginTop: -6,
-                              marginBottom: -5,
-                            }}
-                          />
-                        ) : (
-                          <Text
-                            style={{
-                              textAlign: "left",
-                              color: isMine ? colors.WHITE : colors.BLACK,
-                              lineHeight: 20,
-                            }}
-                          >
-                            {msg.message}
+                      <View style={{ flex: 1 }}>
+                        {isFirstOfGroup && (
+                          <Text style={[styles.sender, { marginBottom: 4 }]}>
+                            {msg.sender?.nickname || ""}
                           </Text>
                         )}
+
+                        <View
+                          style={[
+                            styles.bubble,
+                            {
+                              alignSelf: isMine ? "flex-end" : "flex-start",
+                              backgroundColor: imageUrl
+                                ? "transparent"
+                                : isMine
+                                ? colors.PURPLE_300
+                                : colors.PURPLE_100,
+                              marginTop: 2,
+                              padding: imageUrl ? 0 : 6,
+                            },
+                            isMine && { borderRadius: 18 },
+                            !isMine &&
+                              (bubbleType === "top" ||
+                                bubbleType === "middle" ||
+                                bubbleType === "single") && {
+                                borderTopLeftRadius: 0,
+                                borderTopRightRadius: 18,
+                                borderBottomLeftRadius: 0,
+                                borderBottomRightRadius: 18,
+                              },
+                            !isMine &&
+                              bubbleType === "bottom" && {
+                                borderTopLeftRadius: 0,
+                                borderTopRightRadius: 18,
+                                borderBottomLeftRadius: 18,
+                                borderBottomRightRadius: 18,
+                              },
+                          ]}
+                        >
+                          {imageUrl ? (
+                            <Image
+                              source={{ uri: imageUrl }}
+                              style={{
+                                marginRight: -12,
+                                width: 180,
+                                height: 180,
+                                borderRadius: 12,
+                                resizeMode: "cover",
+                                marginTop: -6,
+                                marginBottom: -5,
+                              }}
+                            />
+                          ) : (
+                            <Text
+                              style={{
+                                textAlign: "left",
+                                color: isMine ? colors.WHITE : colors.BLACK,
+                                lineHeight: 20,
+                              }}
+                            >
+                              {msg.message}
+                            </Text>
+                          )}
+                        </View>
                       </View>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
             </View>
           </ScrollView>
 
@@ -364,12 +448,17 @@ export default function ChatRoom() {
               onChangeText={setChatText}
               onSend={(text) => {
                 if (text.trim() === "") return;
-                sendMessage(text, null);
+                sendMessage(text, null, currentUser);
                 setChatText("");
               }}
-              onImagePicked={(uri) => {
-                sendMessage("", uri);
+              onImagePicked={async (uri) => {
+                if (!uri) return;
+
+                const uploadedUrl = await uploadImage(numericId, uri);
+                if (!uploadedUrl) return;
+                sendMessage("", uploadedUrl, currentUser);
               }}
+              disabled={remainingSeconds <= 0}
             />
           </View>
         </KeyboardAvoidingView>
@@ -438,9 +527,15 @@ const styles = StyleSheet.create({
     minHeight: 100,
     maxHeight: 200,
   },
-  noticeText: {
-    color: "#888",
+  noticeTitle: {
+    color: colors.GRAY_600,
     textAlign: "center",
+    fontSize: 14,
+  },
+
+  noticeContent: {
+    color: colors.GRAY_600,
+    textAlign: "left",
     fontSize: 14,
   },
   sender: {

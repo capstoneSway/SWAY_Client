@@ -69,7 +69,12 @@ export default function MeetUpDetail() {
       const me = await fetchUserInfo(token);
       if (!me?.username) throw new Error("No username found");
 
-      const alreadyJoined = meetup.participants?.some(
+      const res = await axios.get(
+        `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${meetup.id}/`
+      );
+      const updatedMeetup = res.data;
+
+      const alreadyJoined = updatedMeetup.participants?.some(
         (p: any) => p.username === me.username
       );
 
@@ -93,7 +98,10 @@ export default function MeetUpDetail() {
                       participants: res.participants,
                     }));
                   }
-                  router.push(`/meetup/chatRoom/${meetup.id}`);
+                  router.push({
+                    pathname: `/meetup/chatRoom/[id]`,
+                    params: { id: String(meetup.id), joined: "true" },
+                  });
                 } catch (err: any) {
                   console.error("❌ 참가 실패:", err);
                   Alert.alert(

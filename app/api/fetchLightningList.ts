@@ -6,10 +6,8 @@ export async function fetchLightningCards(category?: string) {
     res = await api.get(
       `/lightning/category/?category=${category.toLowerCase()}`
     );
-    console.log("✅ filtered lightning cards:", res.data);
   } else {
     res = await api.get("/lightning/");
-    console.log("✅ all lightning cards:", res.data);
   }
 
   return res.data.map((item: any) => ({

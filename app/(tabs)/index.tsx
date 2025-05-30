@@ -115,13 +115,38 @@ export default function Home() {
               return { ...item, tags };
             });
           } else {
+            const token = await ensureValidToken();
+
+            // 사용자 정보 먼저 받아서 이메일 추출
+            const userInfo = await fetchUserInfo(token);
+            const email = extractEmail(userInfo?.username || "");
+            setUserEmail(email);
+
             data = await fetchLightningCards(selectedTag || undefined);
-            //  participants가 0명인 번개는 필터링해서 삭제처리
-            data = data.filter((item: any) => {
-              return (
-                Array.isArray(item.participants) && item.participants.length > 0
-              );
-            });
+
+            data = data
+              .filter((item: any) => {
+                // participants가 1단 혹은 2단 배열인지 대응
+                const participants = Array.isArray(item.participants?.[0])
+                  ? item.participants[0]
+                  : item.participants;
+                return Array.isArray(participants) && participants.length > 0;
+              })
+              .map((item: any) => {
+                const participants = Array.isArray(item.participants?.[0])
+                  ? item.participants[0]
+                  : item.participants;
+
+                const tags: string[] = [];
+
+                if (Array.isArray(participants)) {
+                  if (participants.some((p: any) => p.email === email)) {
+                    tags.push("participated");
+                  }
+                }
+
+                return { ...item, tags };
+              });
           }
 
           // 정렬 및 시급한 항목 강조 표시
@@ -250,37 +275,169 @@ export default function Home() {
     };
 
     return (
-      <View style={[styles.card, isFocused && styles.cardFocused]}>
-        <Text style={[styles.title, isFocused && styles.titleFocused]}>
-          {item.title}
-        </Text>
-        <Text style={[styles.sub, isFocused && styles.subFocused]}>
-          {isValidDate
-            ? `Open until ${formatDateTime(endTime)}`
-            : "Open until N/A"}
-        </Text>
-        <Text
-          style={[styles.participants, isFocused && styles.participantsFocused]}
-        >
-          Participants: {participantsText}
-          {"  "}
-          {item.tags?.map((tag: string, i: number) => (
-            <Text
-              key={i}
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: tag === "hosted" ? colors.PURPLE_300 : colors.YELLOW_500,
-                marginLeft: 8,
-              }}
-            >
-              {tag === "hosted" ? "Hosted" : "Participated"}
-            </Text>
-          ))}
-        </Text>
+      <Pressable
+        onPress={() => {
+          console.log("🟣 번개 정보:", JSON.stringify(item, null, 2));
+        }}
+      >
+        <View style={[styles.card, isFocused && styles.cardFocused]}>
+          <Text style={[styles.title, isFocused && styles.titleFocused]}>
+            {item.title}
+          </Text>
+          <Text style={[styles.sub, isFocused && styles.subFocused]}>
+            {isValidDate
+              ? `Open until ${formatDateTime(endTime)}`
+              : "Open until N/A"}
+          </Text>
+          <Text
+            style={[
+              styles.participants,
+              isFocused && styles.participantsFocused,
+            ]}
+          >
+            Participants: {participantsText}
+            {"  "}
+            {item.tags?.map((tag: string, i: number) => (
+              <Text
+                key={i}
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: isFocused
+                    ? colors.YELLOW_500
+                    : tag === "hosted"
+                    ? colors.YELLOW_500
+                    : colors.PURPLE_300,
+                  marginLeft: 8,
+                }}
+              >
+                {tag === "hosted" ? "Hosted" : "Participated"}
+              </Text>
+            ))}
+          </Text>
 
-        {activeTab === "current" ? (
-          <View style={{ flexDirection: "row", marginTop: 8 }}>
+          {activeTab === "current" ? (
+            <View style={{ flexDirection: "row", marginTop: 8 }}>
+              <Pressable
+                disabled={item.status === "closed"}
+                onPress={() =>
+                  router.push({
+                    pathname: "/meetup/[id]",
+                    params: { id: item.id.toString() },
+                  })
+                }
+                style={[
+                  styles.btn,
+                  item.status === "closed"
+                    ? styles.btnClosed
+                    : isFocused
+                    ? styles.btnFocused
+                    : styles.btnDefault,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.btnText,
+                    isFocused && styles.btnTextFocused,
+                    item.status === "closed" && styles.btnTextClosed,
+                  ]}
+                >
+                  {item.status === "closed"
+                    ? "Closed"
+                    : activeTab === "current"
+                    ? "Info"
+                    : "Register"}
+                </Text>
+              </Pressable>
+
+              {isHost && (
+                <>
+                  <Pressable
+                    style={[
+                      styles.btn,
+                      styles.btnDefault,
+                      {
+                        backgroundColor: colors.GRAY_300,
+                        marginLeft: 8,
+                        alignSelf: "flex-end",
+                      },
+                    ]}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/meetup/editMeetUp",
+                        params: { id: item.id.toString() },
+                      })
+                    }
+                  >
+                    <Text style={[styles.btnText, { color: colors.BLACK }]}>
+                      Edit
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.btn,
+                      styles.btnDefault,
+                      {
+                        backgroundColor: colors.RED_500,
+                        marginLeft: 8,
+                        alignSelf: "flex-end",
+                      },
+                    ]}
+                    onPress={() => {
+                      Alert.alert(
+                        "Delete Confirmation",
+                        "Are you sure you want to delete this meetup?",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: () => handleDelete(item.id),
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={[styles.btnText, { color: colors.WHITE }]}>
+                      Close
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+
+              {!isHost && isParticipated && item.status !== "closed" && (
+                <Pressable
+                  style={[
+                    styles.btn,
+                    {
+                      backgroundColor: colors.RED_500,
+                      marginLeft: 8,
+                      alignSelf: "flex-end",
+                    },
+                  ]}
+                  onPress={() => {
+                    Alert.alert(
+                      "Leave Confirmation",
+                      "Are you sure you want to leave this meetup?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Leave",
+                          style: "destructive",
+                          onPress: () => handleLeave(item.id),
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.btnText, { color: colors.WHITE }]}>
+                    Leave
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          ) : (
             <Pressable
               disabled={item.status === "closed"}
               onPress={() =>
@@ -307,129 +464,14 @@ export default function Home() {
               >
                 {item.status === "closed"
                   ? "Closed"
-                  : activeTab === "current"
+                  : isParticipated
                   ? "Info"
                   : "Register"}
               </Text>
             </Pressable>
-
-            {isHost && (
-              <>
-                <Pressable
-                  style={[
-                    styles.btn,
-                    styles.btnDefault,
-                    {
-                      backgroundColor: colors.GRAY_300,
-                      marginLeft: 8,
-                      alignSelf: "flex-end",
-                    },
-                  ]}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/meetup/editMeetUp",
-                      params: { id: item.id.toString() },
-                    })
-                  }
-                >
-                  <Text style={[styles.btnText, { color: colors.BLACK }]}>
-                    Edit
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.btn,
-                    styles.btnDefault,
-                    {
-                      backgroundColor: colors.RED_500,
-                      marginLeft: 8,
-                      alignSelf: "flex-end",
-                    },
-                  ]}
-                  onPress={() => {
-                    Alert.alert(
-                      "Delete Confirmation",
-                      "Are you sure you want to delete this meetup?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => handleDelete(item.id),
-                        },
-                      ]
-                    );
-                  }}
-                >
-                  <Text style={[styles.btnText, { color: colors.WHITE }]}>
-                    Close
-                  </Text>
-                </Pressable>
-              </>
-            )}
-
-            {!isHost && isParticipated && item.status !== "closed" && (
-              <Pressable
-                style={[
-                  styles.btn,
-                  {
-                    backgroundColor: colors.RED_500,
-                    marginLeft: 8,
-                    alignSelf: "flex-end",
-                  },
-                ]}
-                onPress={() => {
-                  Alert.alert(
-                    "Leave Confirmation",
-                    "Are you sure you want to leave this meetup?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Leave",
-                        style: "destructive",
-                        onPress: () => handleLeave(item.id),
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={[styles.btnText, { color: colors.WHITE }]}>
-                  Leave
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        ) : (
-          <Pressable
-            disabled={item.status === "closed"}
-            onPress={() =>
-              router.push({
-                pathname: "/meetup/[id]",
-                params: { id: item.id.toString() },
-              })
-            }
-            style={[
-              styles.btn,
-              item.status === "closed"
-                ? styles.btnClosed
-                : isFocused
-                ? styles.btnFocused
-                : styles.btnDefault,
-            ]}
-          >
-            <Text
-              style={[
-                styles.btnText,
-                isFocused && styles.btnTextFocused,
-                item.status === "closed" && styles.btnTextClosed,
-              ]}
-            >
-              {item.status === "closed" ? "Closed" : "Register"}
-            </Text>
-          </Pressable>
-        )}
-      </View>
+          )}
+        </View>
+      </Pressable>
     );
   };
 

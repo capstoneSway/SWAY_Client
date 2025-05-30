@@ -20,6 +20,7 @@ interface ChatBottomCTAProps {
   onImagePicked?: (uri: string) => void;
   containerStyle?: ViewStyle;
   inputStyle?: TextStyle;
+  disabled?: boolean;
 }
 
 const ChatInput: React.FC<ChatBottomCTAProps> = ({
@@ -29,6 +30,7 @@ const ChatInput: React.FC<ChatBottomCTAProps> = ({
   containerStyle,
   inputStyle,
   onImagePicked,
+  disabled,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -72,19 +74,23 @@ const ChatInput: React.FC<ChatBottomCTAProps> = ({
 
       <View style={styles.inputWrapper}>
         <Pressable
-          onPress={pickImage}
+          onPress={disabled ? undefined : pickImage}
+          disabled={disabled}
           style={({ pressed }) => [
             styles.imageButton,
-            { opacity: pressed ? 0.5 : 1 },
+            {
+              opacity: disabled ? 0.3 : pressed ? 0.5 : 1,
+            },
           ]}
         >
-          <Feather name="image" size={28} color="black" />
+          <Feather name="image" size={28} color={disabled ? "#ccc" : "black"} />
         </Pressable>
 
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          style={[styles.input, inputStyle]}
+          style={[styles.input, inputStyle, disabled && { color: "#aaa" }]}
+          editable={!disabled}
           multiline
           underlineColorAndroid="transparent"
           textAlignVertical="center"
@@ -93,16 +99,18 @@ const ChatInput: React.FC<ChatBottomCTAProps> = ({
           importantForAutofill="no"
           autoComplete="off"
           autoCorrect={false}
+          placeholder={disabled ? "This chat has expired." : undefined}
         />
 
         <Pressable
           onPress={() => onSend(value)}
-          disabled={!isEnabled}
+          disabled={disabled || !isEnabled}
           style={({ pressed }) => [
             styles.sendButton,
             {
-              backgroundColor: isEnabled ? colors.PURPLE_300 : colors.GRAY_300,
-              opacity: pressed && isEnabled ? 0.5 : 1,
+              backgroundColor:
+                !disabled && isEnabled ? colors.PURPLE_300 : colors.GRAY_300,
+              opacity: pressed && !disabled && isEnabled ? 0.5 : 1,
             },
           ]}
         >
