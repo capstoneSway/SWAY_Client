@@ -6,7 +6,8 @@
   "build": {
     "preview": {
       "distribution": "internal",
-      "developmentClient": false
+      "developmentClient": false,
+      "channel": "preview"
     },
     "production": {
       "ios": {
@@ -15,7 +16,8 @@
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     }
   },
   "submit": {

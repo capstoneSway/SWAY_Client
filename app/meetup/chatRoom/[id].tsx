@@ -1,7 +1,7 @@
 import useChatSocket from "@/app/api/chatSocket";
 import fetchUserInfo from "@/app/api/fetchUserInfo";
 import { leaveChatRoom } from "@/app/api/leaveChatLightning";
-import { uploadImage } from "@/app/api/uploadImaage";
+import { uploadImage } from "@/app/api/uploadImage";
 import ChatInput from "@/components/chatBottomCTA";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";

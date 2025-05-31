@@ -5,7 +5,6 @@ import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
-import firebase from "@react-native-firebase/app";
 import * as Clipboard from "expo-clipboard";
 import * as Font from "expo-font";
 import {
@@ -227,15 +226,6 @@ export default function Home() {
 
   useEffect(() => {
     requestInitialPermissions();
-  }, []);
-
-  useEffect(() => {
-    try {
-      const app = firebase.app();
-      console.log("✅ Firebase Initialized:", app.name);
-    } catch (e) {
-      console.log("❌ Firebase not initialized", e);
-    }
   }, []);
 
   useEffect(() => {

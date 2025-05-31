@@ -14,13 +14,15 @@
       "resizeMode": "cover",
       "backgroundColor": "#6F4AE2"
     },
-    "newArchEnabled": true,
     "ios": {
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification", "fetch"],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
+      },
+      "entitlements": {
+        "com.apple.developer.push-notifications": true
       },
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.sway",
