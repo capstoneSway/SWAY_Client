@@ -1,7 +1,8 @@
 import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
 import formatDateTime from "@/utils/formatDataTime";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
 import firebase from "@react-native-firebase/app";
@@ -23,6 +24,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   Pressable,
   SafeAreaView,
@@ -39,8 +41,6 @@ import { getFcmToken } from "../api/getFcmToken";
 import { leaveLightning } from "../api/leaveLightning"; // 탈퇴 API import 추가
 import ensureValidToken from "../api/tokenManager";
 
-const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
-
 export default function Home() {
   const navigation = useNavigation();
   const router = useRouter();
@@ -48,6 +48,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<"meetup" | "current">(
     tab === "current" ? "current" : "meetup"
   );
+  const defaultProfile = require("@/assets/images/default_profile.png");
+  const TAGS = ["Travel", "Foodie", "WorkOut", "Others"];
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [timeTick, setTimeTick] = useState(0);
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -58,6 +60,12 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [currentLoading, setCurrentLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+
+  const getFlagByCode = (code) => {
+    if (!code) return null;
+    const found = countries.find((c) => c.code === code);
+    return found ? found.flag : null;
+  };
 
   function extractEmail(fullUsername: string): string {
     const parts = fullUsername.split("_");
@@ -98,16 +106,19 @@ export default function Home() {
                 item.participants.some((p: any) => p.email === email)
             );
 
+            data = data.filter((item: any) => {
+              // end_time, expiresAt, expiryTime 중 하나라도 있으면 사용
+              const end = item.end_time || item.expiresAt || item.expiryTime;
+              if (!end) return false; // 만료 정보 없으면 표시하지 않음
+              return new Date(end) > new Date(); // 아직 유효하면 표시
+            });
+
             // 호스트 여부 태그 지정
             data = data.map((item: any) => {
               const tags: string[] = [];
-              if (
-                item.host?.email === email &&
-                item.participants.some((p: any) => p.email === email)
-              ) {
+              if (item.host?.email === email) {
                 tags.push("hosted");
               } else if (
-                item.host?.email !== email &&
                 item.participants.some((p: any) => p.email === email)
               ) {
                 tags.push("participated");
@@ -115,6 +126,7 @@ export default function Home() {
               return { ...item, tags };
             });
           } else {
+            // meet ups
             const token = await ensureValidToken();
 
             // 사용자 정보 먼저 받아서 이메일 추출
@@ -132,17 +144,24 @@ export default function Home() {
                   : item.participants;
                 return Array.isArray(participants) && participants.length > 0;
               })
+              .filter((item: any) => {
+                const end = item.end_time || item.expiresAt || item.expiryTime;
+                if (!end) return false;
+                return new Date(end) > new Date();
+              })
               .map((item: any) => {
                 const participants = Array.isArray(item.participants?.[0])
                   ? item.participants[0]
                   : item.participants;
-
                 const tags: string[] = [];
 
-                if (Array.isArray(participants)) {
-                  if (participants.some((p: any) => p.email === email)) {
-                    tags.push("participated");
-                  }
+                if (item.host?.email === email) {
+                  tags.push("hosted");
+                } else if (
+                  Array.isArray(participants) &&
+                  participants.some((p: any) => p.email === email)
+                ) {
+                  tags.push("participated");
                 }
 
                 return { ...item, tags };
@@ -246,10 +265,11 @@ export default function Home() {
     const isHost = item.host?.email === userEmail;
     const isParticipated = item.tags?.includes("participated");
 
-    if (!item) {
-      console.log("❌ item is null or undefined!");
-      return null;
-    }
+    const infoColor = isFocused ? colors.WHITE : colors.PURPLE_300;
+    const closeColor = isFocused ? colors.WHITE : colors.RED_500;
+    const editColor = isFocused ? colors.WHITE : "black";
+
+    if (!item) return null;
 
     const handleDelete = async (id: number) => {
       try {
@@ -257,10 +277,7 @@ export default function Home() {
         Alert.alert("Close Successful", "The meetup has been closed");
         setFilteredCards((prev) => prev.filter((card) => card.id !== id));
       } catch (error) {
-        Alert.alert(
-          "Delete Failed",
-          "Failed to delete the meetup for some reason. Please try again."
-        );
+        Alert.alert("Delete Failed", "Failed to delete the meetup.");
       }
     };
 
@@ -270,208 +287,269 @@ export default function Home() {
         Alert.alert("Left", "You have successfully left the meetup.");
         setFilteredCards((prev) => prev.filter((card) => card.id !== id));
       } catch (error) {
-        Alert.alert("Error", "Failed to leave the meetup. Please try again.");
+        Alert.alert("Error", "Failed to leave the meetup.");
       }
     };
 
     return (
-      <Pressable
-        onPress={() => {
-          console.log("🟣 번개 정보:", JSON.stringify(item, null, 2));
-        }}
-      >
-        <View style={[styles.card, isFocused && styles.cardFocused]}>
-          <Text style={[styles.title, isFocused && styles.titleFocused]}>
-            {item.title}
-          </Text>
-          <Text style={[styles.sub, isFocused && styles.subFocused]}>
-            {isValidDate
-              ? `Open until ${formatDateTime(endTime)}`
-              : "Open until N/A"}
-          </Text>
-          <Text
-            style={[
-              styles.participants,
-              isFocused && styles.participantsFocused,
-            ]}
-          >
-            Participants: {participantsText}
-            {"  "}
-            {item.tags?.map((tag: string, i: number) => (
-              <Text
-                key={i}
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  color: isFocused
-                    ? colors.YELLOW_500
-                    : tag === "hosted"
-                    ? colors.YELLOW_500
-                    : colors.PURPLE_300,
-                  marginLeft: 8,
-                }}
-              >
-                {tag === "hosted" ? "Hosted" : "Participated"}
-              </Text>
-            ))}
-          </Text>
-
-          {activeTab === "current" ? (
-            <View style={{ flexDirection: "row", marginTop: 8 }}>
+      <View style={[styles.card, isFocused && styles.cardFocused]}>
+        {activeTab === "current" && (
+          <>
+            <View style={styles.cardTopRow}>
               <Pressable
-                disabled={item.status === "closed"}
+                style={styles.cardActionTopLeft}
                 onPress={() =>
                   router.push({
                     pathname: "/meetup/[id]",
                     params: { id: item.id.toString() },
                   })
                 }
-                style={[
-                  styles.btn,
-                  item.status === "closed"
-                    ? styles.btnClosed
-                    : isFocused
-                    ? styles.btnFocused
-                    : styles.btnDefault,
-                ]}
               >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={32}
+                  color={infoColor}
+                />
                 <Text
                   style={[
-                    styles.btnText,
-                    isFocused && styles.btnTextFocused,
-                    item.status === "closed" && styles.btnTextClosed,
+                    styles.actionLabelInfo,
+                    isFocused && { color: colors.WHITE },
                   ]}
                 >
-                  {item.status === "closed"
-                    ? "Closed"
-                    : activeTab === "current"
-                    ? "Info"
-                    : "Register"}
+                  Info
                 </Text>
               </Pressable>
+            </View>
 
-              {isHost && (
-                <>
-                  <Pressable
-                    style={[
-                      styles.btn,
-                      styles.btnDefault,
+            {(isHost || (isParticipated && item.status !== "closed")) && (
+              <Pressable
+                style={[
+                  styles.cardActionTopRight,
+                  { position: "absolute", top: 12, right: 12 },
+                ]}
+                onPress={() => {
+                  Alert.alert(
+                    isHost ? "Delete Confirmation" : "Leave Confirmation",
+                    isHost
+                      ? "Are you sure you want to delete this meetup?"
+                      : "Are you sure you want to leave this meetup?",
+                    [
+                      { text: "Cancel", style: "cancel" },
                       {
-                        backgroundColor: colors.GRAY_300,
-                        marginLeft: 8,
-                        alignSelf: "flex-end",
+                        text: isHost ? "Delete" : "Leave",
+                        style: "destructive",
+                        onPress: () =>
+                          isHost ? handleDelete(item.id) : handleLeave(item.id),
                       },
-                    ]}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/meetup/editMeetUp",
-                        params: { id: item.id.toString() },
-                      })
-                    }
-                  >
-                    <Text style={[styles.btnText, { color: colors.BLACK }]}>
-                      Edit
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={[
-                      styles.btn,
-                      styles.btnDefault,
-                      {
-                        backgroundColor: colors.RED_500,
-                        marginLeft: 8,
-                        alignSelf: "flex-end",
-                      },
-                    ]}
-                    onPress={() => {
-                      Alert.alert(
-                        "Delete Confirmation",
-                        "Are you sure you want to delete this meetup?",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Delete",
-                            style: "destructive",
-                            onPress: () => handleDelete(item.id),
-                          },
-                        ]
-                      );
-                    }}
-                  >
-                    <Text style={[styles.btnText, { color: colors.WHITE }]}>
-                      Close
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-
-              {!isHost && isParticipated && item.status !== "closed" && (
-                <Pressable
+                    ]
+                  );
+                }}
+              >
+                {isHost ? (
+                  <AntDesign name="delete" size={28} color={closeColor} />
+                ) : (
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={24}
+                    color={closeColor}
+                  />
+                )}
+                <Text
                   style={[
-                    styles.btn,
-                    {
-                      backgroundColor: colors.RED_500,
-                      marginLeft: 8,
-                      alignSelf: "flex-end",
-                    },
+                    styles.actionLabelClose,
+                    isFocused && { color: colors.WHITE },
                   ]}
-                  onPress={() => {
-                    Alert.alert(
-                      "Leave Confirmation",
-                      "Are you sure you want to leave this meetup?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Leave",
-                          style: "destructive",
-                          onPress: () => handleLeave(item.id),
-                        },
-                      ]
-                    );
+                >
+                  {isHost ? "Close" : "Leave"}
+                </Text>
+              </Pressable>
+            )}
+            {activeTab === "current" && isHost && (
+              <Pressable
+                style={{
+                  position: "absolute",
+                  bottom: 12,
+                  right: 4,
+                  backgroundColor: isFocused ? colors.YELLOW_500 : colors.WHITE,
+                  borderRadius: 10,
+                  paddingHorizontal: 8,
+                  paddingVertical: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  elevation: 2,
+                }}
+                onPress={() =>
+                  router.push({
+                    pathname: "/meetup/editMeetUp",
+                    params: { id: item.id.toString() },
+                  })
+                }
+              >
+                <FontAwesome
+                  name="edit"
+                  size={28}
+                  color={isFocused ? colors.PURPLE_300 : colors.BLACK}
+                  style={{ marginRight: 2 }}
+                />
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: isFocused ? colors.PURPLE_300 : colors.BLACK,
                   }}
                 >
-                  <Text style={[styles.btnText, { color: colors.WHITE }]}>
-                    Leave
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          ) : (
-            <Pressable
-              disabled={item.status === "closed"}
-              onPress={() =>
-                router.push({
-                  pathname: "/meetup/[id]",
-                  params: { id: item.id.toString() },
-                })
-              }
+                  Edit
+                </Text>
+              </Pressable>
+            )}
+          </>
+        )}
+
+        {activeTab === "meetup" ? (
+          <View style={{ flex: 1, justifyContent: "center" }}>
+            <Text
               style={[
-                styles.btn,
-                item.status === "closed"
-                  ? styles.btnClosed
-                  : isFocused
-                  ? styles.btnFocused
-                  : styles.btnDefault,
+                styles.title,
+                isFocused && styles.titleFocused,
+                { marginTop: 30 },
               ]}
             >
-              <Text
-                style={[
-                  styles.btnText,
-                  isFocused && styles.btnTextFocused,
-                  item.status === "closed" && styles.btnTextClosed,
-                ]}
-              >
-                {item.status === "closed"
-                  ? "Closed"
-                  : isParticipated
-                  ? "Info"
-                  : "Register"}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      </Pressable>
+              {item.title}
+            </Text>
+            <Text style={[styles.sub, isFocused && styles.subFocused]}>
+              {isValidDate
+                ? `Open until ${formatDateTime(endTime)}`
+                : "Open until N/A"}
+            </Text>
+            <Text
+              style={[
+                styles.participants,
+                isFocused && styles.participantsFocused,
+                { marginTop: 4 },
+                { marginBottom: 30 }, // ✅ 간격 좁힘
+              ]}
+            >
+              Participants: {participantsText}
+              {"  "}
+              {item.tags?.map((tag: string, i: number) => (
+                <Text
+                  key={i}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: isFocused
+                      ? colors.YELLOW_500
+                      : tag === "hosted"
+                      ? colors.YELLOW_500
+                      : colors.PURPLE_300,
+                    marginLeft: 8,
+                  }}
+                >
+                  {tag === "hosted" ? "Hosted" : "Participated"}
+                </Text>
+              ))}
+            </Text>
+          </View>
+        ) : (
+          <>
+            <Text style={[styles.title, isFocused && styles.titleFocused]}>
+              {item.title}
+            </Text>
+            <Text style={[styles.sub, isFocused && styles.subFocused]}>
+              {isValidDate
+                ? `Open until ${formatDateTime(endTime)}`
+                : "Open until N/A"}
+            </Text>
+
+            <View style={styles.avatars}>
+              {item.participants?.slice(0, 3).map((p, i) => (
+                <View
+                  key={p.id ?? i}
+                  style={[
+                    styles.avatarWrapper,
+                    { marginLeft: i === 0 ? 0 : -10 },
+                  ]}
+                >
+                  <Image
+                    source={
+                      p.profile_image
+                        ? { uri: p.profile_image }
+                        : defaultProfile
+                    }
+                    style={styles.avatar}
+                    resizeMode="cover"
+                  />
+                  {p.national_code && (
+                    <Image
+                      source={getFlagByCode(p.national_code)}
+                      style={styles.flag}
+                      resizeMode="cover"
+                    />
+                  )}
+                </View>
+              ))}
+              {item.participants && item.participants.length > 3 && (
+                <View style={styles.moreBadge}>
+                  <Text style={styles.moreText}>
+                    +{item.participants.length - 3}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Text
+              style={[
+                styles.participants,
+                isFocused && styles.participantsFocused,
+              ]}
+            >
+              Participants: {participantsText}
+              {"  "}
+              {item.tags?.map((tag: string, i: number) => (
+                <Text
+                  key={i}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: isFocused
+                      ? colors.YELLOW_500
+                      : tag === "hosted"
+                      ? colors.YELLOW_500
+                      : colors.PURPLE_300,
+                    marginLeft: 8,
+                  }}
+                >
+                  {tag === "hosted" ? "Hosted" : "Participated"}
+                </Text>
+              ))}
+            </Text>
+          </>
+        )}
+
+        {activeTab === "meetup" && (
+          <Pressable
+            style={[
+              styles.registerButton,
+              isFocused && styles.registerButtonFocused,
+            ]}
+            onPress={() =>
+              router.push({
+                pathname: "/meetup/[id]",
+                params: { id: item.id.toString() },
+              })
+            }
+          >
+            <Text
+              style={[
+                styles.registerButtonText,
+                isFocused && styles.registerButtonTextFocused,
+              ]}
+            >
+              {isHost || isParticipated ? "Info" : "Register"}
+            </Text>
+          </Pressable>
+        )}
+      </View>
     );
   };
 
@@ -741,15 +819,65 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
+    position: "relative",
   },
   cardFocused: {
     backgroundColor: colors.PURPLE_300,
   },
+
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 32,
+    marginBottom: 2,
+    marginLeft: -4,
+  },
+  cardActionTopLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  cardActionTopRight: {
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 4,
+  },
+  cardBottomRow: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    marginTop: 6,
+    minHeight: 30,
+  },
+  cardActionBottomLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionLabelInfo: {
+    fontSize: 16,
+    marginLeft: -1,
+    color: colors.PURPLE_300,
+    fontWeight: "600",
+  },
+  actionLabelClose: {
+    fontSize: 16,
+    marginLeft: 2,
+    color: colors.RED_500,
+    fontWeight: "600",
+  },
+  actionLabelEdit: {
+    fontSize: 16,
+    marginLeft: 2,
+    color: colors.BLACK,
+    fontWeight: "600",
+  },
+
   title: {
     fontSize: 24,
     fontWeight: "600",
     color: colors.PURPLE_300,
-    marginTop: 24,
+    marginTop: 0,
     marginBottom: 2,
   },
   titleFocused: {
@@ -853,5 +981,81 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOpacity: 0.5,
     elevation: 2,
+  },
+
+  avatars: { flexDirection: "row" },
+  avatarWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    position: "relative",
+    overflow: "visible",
+    marginBottom: 10,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderColor: colors.WHITE,
+    backgroundColor: colors.GRAY_200,
+  },
+  flag: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    position: "absolute",
+    bottom: -2,
+    right: 0,
+    borderWidth: 0,
+    borderColor: colors.WHITE,
+    zIndex: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  moreBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.PURPLE_100,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: -10,
+    zIndex: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
+    marginTop: 1,
+  },
+  moreText: {
+    fontSize: 12,
+    color: colors.BLACK,
+  },
+  registerButton: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    backgroundColor: colors.PURPLE_300,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
+    zIndex: 10,
+    minWidth: 80,
+    maxWidth: 80,
+    alignItems: "center",
+  },
+  registerButtonFocused: {
+    backgroundColor: colors.YELLOW_500,
+  },
+  registerButtonText: {
+    color: colors.WHITE,
+    fontWeight: "bold",
+  },
+  registerButtonTextFocused: {
+    color: colors.PURPLE_300,
   },
 });

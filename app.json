@@ -11,12 +11,13 @@
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/logo_splash.png",
-      "resizemode": "cover",
+      "resizeMode": "cover",
       "backgroundColor": "#6F4AE2"
     },
     "newArchEnabled": true,
     "ios": {
       "infoPlist": {
+        "UIBackgroundModes": ["remote-notification", "fetch"],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
@@ -28,11 +29,6 @@
         "light": "./assets/images/appLogo.png",
         "dark": "./assets/images/appLogo.png",
         "tinted": "./assets/images/appLogo.png"
-      },
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
       }
     },
     "android": {
@@ -43,7 +39,6 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.sway",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
@@ -79,11 +74,9 @@
           "android": {
             "extraMavenRepos": [
               "https://devrepo.kakao.com/nexus/content/groups/public/"
-            ],
-            "newArchEnabled": true
+            ]
           },
           "ios": {
-            "newArchEnabled": true,
             "useFrameworks": "static"
           }
         }

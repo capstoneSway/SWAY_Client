@@ -29,6 +29,8 @@ export default function MeetUpDetail() {
   const [meetup, setMeetup] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [userGender, setUserGender] = useState<"male" | "female" | null>(null);
+
   const getFlagByCode = (code: string) => {
     const found = countries.find((c) => c.code === code);
     return found ? found.flag : null;
@@ -40,6 +42,28 @@ export default function MeetUpDetail() {
   };
 
   useEffect(() => {
+    const loadUserInfo = async () => {
+      const token = await AsyncStorage.getItem("@jwt");
+      if (!token) return;
+
+      const me = await fetchUserInfo(token);
+      if (me?.gender === "male" || me?.gender === "female") {
+        console.log("유저 성별:", me.gender);
+        setUserGender(me.gender);
+      }
+    };
+    loadUserInfo();
+  }, []);
+
+  const isGenderAllowed = () => {
+    console.log("성별 제한 확인 중:", meetup?.gender, userGender);
+    if (!meetup || !userGender) return true; // 데이터 아직 없으면 막지 않음
+    if (meetup.gender === "all") return true;
+    if (meetup.gender === "male" && userGender === "male") return true;
+    if (meetup.gender === "female" && userGender === "female") return true;
+    return false;
+  };
+  useEffect(() => {
     if (!id) return;
     (async () => {
       try {
@@ -49,7 +73,7 @@ export default function MeetUpDetail() {
         console.log("API 응답 res.data:", res.data);
         setMeetup(res.data);
       } catch (e) {
-        console.error("❌ 모임 정보 불러오기 실패", e);
+        console.error("모임 정보 불러오기 실패", e);
       } finally {
         setLoading(false);
       }
@@ -62,6 +86,14 @@ export default function MeetUpDetail() {
       return;
     }
 
+    if (!isGenderAllowed()) {
+      Alert.alert(
+        "You are not eligible to join",
+        "This meetup is restricted based on gender."
+      );
+      return;
+    }
+
     try {
       const token = await AsyncStorage.getItem("@jwt");
       if (!token) throw new Error("No access token found");
@@ -69,17 +101,12 @@ export default function MeetUpDetail() {
       const me = await fetchUserInfo(token);
       if (!me?.username) throw new Error("No username found");
 
-      const res = await axios.get(
-        `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${meetup.id}/`
-      );
-      const updatedMeetup = res.data;
-
-      const alreadyJoined = updatedMeetup.participants?.some(
+      const alreadyJoined = meetup.participants?.some(
         (p: any) => p.username === me.username
       );
 
       if (alreadyJoined) {
-        console.log("✅ 이미 참가 중 - 채팅방으로 이동");
+        console.log("이미 참가 중 - 채팅방으로 이동");
         router.push(`/meetup/chatRoom/${meetup.id}`);
       } else {
         Alert.alert(
@@ -98,12 +125,9 @@ export default function MeetUpDetail() {
                       participants: res.participants,
                     }));
                   }
-                  router.push({
-                    pathname: `/meetup/chatRoom/[id]`,
-                    params: { id: String(meetup.id), joined: "true" },
-                  });
+                  router.push(`/meetup/chatRoom/${meetup.id}`);
                 } catch (err: any) {
-                  console.error("❌ 참가 실패:", err);
+                  console.error("참가 실패:", err.response?.data || err);
                   Alert.alert(
                     "Error",
                     err.message || "Failed to join the meetup."
@@ -115,7 +139,7 @@ export default function MeetUpDetail() {
         );
       }
     } catch (err: any) {
-      console.error("❌ 오류:", err);
+      console.error(" 오류:", err);
       Alert.alert("Error", err.message || "Something went wrong.");
     }
   };
@@ -202,8 +226,20 @@ export default function MeetUpDetail() {
                     style={styles.avatar}
                     resizeMode="cover"
                   />
+                  <Image
+                    source={getFlagByCode(p.national_code)}
+                    style={styles.flag}
+                    resizeMode="cover"
+                  />
                 </View>
               ))}
+              {meetup.participants && meetup.participants.length > 3 && (
+                <View style={styles.moreBadge}>
+                  <Text style={styles.moreText}>
+                    +{meetup.participants.length - 3}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -228,7 +264,7 @@ export default function MeetUpDetail() {
           <Text style={styles.description}>{meetup.content}</Text>
         </View>
 
-        {meetup.status !== "closed" && (
+        {meetup.status !== "closed" && !!userGender && (
           <FixedBottomCTA label="Join" enabled={true} onPress={handleJoin} />
         )}
       </SafeAreaView>
@@ -313,6 +349,45 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: -20,
   },
+
+  flag: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    position: "absolute",
+    bottom: -2,
+    right: 0,
+    borderWidth: 0,
+    borderColor: colors.WHITE,
+    zIndex: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4, // Android용
+  },
+
+  moreBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.PURPLE_100,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: -10,
+    zIndex: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4, // Android용
+    marginTop: 1,
+  },
+  moreText: {
+    fontSize: 12,
+    color: colors.BLACK,
+  },
+
   tag: {
     fontSize: 16,
     color: colors.PURPLE_300,
