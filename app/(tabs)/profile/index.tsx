@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   Dimensions,
   ListRenderItemInfo,
-  ImageSourcePropType,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/color";
@@ -98,7 +97,6 @@ const ProfileScreen: React.FC = () => {
     GasoekOne: require("@/assets/fonts/GasoekOne-Regular.ttf"),
   });
   const [user, setUser] = useState<User | null>(null);
-
   const [myPosts, setMyPosts] = useState<PostItem[]>([]);
   const [scrappedPosts, setScrappedPosts] = useState<PostItem[]>([]);
 
@@ -106,10 +104,8 @@ const ProfileScreen: React.FC = () => {
     const loadUser = async () => {
       try {
         const token = await AsyncStorage.getItem("@jwt");
-        //console.log("토큰:", token);
         if (!token) return;
         const data = await fetchUserInfo(token);
-        //console.log("유저 정보:", data);
         if (data)
           setUser({
             profileImageUrl: data.profile_image,
@@ -122,14 +118,12 @@ const ProfileScreen: React.FC = () => {
     };
     loadUser();
 
-    // 닉네임 변경 시 반영
     const handleNicknameChange = () => {
       console.log("🔄 nicknameChanged 이벤트 수신 -> 사용자 정보 갱신");
       loadUser();
     };
 
     eventEmitter.on("nicknameChanged", handleNicknameChange);
-
     return () => {
       eventEmitter.off("nicknameChanged", handleNicknameChange);
     };
@@ -138,13 +132,7 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     const fetchMyPage = async () => {
       try {
-        const token = await AsyncStorage.getItem("@jwt");
-        if (!token) return;
-
-        const res = await api.get("/mypage/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
+        const res = await api.get("/mypage/");
         setMyPosts(res.data.my_posts);
         setScrappedPosts(res.data.scrapped_posts);
       } catch (err) {
@@ -155,7 +143,6 @@ const ProfileScreen: React.FC = () => {
     fetchMyPage();
   }, []);
 
-  // 국가 코드에 맞는 flag, name 찾기
   const countryData =
     user && user.country
       ? countries.find(

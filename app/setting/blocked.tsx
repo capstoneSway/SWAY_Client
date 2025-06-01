@@ -13,17 +13,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api/axios";
+import { countries } from "@/constants/country";
 
 const DEFAULT_IMAGE = require("@/assets/images/default_profile.png");
 
 interface BlockedUser {
-  id: number; // ✅ 삭제 요청에 사용될 PK
+  id: number;
   blocked_user_id: number;
   nickname: string;
   created_at: string;
+  image_url: string;
+  nationality?: string;
 }
 
-export default function BlockedUserScreen() {
+export default function BlockedUserListScreen() {
   const navigation = useNavigation();
   const [users, setUsers] = useState<BlockedUser[]>([]);
 
@@ -42,7 +45,6 @@ export default function BlockedUserScreen() {
           },
         });
 
-        //console.log("🟣 차단 유저 응답:", response.data);
         setUsers(response.data);
       } catch (error) {
         console.error("❌ 차단 유저 불러오기 실패:", error);
@@ -53,8 +55,6 @@ export default function BlockedUserScreen() {
   }, []);
 
   const confirmUnblock = (id: number, name: string) => {
-    //console.log("🧩 unblock 요청 보낼 ID:", id);
-
     Alert.alert("Unblock User", `Do you really want to unblock ${name}?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -68,16 +68,13 @@ export default function BlockedUserScreen() {
               return;
             }
 
-            const url = `/mypage/settings/block-user/${id}/`;
-            //console.log("🧪 DELETE 요청 URL:", url);
-
-            await api.delete(url, {
+            await api.delete(`/mypage/settings/block-user/${id}/`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             });
 
-            setUsers((prev) => prev.filter((user) => user.id !== id)); // ✅ id 기준으로 제거
+            setUsers((prev) => prev.filter((user) => user.id !== id));
           } catch (error) {
             console.error("❌ 차단 해제 실패:", error);
           }
@@ -86,19 +83,32 @@ export default function BlockedUserScreen() {
     ]);
   };
 
-  const renderItem = ({ item }: { item: BlockedUser }) => (
-    <View style={styles.userRow}>
-      <View style={styles.userInfo}>
-        <Image source={DEFAULT_IMAGE} style={styles.avatar} />
-        <Text style={styles.name}>{item.nickname}</Text>
+  const renderItem = ({ item }: { item: BlockedUser }) => {
+    const profileImage = item.image_url
+      ? { uri: item.image_url }
+      : DEFAULT_IMAGE;
+
+    // ✅ 국가 이름으로 국기 이미지 찾기
+    const matchedCountry = countries.find((c) => c.name === item.nationality);
+    const flagImage = matchedCountry?.flag;
+
+    return (
+      <View style={styles.userRow}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatarContainer}>
+            <Image source={profileImage} style={styles.avatar} />
+            {flagImage && <Image source={flagImage} style={styles.flag} />}
+          </View>
+          <Text style={styles.name}>{item.nickname}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => confirmUnblock(item.id, item.nickname)}
+        >
+          <Ionicons name="close" size={24} color="#111" />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        onPress={() => confirmUnblock(item.id, item.nickname)} // ✅ blocked_user_id → id
-      >
-        <Ionicons name="close" size={24} color="#111" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -112,7 +122,7 @@ export default function BlockedUserScreen() {
 
       <FlatList
         data={users}
-        keyExtractor={(item) => item.id.toString()} // ✅ id 기준으로 key 설정
+        keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
       />
@@ -140,6 +150,25 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
   },
   userInfo: { flexDirection: "row", alignItems: "center" },
-  avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
+  avatarContainer: {
+    position: "relative",
+    marginRight: 12,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  flag: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#fff",
+  },
   name: { fontSize: 16, fontWeight: "500" },
 });

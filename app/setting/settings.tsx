@@ -63,12 +63,17 @@ export default function SettingsScreen() {
   const [nickname, setNickname] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [checkResult, setCheckResult] = useState<boolean | null>(null);
-  const [switches, setSwitches] = useState<null | {
+  const [switches, setSwitches] = useState<{
     posts: boolean;
     comments: boolean;
     meetups: boolean;
     chats: boolean;
-  }>(null);
+  }>({
+    posts: true,
+    comments: true,
+    meetups: true,
+    chats: true,
+  });
 
   const scrollRef = useRef<ScrollView>(null);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -115,9 +120,8 @@ export default function SettingsScreen() {
       : undefined;
 
   const onToggle = async (key: keyof typeof switches) => {
-    if (!switches) return;
     const updated = { ...switches, [key]: !switches[key] };
-    setSwitches(updated);
+    setSwitches(updated); // UI에서 즉시 반영
 
     try {
       const token = await AsyncStorage.getItem("@jwt");
@@ -133,8 +137,8 @@ export default function SettingsScreen() {
           },
         }
       );
-    } catch (error: any) {
-      console.error("알림 설정 변경 실패:", error);
+    } catch (error) {
+      console.error("⚠️ 서버에 설정 변경 실패:", error);
     }
   };
 
@@ -196,36 +200,72 @@ export default function SettingsScreen() {
   };
 
   const pickImageAndUpload = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-      base64: true,
-    });
+    console.log("🔍 [1] 이미지 선택 시작");
 
-    if (!result.canceled) {
-      const selectedAsset = result.assets[0];
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log("✅ [2] 권한 요청 완료:", permissionResult);
 
-      try {
+      if (!permissionResult.granted) {
+        alert("사진 접근 권한이 필요합니다.");
+        console.warn("⛔️ [3] 권한 거부됨");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images" as ImagePicker.MediaType,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      console.log("📸 [4] 이미지 선택 결과:", result);
+
+      if (!result.canceled) {
+        const selectedAsset = result.assets[0];
+        console.log("✅ [5] 선택된 이미지:", selectedAsset.uri);
+
+        const fileExtension = selectedAsset.uri.split(".").pop();
+        const mimeType = fileExtension === "png" ? "image/png" : "image/jpeg";
+        const fileName = `profile.${fileExtension}`;
+
+        const formData = new FormData();
+        formData.append("profile_image", {
+          uri: selectedAsset.uri,
+          name: fileName,
+          type: mimeType,
+        } as any);
+
         const token = await AsyncStorage.getItem("@jwt");
-        if (!token) return;
+        if (!token) {
+          console.warn("❌ [6] JWT 없음");
+          return;
+        }
 
-        await api.put(
+        const res = await api.put(
           "/accounts/user/info/image-update/",
-          {},
+          formData,
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              "Content-Type": "multipart/form-data",
             },
           }
         );
 
+        const newImageUrl = res.data.profile_image;
+        console.log("✅ [7] 서버 응답 URL:", newImageUrl);
+
         setUser((prev) =>
-          prev ? { ...prev, profileImageUrl: selectedAsset.uri } : prev
+          prev ? { ...prev, profileImageUrl: newImageUrl } : prev
         );
-      } catch (err: any) {
-        console.error("프로필 사진 업로드 실패:", err);
+      } else {
+        console.log("🚫 [8] 사용자 이미지 선택 취소");
+      }
+    } catch (err: any) {
+      console.error("❌ [9] 오류 발생:", err);
+      if (err.response?.data) {
+        console.error("❌ [10] 서버 응답 오류:", err.response.data);
       }
     }
   };
@@ -259,7 +299,7 @@ export default function SettingsScreen() {
             />
             <TouchableOpacity
               style={styles.avatarOverlay}
-              onPress={pickImageAndUpload}
+              onPress={async () => await pickImageAndUpload()}
             >
               <Ionicons name="camera-outline" size={32} color="#fff" />
             </TouchableOpacity>
@@ -320,7 +360,7 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
 
         {/* Notification */}
-        {switches && (
+        {switches ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Notification Settings</Text>
             {(Object.keys(switches) as (keyof typeof switches)[]).map((key) => (
@@ -334,7 +374,15 @@ export default function SettingsScreen() {
               </View>
             ))}
           </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notification Settings</Text>
+            <Text style={{ color: "#999", paddingVertical: 12 }}>
+              Loading settings...
+            </Text>
+          </View>
         )}
+
         <View style={styles.divider} />
 
         {/* Account */}
