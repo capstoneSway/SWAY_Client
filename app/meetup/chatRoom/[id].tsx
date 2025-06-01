@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
   noticeContent: {
     color: colors.GRAY_600,
     textAlign: "left",
-    fontSize: 14,
+    fontSize: 12,
   },
   sender: {
     fontWeight: "600",
