@@ -41,6 +41,11 @@ import { leaveLightning } from "../api/leaveLightning"; // 탈퇴 API import 추
 import ensureValidToken from "../api/tokenManager";
 
 export default function Home() {
+  const [registerProcessing, setRegisterProcessing] = useState(false);
+  const [infoProcessing, setInfoProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [fabDisabled, setFabDisabled] = useState(false);
+
   const navigation = useNavigation();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
@@ -287,13 +292,24 @@ export default function Home() {
           <>
             <View style={styles.cardTopRow}>
               <Pressable
-                style={styles.cardActionTopLeft}
-                onPress={() =>
-                  router.push({
-                    pathname: "/meetup/[id]",
-                    params: { id: item.id.toString() },
-                  })
-                }
+                style={[
+                  styles.cardActionTopLeft,
+                  infoProcessing && { opacity: 0.5 },
+                ]}
+                disabled={infoProcessing}
+                onPress={async () => {
+                  if (infoProcessing) return;
+                  setInfoProcessing(true);
+                  try {
+                    await router.push({
+                      pathname: "/meetup/[id]",
+                      params: { id: item.id.toString() },
+                    });
+                  } finally {
+                    // 혹시나 navigation이 실패해도 1초 후 다시 누를 수 있도록
+                    setTimeout(() => setInfoProcessing(false), 1000);
+                  }
+                }}
               >
                 <Ionicons
                   name="information-circle-outline"
@@ -315,8 +331,16 @@ export default function Home() {
               <Pressable
                 style={[
                   styles.cardActionTopRight,
-                  { position: "absolute", top: 12, right: 12 },
+                  {
+                    position: "absolute",
+                    top: 12,
+                    right: 12,
+                    bottom: 12,
+                    zIndex: 999,
+                    height: 60,
+                  },
                 ]}
+                hitSlop={8}
                 onPress={() => {
                   Alert.alert(
                     isHost ? "Delete Confirmation" : "Leave Confirmation",
@@ -338,10 +362,14 @@ export default function Home() {
                 {isHost ? (
                   <AntDesign name="delete" size={28} color={closeColor} />
                 ) : (
-                  <Ionicons
-                    name="close-circle-outline"
-                    size={24}
-                    color={closeColor}
+                  <Image
+                    source={require("@/assets/images/fire-exit.png")}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      tintColor: closeColor,
+                      marginRight: -10,
+                    }}
                   />
                 )}
                 <Text
@@ -360,20 +388,32 @@ export default function Home() {
                   position: "absolute",
                   bottom: 12,
                   right: 4,
+                  zIndex: 999,
                   backgroundColor: isFocused ? colors.YELLOW_500 : colors.WHITE,
                   borderRadius: 10,
-                  paddingHorizontal: 8,
-                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
                   flexDirection: "row",
                   alignItems: "center",
-                  elevation: 2,
+                  elevation: 4,
+                  opacity: isProcessing ? 0.5 : 1, // 클릭 중일 때 시각적으로 흐리게
                 }}
-                onPress={() =>
-                  router.push({
-                    pathname: "/meetup/editMeetUp",
-                    params: { id: item.id.toString() },
-                  })
-                }
+                disabled={isProcessing} // 버튼 비활성화
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                onPress={async () => {
+                  if (isProcessing) return;
+                  setIsProcessing(true);
+                  try {
+                    await router.push({
+                      pathname: "/meetup/editMeetUp",
+                      params: { id: item.id.toString() },
+                    });
+                  } finally {
+                    // navigation이 끝나면 false로 돌려도 되지만,
+                    // 보통은 setTimeout으로 일정 시간 잠그는 게 안전
+                    setTimeout(() => setIsProcessing(false), 1000);
+                  }
+                }}
               >
                 <FontAwesome
                   name="edit"
@@ -457,7 +497,7 @@ export default function Home() {
                   key={p.id ?? i}
                   style={[
                     styles.avatarWrapper,
-                    { marginLeft: i === 0 ? 0 : -10 },
+                    { marginLeft: i === 0 ? 0 : -10, zIndex: i },
                   ]}
                 >
                   <Image
@@ -521,13 +561,22 @@ export default function Home() {
             style={[
               styles.registerButton,
               isFocused && styles.registerButtonFocused,
+              registerProcessing && { opacity: 0.5 }, // 시각적 피드백 (선택)
             ]}
-            onPress={() =>
-              router.push({
-                pathname: "/meetup/[id]",
-                params: { id: item.id.toString() },
-              })
-            }
+            hitSlop={10}
+            disabled={registerProcessing}
+            onPress={async () => {
+              if (registerProcessing) return;
+              setRegisterProcessing(true);
+              try {
+                await router.push({
+                  pathname: "/meetup/[id]",
+                  params: { id: item.id.toString() },
+                });
+              } finally {
+                setTimeout(() => setRegisterProcessing(false), 1000); // 1초 정도 잠금
+              }
+            }}
           >
             <Text
               style={[
@@ -702,7 +751,12 @@ export default function Home() {
       {activeTab === "meetup" && (
         <Pressable
           style={styles.fab}
-          onPress={() => router.push("/meetup/createMeetUp")}
+          onPress={() => {
+            if (fabDisabled) return;
+            setFabDisabled(true);
+            router.push("/meetup/createMeetUp");
+            setTimeout(() => setFabDisabled(false), 1000);
+          }}
         >
           <Ionicons name="pencil" size={32} color={colors.WHITE} />
         </Pressable>
@@ -712,7 +766,7 @@ export default function Home() {
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>FCM 토큰 정보</Text>
+            <Text style={styles.modalTitle}>EAS Update</Text>
             <ScrollView
               style={{ maxHeight: 150, marginVertical: 10 }}
               keyboardShouldPersistTaps="handled"
@@ -998,7 +1052,7 @@ const styles = StyleSheet.create({
     right: 0,
     borderWidth: 0,
     borderColor: colors.WHITE,
-    zIndex: 5,
+    zIndex: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

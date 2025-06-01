@@ -241,7 +241,10 @@ export default function ChatRoom() {
                     }
                     style={{ marginRight: 8 }}
                   >
-                    <Image source={require("@/assets/images/fire-exit.png")} />
+                    <Image
+                      source={require("@/assets/images/fire-exit.png")}
+                      style={{ width: 26, height: 26 }}
+                    />
                   </Pressable>
                 </View>
               </View>

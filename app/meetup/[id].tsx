@@ -22,6 +22,7 @@ import fetchUserInfo from "../api/fetchUserInfo";
 import { joinLightning } from "../api/joinLightning";
 
 export default function MeetUpDetail() {
+  const [disabled, setDisabled] = useState(false);
   const defaultProfile = require("@/assets/images/default_profile.png");
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -93,6 +94,10 @@ export default function MeetUpDetail() {
       );
       return;
     }
+
+    if (disabled) return;
+    setDisabled(true);
+    setTimeout(() => setDisabled(false), 1000); // 1초 후 다시 활성화
 
     try {
       const token = await AsyncStorage.getItem("@jwt");
@@ -214,7 +219,7 @@ export default function MeetUpDetail() {
                   key={p.id ?? i}
                   style={[
                     styles.avatarWrapper,
-                    { marginLeft: i === 0 ? 0 : -10 },
+                    { marginLeft: i === 0 ? 0 : -10, zIndex: i },
                   ]}
                 >
                   <Image
@@ -249,9 +254,9 @@ export default function MeetUpDetail() {
             </Text>
             <FontAwesome5
               name={
-                meetup.gender === "Male"
+                meetup.gender === "male"
                   ? "mars"
-                  : meetup.gender === "Female"
+                  : meetup.gender === "female"
                   ? "venus"
                   : "transgender"
               }
@@ -265,7 +270,11 @@ export default function MeetUpDetail() {
         </View>
 
         {meetup.status !== "closed" && !!userGender && (
-          <FixedBottomCTA label="Join" enabled={true} onPress={handleJoin} />
+          <FixedBottomCTA
+            label="Join"
+            enabled={!disabled}
+            onPress={handleJoin}
+          />
         )}
       </SafeAreaView>
 
@@ -359,7 +368,7 @@ const styles = StyleSheet.create({
     right: 0,
     borderWidth: 0,
     borderColor: colors.WHITE,
-    zIndex: 5,
+    zIndex: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

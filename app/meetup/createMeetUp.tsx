@@ -1,4 +1,4 @@
-import { addCard } from "@/constants/cards"; // ✅ 추가
+import { addCard } from "@/constants/cards";
 import { categoryImages } from "@/constants/categoryImages";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,17 +19,15 @@ import {
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createLightningMeetUp from "../api/createMeetUp";
+import fetchUserInfo from "../api/fetchUserInfo";
 
 const CATEGORY_OPTIONS = ["Travel", "Foodie", "WorkOut", "Others"];
 const GENDER_OPTIONS = ["All", "Female", "Male"];
 const PARTICIPANT_COUNTS = [2, 3, 4, 5, 6];
 
-/**
- * hostId는 제외하고, 참가자 중복 제거
- */
-const uniqueParticipantsStrict = (participants: any[], hostId: number) => {
+const uniqueParticipantsStrict = (participants, hostId) => {
   const filtered = participants.filter((p) => p.id !== hostId);
-  const uniqueMap = new Map<number, any>();
+  const uniqueMap = new Map();
   for (const p of filtered) {
     if (!uniqueMap.has(p.id)) uniqueMap.set(p.id, p);
   }
@@ -37,12 +35,14 @@ const uniqueParticipantsStrict = (participants: any[], hostId: number) => {
 };
 
 export default function CreateMeetUp() {
+  const [userGender, setUserGender] = useState(null);
+  const [pressed, setPressed] = useState(false);
   const router = useRouter();
 
-  const [token, setToken] = useState<string | null>(null);
-  const [category, setCategory] = useState<string | null>("Travel");
-  const [gender, setGender] = useState<string | null>("All");
-  const [count, setCount] = useState<number | null>(5);
+  const [token, setToken] = useState(null);
+  const [category, setCategory] = useState("Travel");
+  const [gender, setGender] = useState("All");
+  const [count, setCount] = useState(5);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date());
@@ -50,26 +50,35 @@ export default function CreateMeetUp() {
   const [showOptions, setShowOptions] = useState(true);
 
   useEffect(() => {
-    const loadToken = async () => {
+    const loadTokenAndUser = async () => {
       try {
         const jwt = await AsyncStorage.getItem("@jwt");
         setToken(jwt);
+
+        if (jwt) {
+          const user = await fetchUserInfo(jwt);
+          if (user?.gender) {
+            const capitalizedGender =
+              user.gender.charAt(0).toUpperCase() + user.gender.slice(1);
+            setUserGender(capitalizedGender);
+          }
+        }
       } catch (e) {
-        console.error("토큰 불러오기 실패:", e);
+        console.error("❌ 유저 정보 불러오기 실패:", e);
       }
     };
-    loadToken();
+
+    loadTokenAndUser();
   }, []);
 
   const isPostDisabled =
-    !category || !gender || count === null || !title.trim() || !content.trim();
+    !category || !gender || !title.trim() || !content.trim();
 
   const onPost = async () => {
     const images = categoryImages[category] || [];
     const randomImage = images[Math.floor(Math.random() * images.length)] || "";
 
-    if (isPostDisabled) return;
-    if (!token) {
+    if (isPostDisabled || !token) {
       Alert.alert("로그인 필요", "먼저 로그인을 해주세요.");
       return;
     }
@@ -84,26 +93,13 @@ export default function CreateMeetUp() {
     };
 
     try {
-      console.log("API 요청 시작");
       const response = await createLightningMeetUp(token, postData);
-      console.log("API 요청 성공:", response);
-      console.log("hostId:", response.host?.id);
-      console.log("participants 원본:", response.participants);
-
       const filteredParticipants = uniqueParticipantsStrict(
         response.participants || [],
         response.host?.id
       );
-      console.log(
-        "filteredParticipants (host 제외 중복 제거):",
-        filteredParticipants
-      );
-
       const totalParticipantsCount =
         filteredParticipants.length + (response.host ? 1 : 0);
-      console.log(
-        `totalParticipantsCount (filtered + host): ${totalParticipantsCount}`
-      );
 
       addCard({
         id: response.id || Date.now(),
@@ -113,7 +109,7 @@ export default function CreateMeetUp() {
         participants: `${totalParticipantsCount}/${count}`,
         meetupTime: date.toISOString(),
         createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
         content: content.trim(),
         gender,
         participantAvatars: filteredParticipants,
@@ -122,7 +118,6 @@ export default function CreateMeetUp() {
 
       router.replace("/");
     } catch (error) {
-      console.error("API 요청 실패:", error);
       Alert.alert("Error", "Failed to create the meetup. Please try again.");
     }
   };
@@ -136,20 +131,20 @@ export default function CreateMeetUp() {
             onPress={() => router.back()}
             style={{ paddingLeft: 4, zIndex: 10 }}
           >
-            <Ionicons
-              name="chevron-back"
-              size={24}
-              color={colors.BLACK}
-              style={{ paddingBottom: 16 }}
-            />
+            <Ionicons name="chevron-back" size={24} color={colors.BLACK} />
           </Pressable>
 
           <Text style={styles.headerTitle}>Open New Meet Up</Text>
 
           <Pressable
-            onPress={onPost}
-            disabled={isPostDisabled}
-            style={{ paddingRight: 16, paddingBottom: 16 }}
+            onPress={() => {
+              if (pressed || isPostDisabled) return;
+              setPressed(true);
+              setTimeout(() => setPressed(false), 1000);
+              onPost();
+            }}
+            disabled={isPostDisabled || pressed}
+            style={{ paddingRight: 16 }}
           >
             <Text
               style={{
@@ -157,7 +152,6 @@ export default function CreateMeetUp() {
                 fontWeight: "600",
                 opacity: isPostDisabled ? 0.5 : 1,
                 fontSize: 16,
-                paddingBottom: 4,
               }}
             >
               Post
@@ -234,20 +228,36 @@ export default function CreateMeetUp() {
             </View>
 
             <Text style={styles.modalTitle}>Gender</Text>
+            <Text style={[styles.descriptionText, { color: colors.GRAY_600 }]}>
+              * Creating chat rooms for the opposite gender is not allowed for
+              safety and matching purposes.
+            </Text>
             <View style={styles.row}>
               {GENDER_OPTIONS.map((opt) => {
                 const sel = opt === gender;
+                const isDisabled =
+                  opt !== "All" && userGender && opt !== userGender;
                 return (
                   <Pressable
                     key={opt}
+                    disabled={isDisabled}
                     style={[
                       styles.chipFixed,
                       styles.chip,
                       sel && styles.chipSelected,
+                      isDisabled && { opacity: 0.3 },
                     ]}
-                    onPress={() => setGender(opt)}
+                    onPress={() => {
+                      if (!isDisabled) setGender(opt);
+                    }}
                   >
-                    <Text style={[styles.chipText, sel && styles.chipTextSel]}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        sel && styles.chipTextSel,
+                        isDisabled && { color: colors.GRAY_500 },
+                      ]}
+                    >
                       {opt}
                     </Text>
                   </Pressable>
@@ -333,6 +343,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     paddingBottom: 8,
+    top: 16,
   },
 
   categoryLabel: {

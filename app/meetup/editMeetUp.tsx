@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import fetchUserInfo from "../api/fetchUserInfo";
 import updateLightningMeetUp from "../api/updateLightning";
 
 const CATEGORY_OPTIONS = ["Travel", "Foodie", "WorkOut", "Others"];
@@ -30,6 +31,7 @@ const GENDER_OPTIONS = ["All", "Female", "Male"];
 const PARTICIPANT_COUNTS = [1, 2, 3, 4, 5, 6];
 
 export default function EditMeetUp() {
+  const [pressed, setPressed] = useState(false);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -37,11 +39,14 @@ export default function EditMeetUp() {
   const [category, setCategory] = useState<string | null>(null);
   const [gender, setGender] = useState<string | null>(null);
   const [count, setCount] = useState<number | null>(null);
+  const [userGender, setUserGender] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [originalBackgroundPic, setOriginalBackgroundPic] =
+    useState<string>("");
 
   // 원본 데이터 저장용
   const [originalData, setOriginalData] = useState<{
@@ -54,11 +59,25 @@ export default function EditMeetUp() {
   } | null>(null);
 
   useEffect(() => {
-    const loadToken = async () => {
-      const jwt = await AsyncStorage.getItem("@jwt");
-      setToken(jwt);
+    const loadTokenAndUser = async () => {
+      try {
+        const jwt = await AsyncStorage.getItem("@jwt");
+        setToken(jwt);
+
+        if (jwt) {
+          const user = await fetchUserInfo(jwt);
+          if (user?.gender) {
+            const capitalizedGender =
+              user.gender.charAt(0).toUpperCase() + user.gender.slice(1);
+            setUserGender(capitalizedGender);
+          }
+        }
+      } catch (e) {
+        console.error("❌ 유저 정보 불러오기 실패:", e);
+      }
     };
-    loadToken();
+
+    loadTokenAndUser();
   }, []);
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -96,6 +115,8 @@ export default function EditMeetUp() {
           content: c,
           meeting_date: d,
         });
+
+        setOriginalBackgroundPic(data.background_pic);
       } catch (error) {
         Alert.alert("오류", "모임 정보를 불러오는데 실패했습니다.");
       }
@@ -131,7 +152,12 @@ export default function EditMeetUp() {
       return;
     }
     const images = categoryImages[category] || [];
-    const randomImage = images[Math.floor(Math.random() * images.length)] || "";
+    const randomImage =
+      category !== originalData?.category
+        ? (categoryImages[category] || [])[
+            Math.floor(Math.random() * (categoryImages[category]?.length || 1))
+          ] || ""
+        : originalBackgroundPic || "";
 
     const updateData = {
       title: title.trim(),
@@ -172,8 +198,13 @@ export default function EditMeetUp() {
           <Text style={styles.headerTitle}>Edit Meet Up</Text>
 
           <Pressable
-            onPress={onUpdate}
-            disabled={isUpdateDisabled}
+            onPress={() => {
+              if (pressed || isUpdateDisabled) return;
+              setPressed(true);
+              setTimeout(() => setPressed(false), 1000);
+              onUpdate();
+            }}
+            disabled={isUpdateDisabled || pressed}
             style={{ paddingRight: 16, paddingBottom: 16 }}
           >
             <Text
@@ -261,27 +292,42 @@ export default function EditMeetUp() {
             </View>
 
             <Text style={styles.modalTitle}>Gender</Text>
+            <Text style={[styles.descriptionText, { color: colors.GRAY_600 }]}>
+              * Creating chat rooms for the opposite gender is not allowed for
+              safety and matching purposes.
+            </Text>
             <View style={styles.row}>
-              {GENDER_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt}
-                  style={[
-                    styles.chipFixed,
-                    styles.chip,
-                    opt === gender && styles.chipSelected,
-                  ]}
-                  onPress={() => setGender(opt)}
-                >
-                  <Text
+              {GENDER_OPTIONS.map((opt) => {
+                const sel = opt === gender;
+                const isDisabled =
+                  opt !== "All" && userGender && opt !== userGender;
+
+                return (
+                  <Pressable
+                    key={opt}
+                    disabled={isDisabled}
                     style={[
-                      styles.chipText,
-                      opt === gender && styles.chipTextSel,
+                      styles.chipFixed,
+                      styles.chip,
+                      sel && styles.chipSelected,
+                      isDisabled && { opacity: 0.3 },
                     ]}
+                    onPress={() => {
+                      if (!isDisabled) setGender(opt);
+                    }}
                   >
-                    {opt}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        sel && styles.chipTextSel,
+                        isDisabled && { color: colors.GRAY_500 },
+                      ]}
+                    >
+                      {opt}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             <Text style={styles.modalTitle}>Number of Participants</Text>
