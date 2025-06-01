@@ -29,6 +29,7 @@ import {
   fetchAllMemos,
   MemoDTO,
 } from "@/app/api/memo";
+import { router } from "expo-router";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -257,6 +258,14 @@ export default function CurrencyScreen() {
   // ─ 렌더 ─
   return (
     <SafeAreaView style={[styles.container, { flex: 1 }]}>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <Text style={styles.logoText}>SWAY</Text>
+        <Text style={styles.headerTitle}>Currency</Text>
+        <TouchableOpacity onPress={() => router.push("/notification")}>
+          <Ionicons name="notifications-outline" size={24} />
+        </TouchableOpacity>
+      </View>
       {/* 카드 */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View>
@@ -685,5 +694,25 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.GRAY_300,
+  },
+  logoText: {
+    fontSize: 23,
+    fontWeight: "bold",
+    color: colors.PURPLE_300,
+    fontFamily: "GasoekOne",
+  },
+  headerTitle: {
+    position: "absolute",
+    left: SCREEN_W / 2 - 40,
+    fontSize: 18,
+    fontWeight: "600",
   },
 });

@@ -78,15 +78,15 @@ const EditNicknameModal = ({
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                checkResult === false && styles.submitButtonDisabled,
+                checkResult !== true && styles.submitButtonDisabled,
               ]}
               onPress={onSubmit}
-              disabled={checkResult === false}
+              disabled={checkResult !== true}
             >
               <Text
                 style={[
                   styles.submitButtonText,
-                  checkResult === false && styles.submitButtonTextDisabled,
+                  checkResult !== true && styles.submitButtonDisabled,
                 ]}
               >
                 Change
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   checkButton: {
     flex: 1,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: colors.GRAY_200,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -177,15 +177,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   submitButtonText: {
-    color: "white",
+    color: colors.WHITE,
     fontWeight: "600",
     textAlign: "center",
   },
   submitButtonDisabled: {
-    backgroundColor: "#DDD",
+    flex: 1,
+    backgroundColor: colors.GRAY_200,
+    borderRadius: 8,
   },
 
   submitButtonTextDisabled: {
-    color: "#999",
+    color: colors.BLACK,
+    textAlign: "center",
+    fontWeight: "500",
   },
 });

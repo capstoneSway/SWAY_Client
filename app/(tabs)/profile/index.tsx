@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: "center",
     marginBottom: 16,
-    paddingVertical: 20,
+    paddingVertical: 15,
   },
   avatar: {
     width: 120,
