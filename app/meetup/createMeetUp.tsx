@@ -42,7 +42,7 @@ export default function CreateMeetUp() {
   const [token, setToken] = useState(null);
   const [category, setCategory] = useState("Travel");
   const [gender, setGender] = useState("All");
-  const [count, setCount] = useState(5);
+  const [count, setCount] = useState(6);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date());

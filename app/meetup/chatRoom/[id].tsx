@@ -424,18 +424,27 @@ export default function ChatRoom() {
                           ]}
                         >
                           {imageUrl ? (
-                            <Image
-                              source={{ uri: imageUrl }}
-                              style={{
-                                marginRight: -12,
-                                width: 180,
-                                height: 180,
-                                borderRadius: 12,
-                                resizeMode: "cover",
-                                marginTop: -6,
-                                marginBottom: -5,
-                              }}
-                            />
+                            <Pressable
+                              onPress={() =>
+                                router.push({
+                                  pathname: "/viewer/imageFullView",
+                                  params: { src: encodeURIComponent(imageUrl) },
+                                })
+                              }
+                            >
+                              <Image
+                                source={{ uri: imageUrl }}
+                                style={{
+                                  marginRight: -12,
+                                  width: 180,
+                                  height: 180,
+                                  borderRadius: 12,
+                                  resizeMode: "cover",
+                                  marginTop: -6,
+                                  marginBottom: -5,
+                                }}
+                              />
+                            </Pressable>
                           ) : (
                             <Text
                               style={{

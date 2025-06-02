@@ -72,7 +72,10 @@ export default function Home() {
         `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
       );
       console.log("\uD83D\uDCCC 번개 상세 정보:", res.data);
-      Alert.alert("디버깅", `콘솔에서 ID ${id}의 상세 정보를 확인하세요.`);
+      Alert.alert(
+        "번개모임 디버깅용",
+        `콘솔에서 ID ${id}의 상세 정보를 확인하세요.`
+      );
     } catch (error) {
       console.error("❌ 번개 상세 정보 fetch 실패:", error);
       Alert.alert("오류", "번개 정보를 불러오지 못했습니다.");
@@ -165,7 +168,7 @@ export default function Home() {
               .filter((item: any) => {
                 const end = item.end_time || item.expiresAt || item.expiryTime;
                 if (!end) return false;
-                return new Date(end) > new Date();
+                return true;
               })
               .map((item: any) => {
                 const participants = Array.isArray(item.participants?.[0])
@@ -201,8 +204,25 @@ export default function Home() {
                 const bTime = b.expiryTime.getTime();
                 if (aTime !== bTime) return aTime - bTime;
                 return a.title.localeCompare(b.title);
+                // 둘 다 임박했으면 더 빨리 종료되는 쪽이 앞으로 가고, 만약 종료 시각까지 같아버리면 또 제목으로.
               }
-              return 0;
+              if (activeTab === "current") {
+                const now = new Date().getTime();
+                const aEnd = new Date(a.end_time).getTime();
+                const bEnd = new Date(b.end_time).getTime();
+
+                const aClosed = now > aEnd;
+                const bClosed = now > bEnd;
+
+                if (aClosed && !bClosed) return 1; // 종료된 a는 아래로
+                if (!aClosed && bClosed) return -1; // 종료된 b는 아래로
+
+                return aEnd - bEnd; // 둘 다 open이면 종료 임박 순
+              } else {
+                const aCreated = new Date(a.created_at).getTime();
+                const bCreated = new Date(b.created_at).getTime();
+                return bCreated - aCreated; // meetups: 최신 생성순
+              }
             });
 
           setFilteredCards(result);
