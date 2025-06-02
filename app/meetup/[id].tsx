@@ -1,4 +1,3 @@
-// MeetUpDetail.tsx
 import FixedBottomCTA from "@/components/FixedBottomCTA";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
@@ -22,26 +21,29 @@ import fetchUserInfo from "../api/fetchUserInfo";
 import { joinLightning } from "../api/joinLightning";
 
 export default function MeetUpDetail() {
-  const [disabled, setDisabled] = useState(false);
+  const now = new Date(new Date().toISOString());
+  const [disabled, setDisabled] = useState(false); // 버튼 중복 클릭 방지
   const defaultProfile = require("@/assets/images/default_profile.png");
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>(); // URL 파라미터에서 id 추출
 
-  const [meetup, setMeetup] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [meetup, setMeetup] = useState<any>(null); // 모임 정보
+  const [loading, setLoading] = useState(true); // 로딩 상태
+  const [userGender, setUserGender] = useState<"male" | "female" | null>(null); // 사용자 성별
 
-  const [userGender, setUserGender] = useState<"male" | "female" | null>(null);
-
+  // 국가 코드에 해당하는 국기 이미지 반환
   const getFlagByCode = (code: string) => {
     const found = countries.find((c) => c.code === code);
     return found ? found.flag : null;
   };
 
+  // created_at 기준으로 24시간 후의 만료시간 계산
   const calculateExpiresAt = (createdAt: string) => {
     const base = new Date(createdAt);
     return new Date(base.getTime() + 24 * 60 * 60 * 1000);
   };
 
+  // 사용자 정보 불러오기 → 성별만 추출
   useEffect(() => {
     const loadUserInfo = async () => {
       const token = await AsyncStorage.getItem("@jwt");
@@ -49,21 +51,22 @@ export default function MeetUpDetail() {
 
       const me = await fetchUserInfo(token);
       if (me?.gender === "male" || me?.gender === "female") {
-        console.log("유저 성별:", me.gender);
         setUserGender(me.gender);
       }
     };
     loadUserInfo();
   }, []);
 
+  // 모임에서 허용된 성별인지 확인
   const isGenderAllowed = () => {
-    console.log("성별 제한 확인 중:", meetup?.gender, userGender);
-    if (!meetup || !userGender) return true; // 데이터 아직 없으면 막지 않음
+    if (!meetup || !userGender) return true;
     if (meetup.gender === "all") return true;
     if (meetup.gender === "male" && userGender === "male") return true;
     if (meetup.gender === "female" && userGender === "female") return true;
     return false;
   };
+
+  // 모임 상세 데이터 fetch
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -71,8 +74,8 @@ export default function MeetUpDetail() {
         const res = await axios.get(
           `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
         );
-        console.log("API 응답 res.data:", res.data);
         setMeetup(res.data);
+        console.log("모임 정보: ", res.data);
       } catch (e) {
         console.error("모임 정보 불러오기 실패", e);
       } finally {
@@ -81,9 +84,17 @@ export default function MeetUpDetail() {
     })();
   }, [id]);
 
+  // 참가 버튼 클릭 시 처리
   const handleJoin = async () => {
+    const endTime = new Date(meetup.end_time);
+
+    if (now > endTime) {
+      Alert.alert("This meetup has expired.", "You can no longer join.");
+      return;
+    }
+
     if (meetup.status === "closed") {
-      Alert.alert("The meetup is closed.");
+      Alert.alert("This meetup is closed.");
       return;
     }
 
@@ -95,9 +106,14 @@ export default function MeetUpDetail() {
       return;
     }
 
+    if (meetup.current_participant >= meetup.max_participant) {
+      Alert.alert("This meetup is full.", "No more participants can join.");
+      return;
+    }
+
     if (disabled) return;
     setDisabled(true);
-    setTimeout(() => setDisabled(false), 1000); // 1초 후 다시 활성화
+    setTimeout(() => setDisabled(false), 1000); // 중복 클릭 방지
 
     try {
       const token = await AsyncStorage.getItem("@jwt");
@@ -111,7 +127,6 @@ export default function MeetUpDetail() {
       );
 
       if (alreadyJoined) {
-        console.log("이미 참가 중 - 채팅방으로 이동");
         router.push(`/meetup/chatRoom/${meetup.id}`);
       } else {
         Alert.alert(
@@ -144,17 +159,18 @@ export default function MeetUpDetail() {
         );
       }
     } catch (err: any) {
-      console.error(" 오류:", err);
+      console.error("오류:", err);
       Alert.alert("Error", err.message || "Something went wrong.");
     }
   };
 
+  // 카테고리 텍스트 첫 글자 대문자로 변환
   function capitalizeFirstLetter(str: string) {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  //  렌더 전에 meetup null 여부 확인
+  // 로딩 중 또는 데이터 없을 경우 로딩 화면 표시
   if (loading || !meetup) {
     return (
       <SafeAreaView
@@ -170,14 +186,16 @@ export default function MeetUpDetail() {
     );
   }
 
-  //  meetup이 확실히 존재하는 이후 실행되는 부분
+  // 모임 상세 UI 렌더링
   const titleDate = new Date(meetup.meeting_date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
+
   const expiresAt = meetup.expiresAt
     ? new Date(meetup.expiresAt)
     : calculateExpiresAt(meetup.created_at);
+
   const imageSource =
     typeof meetup.background_pic === "string" &&
     meetup.background_pic.startsWith("http")
@@ -188,6 +206,7 @@ export default function MeetUpDetail() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
+        {/* 상단 헤더 */}
         <View style={styles.header}>
           <Pressable
             onPress={() => {
@@ -206,13 +225,17 @@ export default function MeetUpDetail() {
           <View style={{ width: 24 }} />
         </View>
 
+        {/* 배경 이미지 */}
         <Image source={imageSource} style={styles.image} />
 
+        {/* 정보 박스 */}
         <View style={styles.infoBox}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>
               [{meetup.title}, {titleDate}]
             </Text>
+
+            {/* 참가자 아바타 표시 */}
             <View style={styles.avatars}>
               {meetup.participants?.slice(0, 3).map((p: any, i: number) => (
                 <View
@@ -248,6 +271,7 @@ export default function MeetUpDetail() {
             </View>
           </View>
 
+          {/* 해시태그 및 성별 아이콘 */}
           <View style={styles.tagRow}>
             <Text style={styles.tag}>
               #{capitalizeFirstLetter(meetup.category)}
@@ -266,9 +290,11 @@ export default function MeetUpDetail() {
             />
           </View>
 
+          {/* 모임 설명 */}
           <Text style={styles.description}>{meetup.content}</Text>
         </View>
 
+        {/* 하단 참가 버튼 */}
         {meetup.status !== "closed" && !!userGender && (
           <FixedBottomCTA
             label="Join"
@@ -278,6 +304,7 @@ export default function MeetUpDetail() {
         )}
       </SafeAreaView>
 
+      {/* Open Until 표시 */}
       <View style={styles.openUntilRow}>
         <Ionicons name="hourglass-outline" size={16} color={colors.BLACK} />
         <Text style={styles.openUntilText}>

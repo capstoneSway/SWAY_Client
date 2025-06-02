@@ -28,7 +28,7 @@ import updateLightningMeetUp from "../api/updateLightning";
 
 const CATEGORY_OPTIONS = ["Travel", "Foodie", "WorkOut", "Others"];
 const GENDER_OPTIONS = ["All", "Female", "Male"];
-const PARTICIPANT_COUNTS = [1, 2, 3, 4, 5, 6];
+const PARTICIPANT_COUNTS = [2, 3, 4, 5, 6];
 
 export default function EditMeetUp() {
   const [pressed, setPressed] = useState(false);

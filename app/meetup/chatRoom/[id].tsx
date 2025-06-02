@@ -12,6 +12,7 @@ import axios from "axios";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Keyboard,
@@ -78,7 +79,7 @@ export default function ChatRoom() {
   const [currentUser, setCurrentUser] = useState("");
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
-  const { messages, sendMessage } = useChatSocket(numericId);
+  const { messages, sendMessage, isLoading } = useChatSocket(numericId);
   const [joinTime, setJoinTime] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -259,6 +260,15 @@ export default function ChatRoom() {
           <Text style={styles.noticeTitle}>
             채팅방 정보를 찾을 수 없습니다. (id: {id})
           </Text>
+        </View>
+      ) : isLoading ? ( // 로딩 중인 경우
+        <View
+          style={[
+            styles.container,
+            { justifyContent: "center", alignItems: "center" },
+          ]}
+        >
+          <ActivityIndicator size="large" color={colors.PURPLE_300} />
         </View>
       ) : (
         <KeyboardAvoidingView

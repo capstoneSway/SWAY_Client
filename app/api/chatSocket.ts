@@ -23,6 +23,7 @@ export type ChatMessage = {
 };
 
 export default function useChatSocket(lightningId: string | number) {
+  const [isLoading, setIsLoading] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connected, setConnected] = useState(false);
@@ -46,6 +47,8 @@ export default function useChatSocket(lightningId: string | number) {
       setMessages(normalized);
     } catch (err) {
       console.error("초기 메시지 로딩 실패:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -145,5 +148,6 @@ export default function useChatSocket(lightningId: string | number) {
     messages,
     sendMessage,
     connected,
+    isLoading,
   };
 }
