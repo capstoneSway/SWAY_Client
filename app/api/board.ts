@@ -203,23 +203,28 @@ export async function postComment(
 
 // 댓글 수정
 export async function updateComment(
+  postId: number,
   commentId: number,
-  editingCommentId: number,
   content: string
 ) {
-  const token = await AsyncStorage.getItem("@jwt");
-  if (!token) throw new Error("No access token");
+  try {
+    const token = await AsyncStorage.getItem("@jwt");
+    if (!token) throw new Error("No access token");
 
-  const res = await api.put(
-    `/board/comments/${commentId}/`,
-    { content },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  return res.data;
+    const res = await api.put(
+      `/board/${postId}/comments/${commentId}/`,
+      { content },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (error) {
+    console.error("댓글 수정 실패:", error);
+    throw error;
+  }
 }
 
 // 댓글 좋아요 토글

@@ -13,6 +13,7 @@ interface ReportModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (reason: string) => void;
+  postId: number;
   targetType: "post" | "comment";
 }
 
