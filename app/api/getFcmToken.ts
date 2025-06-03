@@ -1,4 +1,5 @@
-import messaging from "@react-native-firebase/messaging";
+/*
+//import messaging from "@react-native-firebase/messaging";
 import { PermissionsAndroid, Platform } from "react-native";
 
 // FCM 권한 요청
@@ -35,3 +36,5 @@ export const getFcmToken = async (): Promise<string | null> => {
     return null;
   }
 };
+
+*/

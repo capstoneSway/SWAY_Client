@@ -1,3 +1,4 @@
+import "@/app/api/interceptors";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
 import formatDateTime from "@/utils/formatDataTime";
@@ -267,6 +268,7 @@ export default function Home() {
     requestInitialPermissions();
   }, []);
 
+  //  1분마다 포커싱 갱신을 위한 시간 트리거
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeTick((prev) => prev + 1);
