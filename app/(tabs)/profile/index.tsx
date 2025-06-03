@@ -1,25 +1,25 @@
 // ProfileScreen.tsx
+import { api } from "@/app/api/axios";
+import fetchUserInfo from "@/app/api/fetchUserInfo";
+import { colors } from "@/constants/color";
+import { countries } from "@/constants/country";
+import eventEmitter from "@/utils/eventEmitter";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFonts } from "expo-font";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  FlatList,
-  TouchableOpacity,
   Dimensions,
+  FlatList,
+  Image,
   ListRenderItemInfo,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors } from "@/constants/color";
-import { useFonts } from "expo-font";
-import fetchUserInfo from "@/app/api/fetchUserInfo";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { countries } from "@/constants/country";
-import { useRouter } from "expo-router";
-import { api } from "@/app/api/axios";
-import eventEmitter from "@/utils/eventEmitter";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -183,7 +183,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => router.push("/setting/settings")}>
+        <TouchableOpacity onPress={() => router.push("./setting/settings")}>
           <Ionicons name="settings-outline" size={24} />
         </TouchableOpacity>
       </View>

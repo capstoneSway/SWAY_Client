@@ -1,7 +1,7 @@
- // 새롭게 코드 수정_HY
-import { api } from "./axios";
+// 새롭게 코드 수정_HY
 import AsyncStorage from "@react-native-async-storage/async-storage";
-export async function fetchUserInfo(jwtAccessToken: string) {
+import { api } from "./axios";
+export default async function fetchUserInfo(jwtAccessToken: string) {
   try {
     const response = await api.get("/accounts/user/info/", {
       headers: {
@@ -11,7 +11,6 @@ export async function fetchUserInfo(jwtAccessToken: string) {
 
     const userInfo = response.data;
     console.log("🟢 사용자 정보:", userInfo);
-    
 
     //  username 저장
     if (userInfo?.username) {
