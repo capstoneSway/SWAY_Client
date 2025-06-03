@@ -77,10 +77,10 @@ export const getHistory = async (code: string): Promise<HistoryResponse> => {
   );
 
   // ② 콘솔에 찍어보기
-  console.log(
-    `📥 getHistory(${code}) 응답:`,
-    JSON.stringify(res.data, null, 2)
-  );
+  //console.log(
+  //`📥 getHistory(${code}) 응답:`,
+  //JSON.stringify(res.data, null, 2)
+  //);
 
   // config 객체를 두 번째 인자로 전달하여 헤더를 포함시킵니다.
   const { data } = await api.get<HistoryResponse>(

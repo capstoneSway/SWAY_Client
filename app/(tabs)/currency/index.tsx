@@ -10,6 +10,7 @@ import CurrencyListItem from "@/components/CurrencyList";
 import { colors } from "@/constants/color";
 import { currencies } from "@/constants/currency";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -168,7 +169,7 @@ export default function CurrencyScreen() {
     (async () => {
       try {
         const all = await fetchAllMemos();
-        console.log("📥 fetchAllMemos 응답:", all);
+        //console.log("📥 fetchAllMemos 응답:", all);
         setMemos(all);
       } catch (e) {
         console.error("메모 로드 실패", e);
@@ -256,6 +257,14 @@ export default function CurrencyScreen() {
   // ─ 렌더 ─
   return (
     <SafeAreaView style={[styles.container, { flex: 1 }]}>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <Text style={styles.logoText}>SWAY</Text>
+        <Text style={styles.headerTitle}>Currency</Text>
+        <TouchableOpacity onPress={() => router.push("/notification")}>
+          <Ionicons name="notifications-outline" size={24} />
+        </TouchableOpacity>
+      </View>
       {/* 카드 */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View>
@@ -684,5 +693,25 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.GRAY_300,
+  },
+  logoText: {
+    fontSize: 23,
+    fontWeight: "bold",
+    color: colors.PURPLE_300,
+    fontFamily: "GasoekOne",
+  },
+  headerTitle: {
+    position: "absolute",
+    left: SCREEN_W / 2 - 40,
+    fontSize: 18,
+    fontWeight: "600",
   },
 });
