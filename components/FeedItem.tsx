@@ -1,12 +1,24 @@
-import { blockPostAuthor, toggleLike, toggleScrap } from "@/app/api/board";
+import {
+  blockPostAuthor,
+  deletePost,
+} from "@/app/api/board";
 import { Post } from "@/app/type/types";
 import { colors } from "@/constants/color";
-import { AntDesign, FontAwesome6, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Profile from "./Profile";
+import ReportModal from "./ReportModal";
 
 interface FeedItemProps {
   post: Post;
@@ -14,7 +26,7 @@ interface FeedItemProps {
   onCommentPress?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
-  onLikePress?: () => void;
+  onLikePress?: () => void;  
   onScrapPress?: () => void;
   hideMenu?: boolean;
 }
@@ -27,28 +39,18 @@ const FeedItem = ({
   onEdit,
   onLikePress,
   onScrapPress,
-  hideMenu = false,
+  hideMenu,
 }: FeedItemProps) => {
-  const [isLiked, setIsLiked] = useState(post.isLiked ?? false);
-  const [likeCount, setLikeCount] = useState(post.likes ?? 0);
-  const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked ?? false);
-  const [bookmarkCount, setBookmarkCount] = useState(post.bookmarks ?? 0);
-  const [commentCount, setCommentCount] = useState(post.commentCount ?? 0);
-  const [showMenu, setShowMenu] = useState(false);
   const [isMyPost, setIsMyPost] = useState(false);
-
-  // ✅ 최초 한 번만 상태 초기화
-  useEffect(() => {
-    setIsLiked(post.isLiked ?? false);
-    setLikeCount(post.likes ?? 0);
-    setIsBookmarked(post.isBookmarked ?? false);
-    setBookmarkCount(post.bookmarks ?? 0);
-  }, []);
+  const [showMenu, setShowMenu] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
 
   useEffect(() => {
     const checkIsMyPost = async () => {
-      const myId = await AsyncStorage.getItem("@userId");
-      setIsMyPost(post?.userId?.toString() === myId);
+      const myUsername = await AsyncStorage.getItem("myUsername");
+      if (myUsername && post?.author?.username) {
+        setIsMyPost(post.author.username === myUsername);
+      }
     };
     checkIsMyPost();
   }, [post]);
@@ -59,31 +61,8 @@ const FeedItem = ({
     if (!isDetail) {
       router.push({
         pathname: "/board/[id]",
-        params: {
-          id: String(post.id),
-          post: JSON.stringify(post),
-        },
+        params: { id: String(post.id) },
       });
-    }
-  };
-
-  const handleLike = async () => {
-    try {
-      const updated = await toggleLike(post.id);
-      setIsLiked(updated.isLiked);
-      setLikeCount(updated.like);
-    } catch (error) {
-      console.error("Failed to like:", error);
-    }
-  };
-
-  const handleScrap = async () => {
-    try {
-      const updated = await toggleScrap(post.id);
-      setIsBookmarked(updated.isBookmarked);
-      setBookmarkCount(updated.bookmarkCount);
-    } catch (error) {
-      console.error("Failed to bookmark:", error);
     }
   };
 
@@ -93,15 +72,28 @@ const FeedItem = ({
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
-          onDelete?.();
-          setShowMenu(false);
+        onPress: async () => {
+          try {
+            await deletePost(post.id);
+            Alert.alert("Post deleted");
+
+            if (isDetail) {
+              router.back();
+            } else {
+              onDelete?.();
+            }
+            setShowMenu(false);
+          } catch (error) {
+            console.error("❌ Failed to delete post:", error);
+            Alert.alert("Error", "Failed to delete the post. Please try again.");
+          }
         },
       },
     ]);
   };
 
   const handleEdit = () => {
+    setShowMenu(false);
     router.push({
       pathname: "/post/newpost",
       params: {
@@ -114,21 +106,22 @@ const FeedItem = ({
   };
 
   const handleReport = () => {
-    Alert.alert("Report submitted", "Thank you for your feedback.");
+    setReportVisible(true);
     setShowMenu(false);
   };
 
   const handleBlock = async () => {
     try {
       await blockPostAuthor(post.id);
-      Alert.alert(
-        "User Blocked",
-        "You will no longer see posts from this user."
-      );
+      Alert.alert("Blocked", "You will no longer see posts from this user.");
       setShowMenu(false);
+      if (isDetail) {
+        router.back();
+      }
     } catch (err) {
       console.error("Failed to block user:", err);
       Alert.alert("Error", "Failed to block the author.");
+      setShowMenu(false);
     }
   };
 
@@ -140,91 +133,74 @@ const FeedItem = ({
             imageUri={post?.author?.imageUri ?? ""}
             nickname={post?.author?.nickname ?? "Anonymous"}
             createdAt={post?.createdAt ?? new Date().toISOString()}
+            nationality={post?.author?.nationality ?? ""}
           />
-          {isDetail && !hideMenu && (
-            <Pressable onPress={() => setShowMenu(true)}>
-              <Ionicons
-                name="ellipsis-vertical"
-                size={20}
-                color={colors.BLACK}
-              />
-            </Pressable>
-          )}
         </View>
 
         {post?.title ? <Text style={styles.title}>{post.title}</Text> : null}
         {post?.description ? (
           <Text style={styles.description}>{post.description}</Text>
         ) : null}
+
+        {post.imageUris && post.imageUris.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.imageScroll}
+          >
+            {post.imageUris.map((uri, index) => (
+              <Image
+                key={index}
+                source={{ uri }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       <View style={styles.menuContainer}>
-        <Pressable style={styles.menu} onPress={onLikePress ?? handleLike}>
-          <AntDesign
-            name={isLiked ? "heart" : "hearto"}
+        {/* 좋아요 */}
+        <Pressable style={styles.menu} onPress={onLikePress}>
+          <Feather
+            name="heart"
             size={20}
-            color={isLiked ? colors.RED_500 : colors.BLACK}
+            color={post.is_liked ? colors.RED_500 : colors.GRAY_700}
           />
-          <Text style={isLiked ? styles.activeMenuText : styles.menuText}>
-            {likeCount > 0 ? likeCount : ""}
+          <Text
+            style={[
+              styles.menuText,
+              post.is_liked && { color: colors.RED_500, fontWeight: "600" },
+            ]}
+          >
+            {post.like_count ?? 0}
           </Text>
         </Pressable>
 
+        {/* 댓글 */}
         <Pressable style={styles.menu} onPress={onCommentPress}>
-          <FontAwesome6 name="comment" size={20} color={colors.BLACK} />
-          <Text style={styles.menuText}>{commentCount}</Text>
+          <Feather name="message-circle" size={20} color={colors.GRAY_700} />
+          <Text style={styles.menuText}>{post.comment_count ?? 0}</Text>
         </Pressable>
 
-        <Pressable style={styles.menu} onPress={onScrapPress ?? handleScrap}>
-          <Ionicons
-            name={isBookmarked ? "bookmark" : "bookmark-outline"}
+        {/* 스크랩 */}
+        <Pressable style={styles.menu} onPress={onScrapPress}>
+          <Feather
+            name="bookmark"
             size={20}
-            color={isBookmarked ? colors.PURPLE_300 : colors.BLACK}
+            color={post.is_scrapped ? colors.PURPLE_300 : colors.GRAY_700}
           />
           <Text
-            style={{
-              marginLeft: 4,
-              fontSize: 14,
-              color: isBookmarked ? colors.PURPLE_300 : colors.GRAY_700,
-            }}
+            style={[
+              styles.menuText,
+              post.is_scrapped && { color: colors.PURPLE_300, fontWeight: "600" },
+            ]}
           >
-            {bookmarkCount > 0 ? bookmarkCount : ""}
+            {post.scrap_count ?? 0}
           </Text>
         </Pressable>
       </View>
-
-      <Modal transparent visible={showMenu} animationType="fade">
-        <Pressable
-          style={styles.modalBackground}
-          onPress={() => setShowMenu(false)}
-        >
-          <View style={styles.modalBox}>
-            {isMyPost ? (
-              <>
-                <Pressable style={styles.menuItem} onPress={handleEdit}>
-                  <Text style={styles.menuTextOnly}>Edit Post</Text>
-                </Pressable>
-                <Pressable style={styles.menuItem} onPress={handleDelete}>
-                  <Text style={[styles.menuTextOnly, { color: "red" }]}>
-                    Delete Post
-                  </Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Pressable style={styles.menuItem} onPress={handleReport}>
-                  <Text style={styles.menuTextOnly}>Report Post</Text>
-                </Pressable>
-                <Pressable style={styles.menuItem} onPress={handleBlock}>
-                  <Text style={[styles.menuTextOnly, { color: "red" }]}>
-                    Block Author
-                  </Text>
-                </Pressable>
-              </>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
     </ContainerComponent>
   );
 };
@@ -243,6 +219,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  imageScroll: {
+    marginTop: 12,
+    flexDirection: "row",
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
+    backgroundColor: colors.GRAY_100,
+  },
   menuContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -250,17 +237,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.GRAY_300,
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 8,
-  },
-  title: {
-    fontSize: 16,
-    color: colors.BLACK,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: colors.BLACK,
-    marginBottom: 14,
   },
   menu: {
     flexDirection: "row",
@@ -275,30 +251,16 @@ const styles = StyleSheet.create({
     color: colors.GRAY_700,
     marginLeft: 4,
   },
-  activeMenuText: {
-    fontWeight: "600",
-    color: colors.RED_500,
-    marginLeft: 4,
-  },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalBox: {
-    backgroundColor: colors.WHITE,
-    borderRadius: 12,
-    paddingVertical: 12,
-    width: 220,
-  },
-  menuItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  menuTextOnly: {
+  title: {
     fontSize: 16,
     color: colors.BLACK,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 14,
+    color: colors.BLACK,
+    marginBottom: 14,
   },
 });
 

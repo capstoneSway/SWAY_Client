@@ -1,21 +1,4 @@
 // BoardDetailScreen.tsx
-import { Feather } from "@expo/vector-icons";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-
 import {
   deleteComment,
   deletePost,
@@ -32,24 +15,38 @@ import CommentList from "@/components/CommentList";
 import CommonHeader from "@/components/CommonHeader";
 import FeedItem from "@/components/FeedItem";
 import { colors } from "@/constants/color";
-import React from "react";
-import { TextInput as RNTextInput } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInput as RNTextInput,
+  View,
+} from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function BoardDetailScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const id = params.id;
   const numericId = Number(id);
 
   const navigation = useNavigation();
-  const [userInfo, setUserInfo] = useState<{ username: string } | null>(null);
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState<string>("");
+  const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [postLoading, setPostLoading] = useState<boolean>(true);
-  const [commentLoading, setCommentLoading] = useState<boolean>(true);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [postLoading, setPostLoading] = useState(true);
+  const [commentLoading, setCommentLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const inputRef = useRef<RNTextInput | null>(null);
 
@@ -57,78 +54,101 @@ export default function BoardDetailScreen() {
     navigation.setOptions({ headerShown: false });
   }, []);
 
-  useEffect(() => {
-    const loadUserInfo = async () => {
-      const username = await AsyncStorage.getItem("myUsername");
-      if (username) {
-        setUserInfo({ username });
-      }
-    };
-
-    const loadPost = async () => {
-      try {
-        const postData = await fetchBoardDetail(numericId);
-        setPost(postData);
-      } catch (err) {
-        console.error("❌ Failed to load post details", err);
-        Alert.alert("Error", "Failed to load post.");
-      } finally {
-        setPostLoading(false);
-      }
-    };
-
-    const loadComments = async () => {
-      try {
-        const commentData = await fetchComments(numericId);
-        setComments(commentData);
-      } catch (err) {
-        console.error("❌ Failed to load comments", err);
-        Alert.alert("Error", "Failed to load comments.");
-      } finally {
-        setCommentLoading(false);
-      }
-    };
-
-    if (!id || isNaN(numericId)) {
-      Alert.alert("Error", "Invalid post ID.");
+  // 게시글 상세 데이터 불러오기
+  const loadPost = async () => {
+    try {
+      const postData = await fetchBoardDetail(numericId);
+      setPost(postData);
+    } catch (err) {
+      Alert.alert("Error", "Failed to load post.");
+    } finally {
       setPostLoading(false);
-      setCommentLoading(false);
-      return;
     }
+  };
 
-    loadUserInfo();
+  // 댓글 리스트 불러오기
+  const loadComments = async () => {
+    try {
+      const commentData = await fetchComments(numericId);
+      setComments(commentData);
+
+      const totalVisibleComments = commentData.reduce((count, comment) => {
+        if (!comment.isDeleted || (comment.replies && comment.replies.length > 0)) {
+          count += 1;
+          count += comment.replies.filter((r) => !r.isDeleted).length;
+        }
+        return count;
+      }, 0);
+
+      setPost((prev) =>
+        prev ? { ...prev, comment_count: totalVisibleComments } : prev
+      );
+    } catch (err) {
+      Alert.alert("Error", "Failed to load comments.");
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!id || isNaN(numericId)) return;
     loadPost();
     loadComments();
+
+    const interval = setInterval(() => {
+      loadComments();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [id]);
 
+  // 좋아요 토글 + 상태 저장
   const handlePostLikeToggle = async () => {
     try {
       const updated = await toggleLike(numericId);
-      setPost((prev) =>
-        prev ? { ...prev, likes: updated.like, isLiked: updated.isLiked } : prev
-      );
+      const updatedPost = post
+        ? {
+            ...post,
+            is_liked: updated.isLiked,
+            like_count: updated.isLiked
+              ? (post.like_count ?? 0) + 1
+              : Math.max((post.like_count ?? 1) - 1, 0),
+          }
+        : null;
+      setPost(updatedPost);
+
+      if (updatedPost) {
+        await AsyncStorage.setItem("@selectedPost", JSON.stringify(updatedPost));
+      }
     } catch (err) {
-      console.error("Failed to like post:", err);
+      console.error("Like toggle error:", err);
     }
   };
 
-  const handlePostScrapToggle = async () => {
+  // 스크랩 토글 + 상태 저장
+  const handleScrapToggle = async () => {
     try {
       const updated = await toggleScrap(numericId);
-      setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              bookmarks: updated.bookmarkCount,
-              isBookmarked: updated.isBookmarked,
-            }
-          : prev
-      );
+      const updatedPost = post
+        ? {
+            ...post,
+            is_scrapped: updated.isBookmarked,
+            scrap_count: updated.isBookmarked
+              ? (post.scrap_count ?? 0) + 1
+              : Math.max((post.scrap_count ?? 1) - 1, 0),
+          }
+        : null;
+      setPost(updatedPost);
+
+      if (updatedPost) {
+        await AsyncStorage.setItem("@selectedPost", JSON.stringify(updatedPost));
+      }
     } catch (err) {
-      console.error("Failed to scrap:", err);
+      console.error("Scrap toggle error:", err);
     }
   };
 
+  // 댓글 작성, 수정, 삭제 등 기존 코드 유지
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     setIsSubmitting(true);
@@ -136,34 +156,26 @@ export default function BoardDetailScreen() {
       if (editingCommentId) {
         const updated = await updateComment(numericId, editingCommentId, newComment);
         setComments((prev) =>
-          prev.map((parent) => {
-            if (parent.id === editingCommentId) {
-              return { ...parent, content: updated.comment };
-            }
-            if (parent.replies) {
-              return {
-                ...parent,
-                replies: parent.replies.map((reply) =>
-                  reply.id === editingCommentId
-                    ? { ...reply, content: updated.comment }
-                    : reply
-                ),
-              };
-            }
-            return parent;
-          })
+          prev.map((c) =>
+            c.id === editingCommentId
+              ? { ...c, content: updated.comment }
+              : {
+                  ...c,
+                  replies: c.replies.map((r) =>
+                    r.id === editingCommentId ? { ...r, content: updated.comment } : r
+                  ),
+                }
+          )
         );
         setEditingCommentId(null);
       } else {
-        await postComment(numericId, newComment, replyTo);
-        const updatedComments = await fetchComments(numericId);
-        setComments(updatedComments);
+        await postComment(numericId, newComment, replyTo ?? undefined);
+        await loadComments();
       }
       setNewComment("");
       setReplyTo(null);
-    } catch (error) {
-      console.error("Failed to post/edit comment:", error);
-      Alert.alert("Error", "Failed to process comment.");
+    } catch (err) {
+      Alert.alert("Error", "댓글 작성 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -172,11 +184,54 @@ export default function BoardDetailScreen() {
   const handleDeleteComment = async (commentId: number) => {
     try {
       await deleteComment(numericId, commentId);
-      const updatedComments = await fetchComments(numericId);
-      setComments(updatedComments);
-    } catch (err) {
-      console.error("댓글 삭제 실패:", err);
+      await loadComments();
+    } catch {
       Alert.alert("Error", "Failed to delete comment.");
+    }
+  };
+
+  const handleCommentLikeToggle = async (
+    commentId: number,
+    isReply: boolean = false
+  ) => {
+    setComments((prev) =>
+      prev.map((c) => {
+        if (!isReply && c.id === commentId) {
+          const newLiked = !c.comment_is_liked;
+          const newCount = newLiked ? c.like_count + 1 : Math.max(c.like_count - 1, 0);
+          return {
+            ...c,
+            comment_is_liked: newLiked,
+            like_count: newCount,
+          };
+        }
+        return {
+          ...c,
+          replies: c.replies.map((r) => {
+            if (r.id === commentId) {
+              const newLiked = !r.comment_is_liked;
+              const newCount = newLiked ? r.like_count + 1 : Math.max(r.like_count - 1, 0);
+              return {
+                ...r,
+                comment_is_liked: newLiked,
+                like_count: newCount,
+              };
+            }
+            return r;
+          }),
+        };
+      })
+    );
+
+    try {
+      const res = await toggleCommentLike(numericId, commentId);
+      console.log("👍 좋아요 토글 API 응답:", res);
+      setTimeout(() => {
+        loadComments();
+      }, 1000); // 좋아요 후 1초 뒤 새로고침
+    } catch (err) {
+      console.error("댓글 좋아요 처리 실패:", err);
+      Alert.alert("Error", "댓글 좋아요 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -184,115 +239,56 @@ export default function BoardDetailScreen() {
     try {
       await deletePost(numericId);
       Alert.alert("Deleted", "The post has been deleted.");
-      router.back();
-    } catch (err) {
-      console.error("Post deletion failed:", err);
+      router.replace("/(tabs)/board");
+    } catch {
       Alert.alert("Deletion Failed", "Please try again.");
     }
   };
 
-  const handleEdit = () => {
-    if (!post) return;
-    router.push({
-      pathname: "/post/newpost",
-      params: {
-        edit: "true",
-        id: post.id.toString(),
-        title: post.title,
-        description: post.description,
-      },
-    });
-  };
-
-  const handlePostMenu = () => {
-    const isMyPost = userInfo?.username === post?.author?.username;
-
-    const options = isMyPost
-      ? [
-          { text: "Edit", onPress: handleEdit, style: "default" as const },
-          {
-            text: "Delete",
-            style: "destructive" as const,
-            onPress: () => {
-              Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete",
-                  style: "destructive",
-                  onPress: handleDeletePost,
-                },
-              ]);
-            },
-          },
-          { text: "Cancel", style: "cancel" as const },
-        ]
-      : [
-          { text: "Report", onPress: () => Alert.alert("Reported."), style: "default" as const },
-          { text: "Block", onPress: () => Alert.alert("Blocked."), style: "default" as const },
-          { text: "Cancel", style: "cancel" as const },
-        ];
-
-    Alert.alert("Post Options", "", options);
-  };
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.WHITE }}>
+    <View style={{ flex: 1, backgroundColor: colors.WHITE }}>
+      <CommonHeader title="Board" showBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 5 : 0}
       >
         <KeyboardAwareScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
-          enableOnAndroid
-          extraScrollHeight={100}
         >
-          <CommonHeader title="Board" showBackButton />
-
           {postLoading ? (
-            <ActivityIndicator size="large" color={colors.GRAY_500} />
+            <ActivityIndicator />
           ) : post ? (
             <>
               <FeedItem
                 post={post}
                 isDetail
-                hideMenu
                 onCommentPress={() => inputRef.current?.focus()}
                 onLikePress={handlePostLikeToggle}
-                onScrapPress={handlePostScrapToggle}
+                onScrapPress={handleScrapToggle}
+                onDelete={handleDeletePost}
               />
-              <TouchableOpacity
-                onPress={handlePostMenu}
-                style={{ position: "absolute", top: 64, right: 16 }}
-              >
-                <Feather name="more-vertical" size={20} color="gray" />
-              </TouchableOpacity>
-
-              <Text style={styles.commentTitle}>{comments.length} Comments</Text>
-
+              <Text style={styles.commentTitle}>{post.comment_count ?? 0} Comments</Text>
               {commentLoading ? (
-                <ActivityIndicator size="small" color={colors.GRAY_300} />
+                <ActivityIndicator />
               ) : (
                 <CommentList
                   postId={post.id}
                   comments={comments}
-                  onPressLike={handlePostLikeToggle}
-                  onPressMenu={(id) => console.log("Menu pressed for", id)}
-                  onPressReply={(id) => setReplyTo(id)}
+                  onPressLike={handleCommentLikeToggle}
+                  onPressReply={(id) => {
+                    setReplyTo(id);
+                    inputRef.current?.focus();
+                  }}
                   onPressEdit={(id, content) => {
                     setEditingCommentId(id);
                     setNewComment(content);
                     inputRef.current?.focus();
                   }}
                   onPressDelete={(id) =>
-                    Alert.alert("Delete Comment", "Are you sure you want to delete this comment?", [
+                    Alert.alert("Delete Comment", "Are you sure?", [
                       { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: () => handleDeleteComment(id),
-                      },
+                      { text: "Delete", style: "destructive", onPress: () => handleDeleteComment(id) },
                     ])
                   }
                 />
@@ -302,19 +298,17 @@ export default function BoardDetailScreen() {
             <Text>Post not found.</Text>
           )}
         </KeyboardAwareScrollView>
-
         <View style={styles.inputBarFixed}>
           <TextInput
             ref={inputRef}
             value={newComment}
             onChangeText={setNewComment}
             placeholder="Enter your comment..."
-            placeholderTextColor={colors.GRAY_500}
             style={styles.input}
             multiline
           />
           {isSubmitting ? (
-            <ActivityIndicator size={20} color={colors.PURPLE_300} />
+            <ActivityIndicator size={20} />
           ) : (
             <Feather
               name="arrow-up-circle"
@@ -325,21 +319,22 @@ export default function BoardDetailScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingTop: 24,
     paddingBottom: 100,
     backgroundColor: colors.WHITE,
     flexGrow: 1,
   },
   commentTitle: {
-    fontWeight: "bold",
-    fontSize: 16,
-    marginBottom: 8,
+    fontWeight: "700",
+    fontSize: 18,
+    marginBottom: 12,
+    paddingHorizontal: 16,
     color: colors.BLACK,
   },
   inputBarFixed: {
@@ -347,19 +342,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: colors.GRAY_200,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 20 : 12,
-    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === "ios" ? 24 : 14,
+    paddingHorizontal: 20,
     backgroundColor: colors.WHITE,
   },
   input: {
     flex: 1,
     backgroundColor: colors.GRAY_100,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    fontSize: 16,
     color: colors.BLACK,
-    marginRight: 8,
+    marginRight: 12,
   },
 });

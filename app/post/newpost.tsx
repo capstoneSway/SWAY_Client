@@ -60,16 +60,47 @@ export default function NewPostScreen() {
     }
   }, [isEdit, initTitle, initDescription]);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const height = e.endCoordinates?.height ?? 0;
+      Animated.timing(animatedBottom, {
+        toValue: height,
+        duration: Platform.OS === "ios" ? e.duration ?? 250 : 100,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      Animated.timing(animatedBottom, {
+        toValue: 0,
+        duration: Platform.OS === "ios" ? e.duration ?? 250 : 100,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   const handleSubmit = async () => {
     if (!isFormValid) return;
 
     try {
       if (isEdit && id) {
         await updatePost(Number(id), title, description);
-        Alert.alert("Updated", "Post updated successfully.");
-        router.back();
+        Alert.alert("Updated", "Post updated successfully.", [
+          {
+            text: "OK",
+            onPress: () => router.replace("/(tabs)/board"),
+          },
+        ]);
       } else {
-        await createPost(title, description);
+        await createPost(title, description, selectedImages);
         router.push("/(tabs)/board");
       }
     } catch (error) {

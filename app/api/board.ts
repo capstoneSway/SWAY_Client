@@ -17,18 +17,18 @@ export async function fetchBoardList(): Promise<Post[]> {
       id: post.user_id ?? 0,
       nickname: post.nickname,
       imageUri: post.profile_image ?? null,
+      nationality: post.nationality ?? "",
     },
-    imageUri: post.images?.[0] ?? null,
-    likes: post.like_count,
-    bookmarks: post.scrap_count,
-    isLiked: post.is_liked ?? false,
-    isBookmarked: post.is_scrapped ?? false,
-    commentCount: post.comment_count ?? 0,
+    imageUris: post.images?.map((img: any) => img.image_url) ?? [],
+    like_count: post.like_count,
+    scarp_count: post.scrap_count,
+    is_liked: post.is_liked ?? false,
+    is_scrapped: post.is_scrapped ?? false,
+    comment_Count: post.comment_count ?? 0,
     userId: post.user_id,
   }));
 }
 
-// 게시글 상세 불러오기
 export async function fetchBoardDetail(postId: number): Promise<Post> {
   const res = await api.get(`/board/${postId}/`);
 
@@ -41,21 +41,45 @@ export async function fetchBoardDetail(postId: number): Promise<Post> {
       id: res.data.user_id ?? 0,
       nickname: res.data.nickname,
       imageUri: res.data.profile_image ?? null,
-      username: res.data.username, 
+      nationality: res.data.nationality ?? "",
+      username: res.data.username,
     },
-    imageUri: res.data.images?.[0] ?? null,
-    likes: res.data.like_count,
-    bookmarks: res.data.scrap_count,
+    imageUris: res.data.images?.map((img: any) => img.image_url) ?? [],
+    like_count: res.data.like_count,
+    scrap_count: res.data.scrap_count,
+    is_liked: res.data.is_liked ?? false,
+    is_scrapped: res.data.is_scrapped ?? false,
+    comment_count: res.data.comment_count ?? 0,
     userId: res.data.user_id,
   };
 }
 
 // 게시글 작성
-export async function createPost(title: string, content: string) {
-  const res = await api.post("/board/create/", {
-    title,
-    content,
+export async function createPost(
+  title: string,
+  content: string,
+  images: string[]
+) {
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("content", content);
+
+  images.forEach((uri, index) => {
+    const fileName = uri.split("/").pop();
+    const file = {
+      uri,
+      name: fileName || `image${index}.jpg`,
+      type: "image/jpeg", // 또는 실제 타입: image/png 등
+    };
+    formData.append("image", file as any); // 여러 장이라도 key는 항상 "image"
   });
+
+  const res = await api.post("/board/create/", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
   return res.data;
 }
 
@@ -80,24 +104,32 @@ export async function deletePost(postId: number) {
 // 좋아요 토글
 export async function toggleLike(postId: number) {
   const res = await api.post(`/board/${postId}/like/`);
+  console.log(`❤️ 좋아요 요청 완료: postId=${postId}, 결과=${res.data.liked}`);
   return {
     isLiked: res.data.is_liked,
-    like: res.data.like_count,
   };
 }
 
 // 스크랩 토글
 export async function toggleScrap(postId: number) {
   const res = await api.post(`/board/${postId}/scrap/`);
+  console.log("🔖 스크랩 응답:", res.data); // 디버깅용
+
   return {
-    isBookmarked: res.data.is_scrapped,
-    bookmarkCount: res.data.scrap_count,
+    isBookmarked: res.data.scrapped,
   };
 }
 
 // 댓글 목록 불러오기
 export async function fetchComments(postId: number): Promise<Comment[]> {
-  const res = await api.get(`/board/${postId}/comments/`);
+  const token = await AsyncStorage.getItem("@jwt");
+  console.log("🔑 fetchComments 호출, 토큰:", token);
+  //const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  const res = await api.get(`/board/${postId}/comments/`, {
+    /*headers*/
+  });
+  console.log("📥 댓글 응답 데이터:", JSON.stringify(res.data, null, 2));
 
   return res.data.map((c: any) => ({
     id: c.id,
@@ -106,9 +138,10 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
       typeof c.date === "string" && !isNaN(Date.parse(c.date))
         ? new Date(c.date).toISOString()
         : new Date().toISOString(),
-    like: c.like_count ?? 0,
-    isLiked: c.is_liked ?? false,
+    like_count: c.like_count ?? 0,
+    isLiked: c.comment_is_liked ?? false,
     parent_id: c.parent_id ?? null,
+    isDeleted: c.is_deleted,
     user: {
       id: c.user_id ?? 0,
       nickname: c.nickname,
@@ -116,25 +149,28 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
       imageUri: c.profile_image ?? null,
       nationality: c.nationality ?? "",
     },
-    replies: (c.replies ?? []).map((r: any) => ({
-      id: r.id,
-      content: r.content,
-      createdAt:
-        typeof r.date === "string" && !isNaN(Date.parse(r.date))
-          ? new Date(r.date).toISOString()
-          : new Date().toISOString(),
-      like: r.like_count ?? 0,
-      isLiked: r.is_liked ?? false,
-      parent_id: r.parent_id ?? c.id,
-      user: {
-        id: r.user_id ?? 0,
-        nickname: r.nickname,
-        username: r.username,
-        imageUri: r.profile_image ?? null,
-        nationality: r.nationality ?? "",
-      },
-      replies: [],
-    })),
+    replies: (c.reply ?? [])
+      .filter((r: any) => !r.is_deleted) // 삭제된 대댓글은 제외
+      .map((r: any) => ({
+        id: r.id,
+        content: r.content,
+        createdAt:
+          typeof r.date === "string" && !isNaN(Date.parse(r.date))
+            ? new Date(r.date).toISOString()
+            : new Date().toISOString(),
+        like_count: r.like_count ?? 0,
+        isLiked: r.comment_is_liked ?? false,
+        isDeleted: r.is_deleted,
+        parent_id: r.parent_id ?? c.id,
+        user: {
+          id: r.user_id ?? 0,
+          nickname: r.nickname,
+          username: r.username,
+          imageUri: r.profile_image ?? null,
+          nationality: r.nationality ?? "",
+        },
+        replies: [],
+      })),
   }));
 }
 
@@ -149,15 +185,20 @@ export async function postComment(
 
   const payload = parentId ? { content, parent_id: parentId } : { content };
 
-  console.log("📤 댓글 작성 요청:", postId, payload);
+  try {
+    const res = await api.post(`/board/${postId}/comments/`, payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  const res = await api.post(`/board/${postId}/comments/`, payload, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+    console.log("✅서버 응답:", res.data);
 
-  return res.data;
+    return res.data;
+  } catch (err) {
+    console.error("❌ 댓글 작성 중 오류 발생:", err);
+    throw err;
+  }
 }
 
 // 댓글 수정
@@ -182,12 +223,12 @@ export async function updateComment(
 }
 
 // 댓글 좋아요 토글
-export async function toggleCommentLike(commentId: number) {
+export async function toggleCommentLike(postId: number, commentId: number) {
   const token = await AsyncStorage.getItem("@jwt");
   if (!token) throw new Error("No access token");
 
   const res = await api.post(
-    `/board/comment/${commentId}/like/`,
+    `/board/${postId}/comments/${commentId}/like/`,
     {},
     {
       headers: {
@@ -195,7 +236,11 @@ export async function toggleCommentLike(commentId: number) {
       },
     }
   );
-  return res.data;
+
+  return {
+    is_liked: res.data.liked,
+    delta: res.data.liked ? 1 : -1,
+  };
 }
 
 // 게시글 검색
@@ -213,15 +258,18 @@ export async function searchBoardList(keyword: string): Promise<Post[]> {
         ? new Date(post.date.replace(/\.\d+Z$/, "Z")).toISOString()
         : new Date().toISOString(),
     author: {
-      username: post.username,
+      id: post.user_id ?? 0,
       nickname: post.nickname,
+      username: post.username,
+      imageUri: post.profile_image ?? null,
+      nationality: post.nationality ?? "",
     },
-    imageUri: post.image,
-    likes: post.like_count,
-    bookmarks: post.scrap_count,
-    isLiked: post.is_liked ?? false,
-    isBookmarked: post.is_scrapped ?? false,
-    commentCount: post.comment_count ?? 0,
+    imageUris: post.images?.map((img: any) => img.image_url) ?? [],
+    like_count: post.like_count,
+    scrap_count: post.scrap_count,
+    is_liked: post.is_liked ?? false,
+    is_scrapped: post.is_scrapped ?? false,
+    comment_count: post.comment_count ?? 0,
     userId: post.user_id ?? 0,
   }));
 }
@@ -244,7 +292,7 @@ export async function blockPostAuthor(postId: number) {
   const token = await AsyncStorage.getItem("@jwt");
   if (!token) throw new Error("No access token");
 
-  const response = await api.post(
+  const res = await api.post(
     `/board/${postId}/block-user/`,
     {},
     {
@@ -253,5 +301,22 @@ export async function blockPostAuthor(postId: number) {
       },
     }
   );
-  return response.data;
+  return res.data;
+}
+
+//댓글 작성자 차단
+export async function blockCommentAuthor(postId: number, commentId: number) {
+  const token = await AsyncStorage.getItem("@jwt");
+  if (!token) throw new Error("No access token");
+
+  const res = await api.post(
+    `/board/${postId}/comments/${commentId}/block-user/`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return res.data;
 }

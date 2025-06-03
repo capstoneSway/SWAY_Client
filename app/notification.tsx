@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@/constants/color";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function NotificationScreen() {
   const router = useRouter();
@@ -10,10 +11,15 @@ export default function NotificationScreen() {
     <View style={styles.container}>
       {/* 커스텀 헤더 */}
       <View style={styles.header}>
-        <Ionicons name="notifications-outline" size={24} color="black" />
-        <Text style={styles.headerTitle}>Notification</Text>
+        {/* 왼쪽: 알림 아이콘 + 텍스트 */}
+        <View style={styles.titleRow}>
+          <Ionicons name="notifications-outline" size={24} color="black" />
+          <Text style={styles.headerTitle}>Notification</Text>
+        </View>
+
+        {/* 오른쪽: 닫기 버튼 */}
         <Pressable onPress={() => router.back()}>
-          <Ionicons name="close" size={24} color="black" />
+          <Feather name="x-circle" size={24} color={colors.BLACK} />
         </Pressable>
       </View>
 
@@ -31,17 +37,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 50,
+    paddingTop: 56,
+    paddingBottom: 16,
     paddingHorizontal: 16,
-    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: colors.GRAY_300,
     backgroundColor: "white",
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "black",
+    marginLeft: 8,
   },
   content: {
     flex: 1,

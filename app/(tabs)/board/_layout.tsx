@@ -6,7 +6,7 @@ export default function BoardLayout() {
     <Stack>
       <Stack.Screen
         name="index"
-        options={{ title: "Board", headerShown: true }}
+        options={{ title: "Board", headerShown: false }}
       />
     </Stack>
   );

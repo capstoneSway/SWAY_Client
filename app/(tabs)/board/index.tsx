@@ -1,130 +1,16 @@
-import { fetchBoardList } from "@/app/api/board";
 import CommonHeader from "@/components/CommonHeader";
-import FeedItem from "@/components/FeedItem";
+import FeedList from "@/components/FeedList";
 import { colors } from "@/constants/color";
+import { StyleSheet, View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import { router, useLocalSearchParams } from "expo-router";
-import { Post } from "@/app/type/types";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { router } from "expo-router";
+import React from "react";
 
 export default function BoardScreen() {
-  const navigation = useNavigation();
-  const params = useLocalSearchParams();
-
-  // 타입 명시 추가
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
-  const [searchText, setSearchText] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
-
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const data = await fetchBoardList();
-        const raw = params?.newPost;
-
-        if (raw && raw !== "undefined") {
-          const newPost = typeof raw === "string" ? JSON.parse(raw) : raw;
-          if (newPost?.title && newPost?.description) {
-            const updated = [newPost, ...data];
-            setPosts(updated);
-            setFilteredPosts(updated);
-          } else {
-            setPosts(data);
-            setFilteredPosts(data);
-          }
-          router.setParams({});
-        } else {
-          setPosts(data);
-          setFilteredPosts(data);
-        }
-      } catch (error) {
-        console.error("❌ 게시글 불러오기 실패:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPosts();
-  }, []);
-
-  const handleSearch = () => {
-    const keyword = searchText.toLowerCase();
-    const filtered = posts.filter(
-      (post) =>
-        post.title?.toLowerCase().includes(keyword) ||
-        post.description?.toLowerCase().includes(keyword)
-    );
-    setFilteredPosts(filtered);
-  };
-
   return (
     <View style={styles.container}>
       <CommonHeader title="Board" />
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.PURPLE_300} />
-        </View>
-      ) : (
-        <>
-          <View style={styles.searchContainer}>
-            <TextInput
-              placeholder="Search"
-              placeholderTextColor={colors.GRAY_500}
-              value={searchText}
-              onChangeText={setSearchText}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              style={styles.searchInput}
-            />
-            <Pressable onPress={handleSearch}>
-              <Ionicons
-                name="search"
-                size={20}
-                color={colors.GRAY_500}
-                style={{ marginLeft: 8 }}
-              />
-            </Pressable>
-          </View>
-
-          <FlatList
-            data={filteredPosts}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/board/[id]",
-                    params: { id: item.id.toString() },
-                  })
-                }
-              >
-                <FeedItem post={item} />
-              </Pressable>
-            )}
-            ListEmptyComponent={
-              <Text style={{ padding: 16 }}>No posts available.</Text>
-            }
-            contentContainerStyle={{ paddingBottom: 100 }}
-          />
-        </>
-      )}
+      <FeedList />
 
       <Pressable
         style={styles.writeButton}
@@ -140,25 +26,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.WHITE,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.GRAY_100,
-    borderRadius: 20,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.BLACK,
   },
   writeButton: {
     position: "absolute",
