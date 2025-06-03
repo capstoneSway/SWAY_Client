@@ -42,6 +42,7 @@ const FeedItem = ({
   onScrapPress,
   hideMenu,
 }: FeedItemProps) => {
+
   const [isMyPost, setIsMyPost] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
@@ -235,22 +236,29 @@ const FeedItem = ({
             <Text style={styles.menuText}>{post.comment_count ?? 0}</Text>
           </Pressable>
 
-          <Pressable style={styles.menu} onPress={onScrapPress}>
+          <Pressable
+            style={styles.menu}
+            onPress={() => {
+              onScrapPress?.();   
+            }}
+          >
+            
             <Feather
+              key={post.is_scraped ? "scraped" : "not-scraped"}
               name="bookmark"
               size={20}
-              color={post.is_scrapped ? colors.PURPLE_300 : colors.GRAY_700}
+              color={post.is_scraped === true ? colors.PURPLE_300 : colors.GRAY_700}
             />
             <Text
               style={[
-                styles.menuText,
-                post.is_scrapped && {
+                  post.is_scraped && {
                   color: colors.PURPLE_300,
                   fontWeight: "600",
                 },
+                  styles.menuText,
               ]}
             >
-              {post.scrap_count ?? 0}
+              {post.scrap_count ?? post.scarp_count ??  0}
             </Text>
           </Pressable>
         </View>

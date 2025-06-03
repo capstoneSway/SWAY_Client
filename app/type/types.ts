@@ -21,10 +21,11 @@ export interface Post {
    // 상태 관련 필드 (좋아요/스크랩/댓글 수)
   like_count: number;          // 백엔드: like_count
   scrap_count: number;         // 백엔드: scrap_count
+  scarp_count?: number; // 오타 대응용 임시 필드
   comment_count: number;       // 백엔드: comment_count
 
   is_liked: boolean;           // 백엔드: is_liked
-  is_scrapped: boolean;        // 백엔드: is_scrapped
+  is_scraped: boolean;        // 백엔드: is_scraped
 
   userId: number;              // 작성자 id
 }

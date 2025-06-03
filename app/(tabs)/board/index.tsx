@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: colors.BLACK,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 2 } ,
     shadowRadius: 3,
     shadowOpacity: 0.5,
     elevation: 2,

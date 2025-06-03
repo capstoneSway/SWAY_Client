@@ -22,21 +22,17 @@ export default function CommonHeader({
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        {/* 왼쪽: 뒤로가기 or 로고 이미지 */}
-        {showBackButton ? (
-          <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="chevron-back" size={28} color={colors.BLACK} />
-          </Pressable>
-        ) : (
-          <Image
-            source={logoImage}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        )}
+        {/* 왼쪽: SWAY 로고 */}
+        <Image
+          source={logoImage}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
 
         {/* 중앙: 제목 */}
-        <Text style={styles.headerTitle}>{title}</Text>
+        <View style={styles.center}>
+          <Text style={styles.headerTitle}>{title}</Text>
+        </View>
 
         {/* 오른쪽: 알림 아이콘 */}
         <Pressable
@@ -64,21 +60,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
     height: 65,
+    paddingHorizontal: 16,
     position: "relative",
   },
   logoImage: {
     width: 70,
     height: 70,
-    marginTop: 3,
+    marginTop: 4.5,
+  },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: -60,
   },
   headerTitle: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    textAlign: "center",
     fontSize: 18,
     fontWeight: "600",
     color: colors.BLACK,
