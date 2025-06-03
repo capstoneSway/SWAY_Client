@@ -2,7 +2,6 @@ import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-//import CookieManager from "@react-native-cookies/cookies";
 import { Buffer } from "buffer";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -17,7 +16,7 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { api } from "../api/axios";
-import {fetchUserInfo} from "../api/fetchUserInfo";
+import fetchUserInfo from "../api/fetchUserInfo";
 import logout from "../api/logout";
 import refreshToken from "../api/refreshToken";
 import deleteAccount from "../api/unregister";
@@ -135,8 +134,8 @@ export default function AuthHome() {
         const userInfo = await fetchUserInfo(jwt_access);
         console.log("🟢 fetchUserInfo 결과:", userInfo);
         if (userInfo?.id) {
-        console.log("🟢 로그인한 사용자 ID:", userInfo.id);
-}
+          console.log("🟢 로그인한 사용자 ID:", userInfo.id);
+        }
 
         if (userInfo) {
           if (!userInfo.nickname) router.replace("/auth/signUsername");
