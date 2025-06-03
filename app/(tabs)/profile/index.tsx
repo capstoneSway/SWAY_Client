@@ -183,7 +183,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => router.push("./setting/settings")}>
+        <TouchableOpacity onPress={() => router.push("/setting/settings")}>
           <Ionicons name="settings-outline" size={24} />
         </TouchableOpacity>
       </View>

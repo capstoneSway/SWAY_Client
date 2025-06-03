@@ -1,28 +1,27 @@
-import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
-  Switch,
-  ScrollView,
-  TextInput,
-  Modal,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors } from "@/constants/color";
-import { router } from "expo-router";
 import { api } from "@/app/api/axios";
 import EditNicknameModal from "@/components/EditNicknameModal";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import fetchUserInfo from "../api/fetchUserInfo";
-import deleteAccount from "../api/deleteAccount";
+import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
-import * as ImagePicker from "expo-image-picker";
 import eventEmitter from "@/utils/eventEmitter";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import deleteAccount from "../api/deleteAccount";
+import fetchUserInfo from "../api/fetchUserInfo";
 import logout from "../api/logout";
 
 interface User {

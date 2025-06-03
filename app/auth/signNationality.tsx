@@ -11,7 +11,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { setNationality } from "../api/setNationality";
+import setNationality from "../api/setNationality";
 
 export default function SignNationality() {
   const insets = useSafeAreaInsets();
@@ -24,18 +24,21 @@ export default function SignNationality() {
   );
 
   // 국적 제출
+  // 국적 제출
   const handleSubmitNationality = async () => {
     if (!selectedCountry) return;
     const country = countries.find((c) => c.code === selectedCountry);
     if (!country) return;
-    const nationality = country.name;
 
     try {
-      // 백엔드에 PATCH 요청으로 nationality 전송
-      await setNationality(nationality);
-      // 로컬 스토리지에도 저장
-      await AsyncStorage.setItem("userNationality", nationality);
-      // 메인 화면으로 이동
+      // 백엔드에 PUT 요청 전송
+      await setNationality(country.name, country.code);
+
+      // 로컬에 저장
+      await AsyncStorage.setItem("userNationality", country.name);
+      await AsyncStorage.setItem("userNationalityCode", country.code);
+
+      // 메인 탭으로 이동
       router.replace("../(tabs)");
     } catch (error) {
       console.error("내셔널리티 설정 중 오류:", error);
