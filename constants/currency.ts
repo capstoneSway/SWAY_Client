@@ -30,7 +30,7 @@ export const currencies = [
     flag: require("../assets/images/country/switzerland.png"),
   },
   {
-    code: "CNH",
+    code: "CNY",
     name: "Chinese Yuan",
     flag: require("../assets/images/country/china.png"),
   },

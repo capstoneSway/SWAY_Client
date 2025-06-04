@@ -200,72 +200,36 @@ export default function SettingsScreen() {
   };
 
   const pickImageAndUpload = async () => {
-    console.log("🔍 [1] 이미지 선택 시작");
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true,
+    });
 
-    try {
-      const permissionResult =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log("✅ [2] 권한 요청 완료:", permissionResult);
+    if (!result.canceled) {
+      const selectedAsset = result.assets[0];
 
-      if (!permissionResult.granted) {
-        alert("사진 접근 권한이 필요합니다.");
-        console.warn("⛔️ [3] 권한 거부됨");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images" as ImagePicker.MediaType,
-        allowsEditing: true,
-        quality: 0.7,
-      });
-
-      console.log("📸 [4] 이미지 선택 결과:", result);
-
-      if (!result.canceled) {
-        const selectedAsset = result.assets[0];
-        console.log("✅ [5] 선택된 이미지:", selectedAsset.uri);
-
-        const fileExtension = selectedAsset.uri.split(".").pop();
-        const mimeType = fileExtension === "png" ? "image/png" : "image/jpeg";
-        const fileName = `profile.${fileExtension}`;
-
-        const formData = new FormData();
-        formData.append("profile_image", {
-          uri: selectedAsset.uri,
-          name: fileName,
-          type: mimeType,
-        } as any);
-
+      try {
         const token = await AsyncStorage.getItem("@jwt");
-        if (!token) {
-          console.warn("❌ [6] JWT 없음");
-          return;
-        }
+        if (!token) return;
 
-        const res = await api.put(
+        await api.put(
           "/accounts/user/info/image-update/",
-          formData,
+          {},
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
+              "Content-Type": "application/json",
             },
           }
         );
 
-        const newImageUrl = res.data.profile_image;
-        console.log("✅ [7] 서버 응답 URL:", newImageUrl);
-
         setUser((prev) =>
-          prev ? { ...prev, profileImageUrl: newImageUrl } : prev
+          prev ? { ...prev, profileImageUrl: selectedAsset.uri } : prev
         );
-      } else {
-        console.log("🚫 [8] 사용자 이미지 선택 취소");
-      }
-    } catch (err: any) {
-      console.error("❌ [9] 오류 발생:", err);
-      if (err.response?.data) {
-        console.error("❌ [10] 서버 응답 오류:", err.response.data);
+      } catch (err: any) {
+        console.error("프로필 사진 업로드 실패:", err);
       }
     }
   };

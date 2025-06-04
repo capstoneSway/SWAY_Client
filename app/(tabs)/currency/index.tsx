@@ -69,10 +69,10 @@ export default function CurrencyScreen() {
 
   // 초기 선택 통화
   const [fromCur, setFromCur] = useState(
-    currencies.find((c) => c.code === "USD") ?? currencies[0]
+    currencies.find((c) => c.code === "KRW") ?? currencies[0]
   );
   const [toCur, setToCur] = useState(
-    currencies.find((c) => c.code === "KRW") ?? currencies[1] ?? currencies[0]
+    currencies.find((c) => c.code === "AED") ?? currencies[1] ?? currencies[0]
   );
 
   // 금액 & 메모 상태

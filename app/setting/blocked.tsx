@@ -14,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api/axios";
 import { countries } from "@/constants/country";
+import { colors } from "@/constants/color";
 
 const DEFAULT_IMAGE = require("@/assets/images/default_profile.png");
 
@@ -21,9 +22,9 @@ interface BlockedUser {
   id: number;
   blocked_user_id: number;
   nickname: string;
-  created_at: string;
-  image_url: string;
+  profile_image: string; // ✅ 서버에서 받은 실제 필드명 반영
   nationality?: string;
+  created_at: string;
 }
 
 export default function BlockedUserListScreen() {
@@ -39,12 +40,8 @@ export default function BlockedUserListScreen() {
           return;
         }
 
-        const response = await api.get("/mypage/settings/block-user/", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
+        // ✅ 토큰은 api 인스턴스가 처리하므로 헤더 생략 가능
+        const response = await api.get("/mypage/settings/block-user/");
         setUsers(response.data);
       } catch (error) {
         console.error("❌ 차단 유저 불러오기 실패:", error);
@@ -62,18 +59,7 @@ export default function BlockedUserListScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            const token = await AsyncStorage.getItem("@jwt");
-            if (!token) {
-              console.warn("❌ JWT 토큰 없음");
-              return;
-            }
-
-            await api.delete(`/mypage/settings/block-user/${id}/`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-
+            await api.delete(`/mypage/settings/block-user/${id}/`);
             setUsers((prev) => prev.filter((user) => user.id !== id));
           } catch (error) {
             console.error("❌ 차단 해제 실패:", error);
@@ -84,11 +70,12 @@ export default function BlockedUserListScreen() {
   };
 
   const renderItem = ({ item }: { item: BlockedUser }) => {
-    const profileImage = item.image_url
-      ? { uri: item.image_url }
+    // ✅ 프로필 이미지: 없으면 기본 이미지로 대체
+    const profileImage = item.profile_image
+      ? { uri: item.profile_image }
       : DEFAULT_IMAGE;
 
-    // ✅ 국가 이름으로 국기 이미지 찾기
+    // ✅ 국가 코드에 따른 국기 표시
     const matchedCountry = countries.find((c) => c.name === item.nationality);
     const flagImage = matchedCountry?.flag;
 
@@ -131,7 +118,7 @@ export default function BlockedUserListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: colors.WHITE },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -144,10 +131,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.WHITE,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderColor: "#eee",
+    borderColor: colors.GRAY_200,
   },
   userInfo: { flexDirection: "row", alignItems: "center" },
   avatarContainer: {
@@ -166,9 +153,9 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#fff",
+    backgroundColor: colors.WHITE,
     borderWidth: 1,
-    borderColor: "#fff",
+    borderColor: colors.WHITE,
   },
   name: { fontSize: 16, fontWeight: "500" },
 });
