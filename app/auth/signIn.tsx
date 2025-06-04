@@ -2,7 +2,6 @@ import { colors } from "@/constants/color";
 import { SCOPES } from "@/constants/scope";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
 import { Buffer } from "buffer";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -134,6 +133,9 @@ export default function AuthHome() {
         // 8) 사용자 정보 조회 후 라우팅
         const userInfo = await fetchUserInfo(jwt_access);
         console.log("🟢 fetchUserInfo 결과:", userInfo);
+        if (userInfo?.id) {
+          console.log("🟢 로그인한 사용자 ID:", userInfo.id);
+        }
 
         if (userInfo) {
           if (!userInfo.nickname) router.replace("/auth/signUsername");
@@ -225,8 +227,8 @@ export default function AuthHome() {
           try {
             await AsyncStorage.clear();
             console.log("🟢 AsyncStorage 초기화 완료");
-            await CookieManager.clearAll();
-            console.log("🟢 쿠키 초기화 완료");
+            //await CookieManager.clearAll();
+            //console.log("🟢 쿠키 초기화 완료");
           } catch (e) {
             console.error("❌ 초기화 실패:", e);
           }

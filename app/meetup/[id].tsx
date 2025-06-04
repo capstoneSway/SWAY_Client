@@ -75,7 +75,7 @@ export default function MeetUpDetail() {
           `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
         );
         setMeetup(res.data);
-        console.log("모임 정보: ", res.data);
+        console.log("모임 정보:\n" + JSON.stringify(res.data, null, 2));
       } catch (e) {
         console.error("모임 정보 불러오기 실패", e);
       } finally {

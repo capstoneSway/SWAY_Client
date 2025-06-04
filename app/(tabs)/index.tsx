@@ -1,3 +1,4 @@
+import "@/app/api/interceptors";
 import { colors } from "@/constants/color";
 import { countries } from "@/constants/country";
 import formatDateTime from "@/utils/formatDataTime";
@@ -71,7 +72,7 @@ export default function Home() {
       const res = await axios.get(
         `https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/lightning/${id}/`
       );
-      console.log("\uD83D\uDCCC 번개 상세 정보:", res.data);
+      console.log("번개 상세 정보:\n" + JSON.stringify(res.data, null, 2));
       Alert.alert(
         "번개모임 디버깅용",
         `콘솔에서 ID ${id}의 상세 정보를 확인하세요.`
@@ -156,6 +157,7 @@ export default function Home() {
             setUserEmail(email);
 
             data = await fetchLightningCards(selectedTag || undefined);
+            console.log("전체 번개 목록:\n" + JSON.stringify(data, null, 2));
 
             data = data
               .filter((item: any) => {
@@ -267,6 +269,7 @@ export default function Home() {
     requestInitialPermissions();
   }, []);
 
+  //  1분마다 포커싱 갱신을 위한 시간 트리거
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeTick((prev) => prev + 1);
@@ -688,7 +691,7 @@ export default function Home() {
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>Home</Text>
-        <Pressable onPress={() => console.log("알림 버튼 눌림")}>
+        <Pressable onPress={() => router.push("/setting/settings")}>
           <Ionicons name="notifications-outline" size={24} />
         </Pressable>
       </View>

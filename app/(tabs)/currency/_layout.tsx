@@ -6,7 +6,7 @@ export default function CurrencyLayout() {
     <Stack>
       <Stack.Screen
         name="index"
-        options={{ title: "Currency", headerShown: true }}
+        options={{ title: "Currency", headerShown: false }}
       />
     </Stack>
   );
