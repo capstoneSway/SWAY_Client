@@ -1,5 +1,5 @@
 import useChatSocket from "@/app/api/chatSocket";
-import fetchUserInfo from "@/app/api/fetchUserInfo";
+import { fetchUserInfo } from "@/app/api/fetchUserInfo";
 import { leaveChatRoom } from "@/app/api/leaveChatLightning";
 import { uploadImage } from "@/app/api/uploadImage";
 import ChatInput from "@/components/chatBottomCTA";

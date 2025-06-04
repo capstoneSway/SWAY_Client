@@ -19,7 +19,7 @@ import {
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createLightningMeetUp from "../api/createMeetUp";
-import fetchUserInfo from "../api/fetchUserInfo";
+import { fetchUserInfo } from "../api/fetchUserInfo";
 
 const CATEGORY_OPTIONS = ["Travel", "Foodie", "WorkOut", "Others"];
 const GENDER_OPTIONS = ["All", "Female", "Male"];

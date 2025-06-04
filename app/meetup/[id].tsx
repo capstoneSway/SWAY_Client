@@ -17,7 +17,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import fetchUserInfo from "../api/fetchUserInfo";
+import { fetchUserInfo } from "../api/fetchUserInfo";
 import { joinLightning } from "../api/joinLightning";
 
 export default function MeetUpDetail() {

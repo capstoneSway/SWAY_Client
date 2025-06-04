@@ -1,8 +1,3 @@
-// app/meetup/editMeetUp.tsx
-// ✅ 번개모임 수정 화면
-// ✅ 인원 수 1은 비활성화 처리됨
-// ✅ 모든 필드가 기존과 동일하거나 변경 없음 시 update 버튼 비활성화
-
 import { categoryImages } from "@/constants/categoryImages";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +18,7 @@ import {
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import fetchUserInfo from "../api/fetchUserInfo";
+import { fetchUserInfo } from "../api/fetchUserInfo";
 import updateLightningMeetUp from "../api/updateLightning";
 
 const CATEGORY_OPTIONS = ["Travel", "Foodie", "WorkOut", "Others"];

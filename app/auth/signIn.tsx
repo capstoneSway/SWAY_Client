@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { api } from "../api/axios";
-import fetchUserInfo from "../api/fetchUserInfo";
+import { fetchUserInfo } from "../api/fetchUserInfo";
 import logout from "../api/logout";
 import refreshToken from "../api/refreshToken";
 import deleteAccount from "../api/unregister";
