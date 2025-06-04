@@ -19,7 +19,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           headerShown: false,
-          headerTitleAlign: "center", // 가운데 정렬
+          headerTitleAlign: "center",
           headerLeft: () => (
             <Image
               source={require("@/assets/images/SWAY.png")}

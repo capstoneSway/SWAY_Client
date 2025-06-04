@@ -345,9 +345,9 @@ export default function SettingsScreen() {
               style={styles.row}
               onPress={() => {
                 if (item.key === "restriction") {
-                  router.push("/setting/restriction");
+                  router.push("/setting/restriction" as any);
                 } else if (item.key === "blocked") {
-                  router.push("/setting/blocked");
+                  router.push("/setting/blocked" as any);
                 }
               }}
             >
@@ -407,7 +407,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.row}
-            onPress={() => router.push("/setting/feedback")}
+            onPress={() => router.push("/setting/feedback" as any)}
           >
             <Text style={styles.sectionTitle}>Feedback</Text>
             <Ionicons name="chevron-forward" size={20} color="#B8B8B8" />

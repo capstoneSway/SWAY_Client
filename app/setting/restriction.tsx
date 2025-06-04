@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "expo-router";
-import { colors } from "@/constants/color";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { api } from "../api/axios";
 
 type RestrictionItem = {

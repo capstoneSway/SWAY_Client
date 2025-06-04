@@ -7,14 +7,18 @@
     "preview": {
       "distribution": "internal",
       "developmentClient": false,
-      "channel": "preview"
+      "channel": "preview",
+      "android": {
+        "image": "ubuntu-18.04-jdk-11-ndk-r19c"
+      }
     },
     "production": {
       "ios": {
         "distribution": "store"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "ubuntu-18.04-jdk-11-ndk-r19c"
       },
       "autoIncrement": true,
       "channel": "production"

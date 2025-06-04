@@ -48,7 +48,7 @@ export async function fetchBoardDetail(postId: number): Promise<Post> {
     like_count: res.data.like_count,
     scrap_count: res.data.scrap_count,
     is_liked: res.data.is_liked ?? false,
-    is_scrapped: res.data.is_scrapped ?? false,
+    is_scraped: res.data.is_scraped ?? false,
     comment_count: res.data.comment_count ?? 0,
     userId: res.data.user_id,
   };
