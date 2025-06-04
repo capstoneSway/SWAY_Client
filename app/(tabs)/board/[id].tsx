@@ -1,4 +1,3 @@
-// BoardDetailScreen.tsx
 import {
   deleteComment,
   deletePost,
@@ -24,40 +23,81 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TextInput as RNTextInput,
   StyleSheet,
   Text,
   TextInput,
-  TextInput as RNTextInput,
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function BoardDetailScreen() {
+interface BoardDetailScreenProps {
+  post?: Post;
+  updatePostInFeed?: (id: number, update: Partial<Post>) => void;
+}
+
+export default function BoardDetailScreen({
+  post: initialPost,
+  updatePostInFeed,
+}: BoardDetailScreenProps) {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const id = params.id;
   const numericId = Number(id);
 
   const navigation = useNavigation();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<Post | null>(initialPost ?? null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [visibleComments, setVisibleComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [postLoading, setPostLoading] = useState(true);
+  const [postLoading, setPostLoading] = useState(initialPost ? false : true);
   const [commentLoading, setCommentLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const inputRef = useRef<RNTextInput | null>(null);
 
   useEffect(() => {
+    const fetchPostFromStorageOrParams = async () => {
+      try {
+        const storedPost = await AsyncStorage.getItem("@selectedPost");
+        if (storedPost) {
+          setPost(JSON.parse(storedPost));
+          await AsyncStorage.removeItem("@selectedPost");
+        } else if (params.post) {
+          setPost(JSON.parse(params.post as string));
+        }
+      } catch (err) {
+        console.error("초기 post 불러오기 실패:", err);
+      }
+    };
+    fetchPostFromStorageOrParams();
+  }, []);
+
+  useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, []);
 
-  // 게시글 상세 데이터 불러오기
+  useEffect(() => {
+    if (!post && id && !isNaN(numericId)) {
+      loadPost();
+    }
+  }, [post, id]);
+
   const loadPost = async () => {
     try {
       const postData = await fetchBoardDetail(numericId);
+      const storedPost = await AsyncStorage.getItem("@selectedPost");
+      if (storedPost) {
+        const parsed = JSON.parse(storedPost);
+        postData.is_scraped = parsed.is_scraped;
+        postData.scrap_count = parsed.scrap_count;
+        updatePostInFeed?.(postData.id, {
+          is_scraped: parsed.is_scraped,
+          scrap_count: parsed.scrap_count,
+        });
+      }
       setPost(postData);
     } catch (err) {
       Alert.alert("Error", "Failed to load post.");
@@ -66,22 +106,26 @@ export default function BoardDetailScreen() {
     }
   };
 
-  // 댓글 리스트 불러오기
   const loadComments = async () => {
     try {
       const commentData = await fetchComments(numericId);
-      setComments(commentData);
+      let totalVisibleCount = 0;
+      const filtered = commentData.reduce((acc: Comment[], comment) => {
+        const visibleReplies = comment.replies.filter((r) => !r.isDeleted);
+        const isCommentVisible =
+          !comment.isDeleted || visibleReplies.length > 0;
 
-      const totalVisibleComments = commentData.reduce((count, comment) => {
-        if (!comment.isDeleted || (comment.replies && comment.replies.length > 0)) {
-          count += 1;
-          count += comment.replies.filter((r) => !r.isDeleted).length;
+        if (isCommentVisible) {
+          acc.push({ ...comment, replies: visibleReplies });
+          totalVisibleCount += 1 + visibleReplies.length;
         }
-        return count;
-      }, 0);
+        return acc;
+      }, []);
 
+      setVisibleComments(filtered);
+      setComments(commentData);
       setPost((prev) =>
-        prev ? { ...prev, comment_count: totalVisibleComments } : prev
+        prev ? { ...prev, comment_count: totalVisibleCount } : prev
       );
     } catch (err) {
       Alert.alert("Error", "Failed to load comments.");
@@ -92,17 +136,13 @@ export default function BoardDetailScreen() {
 
   useEffect(() => {
     if (!id || isNaN(numericId)) return;
-    loadPost();
     loadComments();
-
     const interval = setInterval(() => {
       loadComments();
     }, 10000);
-
     return () => clearInterval(interval);
   }, [id]);
 
-  // 좋아요 토글 + 상태 저장
   const handlePostLikeToggle = async () => {
     try {
       const updated = await toggleLike(numericId);
@@ -116,45 +156,45 @@ export default function BoardDetailScreen() {
           }
         : null;
       setPost(updatedPost);
-
-      if (updatedPost) {
-        await AsyncStorage.setItem("@selectedPost", JSON.stringify(updatedPost));
-      }
     } catch (err) {
       console.error("Like toggle error:", err);
     }
   };
 
-  // 스크랩 토글 + 상태 저장
   const handleScrapToggle = async () => {
     try {
-      const updated = await toggleScrap(numericId);
-      const updatedPost = post
-        ? {
-            ...post,
-            is_scrapped: updated.isBookmarked,
-            scrap_count: updated.isBookmarked
-              ? (post.scrap_count ?? 0) + 1
-              : Math.max((post.scrap_count ?? 1) - 1, 0),
-          }
-        : null;
-      setPost(updatedPost);
+      const { isBookmarked } = await toggleScrap(post!.id);
+      const newCount = isBookmarked
+        ? (post!.scrap_count ?? 0) + 1
+        : Math.max((post!.scrap_count ?? post!.scarp_count ?? 1) - 1, 0);
 
-      if (updatedPost) {
-        await AsyncStorage.setItem("@selectedPost", JSON.stringify(updatedPost));
-      }
+      const updatedPost = {
+        ...post!,
+        is_scraped: isBookmarked,
+        scrap_count: newCount,
+      };
+
+      setPost(updatedPost);
+      await AsyncStorage.setItem("@selectedPost", JSON.stringify(updatedPost));
+      updatePostInFeed?.(post!.id, {
+        is_scraped: isBookmarked,
+        scrap_count: newCount,
+      });
     } catch (err) {
-      console.error("Scrap toggle error:", err);
+      console.error("스크랩 오류:", err);
     }
   };
 
-  // 댓글 작성, 수정, 삭제 등 기존 코드 유지
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     setIsSubmitting(true);
     try {
       if (editingCommentId) {
-        const updated = await updateComment(numericId, editingCommentId, newComment);
+        const updated = await updateComment(
+          numericId,
+          editingCommentId,
+          newComment
+        );
         setComments((prev) =>
           prev.map((c) =>
             c.id === editingCommentId
@@ -162,7 +202,9 @@ export default function BoardDetailScreen() {
               : {
                   ...c,
                   replies: c.replies.map((r) =>
-                    r.id === editingCommentId ? { ...r, content: updated.comment } : r
+                    r.id === editingCommentId
+                      ? { ...r, content: updated.comment }
+                      : r
                   ),
                 }
           )
@@ -198,24 +240,20 @@ export default function BoardDetailScreen() {
       prev.map((c) => {
         if (!isReply && c.id === commentId) {
           const newLiked = !c.comment_is_liked;
-          const newCount = newLiked ? c.like_count + 1 : Math.max(c.like_count - 1, 0);
-          return {
-            ...c,
-            comment_is_liked: newLiked,
-            like_count: newCount,
-          };
+          const newCount = newLiked
+            ? c.like_count + 1
+            : Math.max(c.like_count - 1, 0);
+          return { ...c, comment_is_liked: newLiked, like_count: newCount };
         }
         return {
           ...c,
           replies: c.replies.map((r) => {
             if (r.id === commentId) {
               const newLiked = !r.comment_is_liked;
-              const newCount = newLiked ? r.like_count + 1 : Math.max(r.like_count - 1, 0);
-              return {
-                ...r,
-                comment_is_liked: newLiked,
-                like_count: newCount,
-              };
+              const newCount = newLiked
+                ? r.like_count + 1
+                : Math.max(r.like_count - 1, 0);
+              return { ...r, comment_is_liked: newLiked, like_count: newCount };
             }
             return r;
           }),
@@ -224,11 +262,10 @@ export default function BoardDetailScreen() {
     );
 
     try {
-      const res = await toggleCommentLike(numericId, commentId);
-      console.log("👍 좋아요 토글 API 응답:", res);
+      await toggleCommentLike(numericId, commentId);
       setTimeout(() => {
         loadComments();
-      }, 1000); // 좋아요 후 1초 뒤 새로고침
+      }, 1000);
     } catch (err) {
       console.error("댓글 좋아요 처리 실패:", err);
       Alert.alert("Error", "댓글 좋아요 처리 중 오류가 발생했습니다.");
@@ -261,6 +298,7 @@ export default function BoardDetailScreen() {
           ) : post ? (
             <>
               <FeedItem
+                key={`detail-${post.id}-${post.is_scraped}-${post.scrap_count}`}
                 post={post}
                 isDetail
                 onCommentPress={() => inputRef.current?.focus()}
@@ -268,13 +306,17 @@ export default function BoardDetailScreen() {
                 onScrapPress={handleScrapToggle}
                 onDelete={handleDeletePost}
               />
-              <Text style={styles.commentTitle}>{post.comment_count ?? 0} Comments</Text>
+              <Text style={styles.commentTitle}>
+                {commentLoading
+                  ? "Loading..."
+                  : `${post?.comment_count ?? 0} Comments`}
+              </Text>
               {commentLoading ? (
                 <ActivityIndicator />
               ) : (
                 <CommentList
                   postId={post.id}
-                  comments={comments}
+                  comments={visibleComments}
                   onPressLike={handleCommentLikeToggle}
                   onPressReply={(id) => {
                     setReplyTo(id);
@@ -288,7 +330,11 @@ export default function BoardDetailScreen() {
                   onPressDelete={(id) =>
                     Alert.alert("Delete Comment", "Are you sure?", [
                       { text: "Cancel", style: "cancel" },
-                      { text: "Delete", style: "destructive", onPress: () => handleDeleteComment(id) },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => handleDeleteComment(id),
+                      },
                     ])
                   }
                 />

@@ -21,9 +21,9 @@ export async function fetchBoardList(): Promise<Post[]> {
     },
     imageUris: post.images?.map((img: any) => img.image_url) ?? [],
     like_count: post.like_count,
-    scarp_count: post.scrap_count,
+    scrap_count: post.scrap_count ?? post.scarp_count ?? 0,
     is_liked: post.is_liked ?? false,
-    is_scrapped: post.is_scrapped ?? false,
+    is_scraped: post.is_scraped ?? post.is_scrapped ?? false,
     comment_Count: post.comment_count ?? 0,
     userId: post.user_id,
   }));
@@ -48,7 +48,7 @@ export async function fetchBoardDetail(postId: number): Promise<Post> {
     like_count: res.data.like_count,
     scrap_count: res.data.scrap_count,
     is_liked: res.data.is_liked ?? false,
-    is_scrapped: res.data.is_scrapped ?? false,
+    is_scraped: res.data.is_scrapped ?? false,
     comment_count: res.data.comment_count ?? 0,
     userId: res.data.user_id,
   };
@@ -104,16 +104,32 @@ export async function deletePost(postId: number) {
 // 좋아요 토글
 export async function toggleLike(postId: number) {
   const res = await api.post(`/board/${postId}/like/`);
-  console.log(`❤️ 좋아요 요청 완료: postId=${postId}, 결과=${res.data.liked}`);
+
+  console.log("📡 상태 코드:", res.status);
+
+  if (res.status === 200) {
+    console.log("❤️ 좋아요 요청 성공");
+    console.log("📦 응답 데이터:", res.data);
+  } else {
+    console.log("❗좋아요 요청 응답 상태코드:", res.status);
+  }
   return {
-    isLiked: res.data.is_liked,
+    isLiked: res.data.liked,
   };
 }
 
 // 스크랩 토글
 export async function toggleScrap(postId: number) {
   const res = await api.post(`/board/${postId}/scrap/`);
-  console.log("🔖 스크랩 응답:", res.data); // 디버깅용
+
+  console.log("📡 스크랩 요청 상태 코드:", res.status);
+
+  if (res.status === 200) {
+    console.log("🔖 스크랩 요청 성공");
+    console.log("📦 응답 데이터:", res.data);
+  } else {
+    console.warn("⚠️ 스크랩 요청 비정상 응답:", res.status);
+  }
 
   return {
     isBookmarked: res.data.scrapped,
@@ -241,6 +257,14 @@ export async function toggleCommentLike(postId: number, commentId: number) {
       },
     }
   );
+  console.log("📡 댓글 좋아요 상태 코드:", res.status);
+
+  if (res.status === 200) {
+    console.log("❤️ 댓글 좋아요 요청 성공");
+    console.log("📦 응답 데이터:", res.data);
+  } else {
+    console.log("❗댓글 좋아요 요청 응답 상태코드:", res.status);
+  }
 
   return {
     is_liked: res.data.liked,

@@ -37,9 +37,11 @@ import {
 import { deleteLightning } from "../api/deleteLightning";
 import { fetchLightningCards } from "../api/fetchLightningList";
 import fetchMyLightningCards from "../api/fetchMyLightningCards";
-import fetchUserInfo from "../api/fetchUserInfo";
+import { fetchUserInfo } from "../api/fetchUserInfo";
 import { getFcmToken } from "../api/getFcmToken";
 import { leaveLightning } from "../api/leaveLightning"; // 탈퇴 API import 추가
+import fetchAllNotifications from "../api/notification/fetchAllNotifications";
+import testPushNotification from "../api/notification/testPushNotification";
 import ensureValidToken from "../api/tokenManager";
 
 export default function Home() {
@@ -66,6 +68,19 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [currentLoading, setCurrentLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+
+  const handleShowNotifications = async () => {
+    try {
+      const notiList = await fetchAllNotifications();
+      // 최근 3개만 Alert로 보기 쉽게
+      Alert.alert(
+        "알림 목록 (최신 3개)",
+        JSON.stringify(notiList?.slice(0, 3), null, 2)
+      );
+    } catch (e) {
+      Alert.alert("알림 오류", e?.message ?? "알림 목록 조회 실패");
+    }
+  };
 
   const fetchLightningDetail = async (id) => {
     try {
@@ -649,18 +664,42 @@ export default function Home() {
     );
   };
 
+  const sendFcmTokenToServer = async (token: string) => {
+    try {
+      const jwt = await AsyncStorage.getItem("@jwt");
+      if (!jwt) {
+        console.warn("JWT 없음 - FCM 토큰 전송 스킵");
+        return;
+      }
+
+      const res = await axios.post(
+        "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/accounts/fcm-token/",
+        { fcm_token: token },
+        {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("FCM 토큰 전송 성공", res.status);
+    } catch (error) {
+      console.error("FCM 토큰 전송 실패", error);
+    }
+  };
+
   const handleFcmTest = async () => {
     try {
       const token = await getFcmToken();
       if (token) {
         setFcmToken(token);
         setTokenError(null);
-        Clipboard.setStringAsync(token);
-        Alert.alert("복사됨", "FCM 토큰이 클립보드에 복사되었습니다.");
+        await sendFcmTokenToServer(token);
+        await testPushNotification(); // 푸시 테스트 바로 시도
       } else {
         setFcmToken(null);
         setTokenError("토큰 발급에 실패했습니다.");
-        Clipboard.setStringAsync("failed!!");
       }
     } catch (e) {
       setFcmToken(null);
@@ -691,7 +730,7 @@ export default function Home() {
       <View style={styles.header}>
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>Home</Text>
-        <Pressable onPress={() => router.push("/setting/settings")}>
+        <Pressable onPress={() => router.push("/notification")}>
           <Ionicons name="notifications-outline" size={24} />
         </Pressable>
       </View>
@@ -802,6 +841,23 @@ export default function Home() {
       >
         <Text style={{ color: colors.BLACK, fontWeight: "600" }}>
           FCM 토큰 테스트
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={{
+          position: "absolute",
+          bottom: 120,
+          alignSelf: "center",
+          backgroundColor: colors.PURPLE_300,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 20,
+        }}
+        onPress={handleShowNotifications}
+      >
+        <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
+          🔔 알림 목록 보기
         </Text>
       </Pressable>
 

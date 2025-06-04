@@ -1,3 +1,4 @@
+import NotificationList from "@/components/NotificationList";
 import { colors } from "@/constants/color";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -25,7 +26,8 @@ export default function NotificationScreen() {
 
       {/* 콘텐츠 */}
       <View style={styles.content}>
-        <Text style={styles.text}>알림 페이지입니다 📩</Text>
+        <NotificationList />
+        {/* 여기가 모듈화한 플랫리스트 들어오는 자리입니다. */}
       </View>
     </View>
   );
@@ -37,7 +39,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 56,
+    paddingTop: 87,
     paddingBottom: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
