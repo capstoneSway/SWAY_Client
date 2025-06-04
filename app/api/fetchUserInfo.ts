@@ -1,4 +1,4 @@
- // 새롭게 코드 수정_HY
+// 새롭게 코드 수정_HY
 import { api } from "./axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 export async function fetchUserInfo(jwtAccessToken: string) {
@@ -10,13 +10,12 @@ export async function fetchUserInfo(jwtAccessToken: string) {
     });
 
     const userInfo = response.data;
-    console.log("🟢 사용자 정보:", userInfo);
-    
+    //console.log("🟢 사용자 정보:", userInfo);
 
     //  username 저장
     if (userInfo?.username) {
       await AsyncStorage.setItem("myUsername", userInfo.username);
-      console.log("✅ myUsername 저장됨:", userInfo.username);
+      //console.log("✅ myUsername 저장됨:", userInfo.username);
     }
 
     return userInfo;

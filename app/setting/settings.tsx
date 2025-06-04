@@ -18,12 +18,12 @@ import { router } from "expo-router";
 import { api } from "@/app/api/axios";
 import EditNicknameModal from "@/components/EditNicknameModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import fetchUserInfo from "../api/fetchUserInfo";
 import deleteAccount from "../api/deleteAccount";
 import { countries } from "@/constants/country";
 import * as ImagePicker from "expo-image-picker";
 import eventEmitter from "@/utils/eventEmitter";
 import logout from "../api/logout";
+import { fetchUserInfo } from "../api/fetchUserInfo";
 
 interface User {
   profileImageUrl: string;
@@ -199,37 +199,43 @@ export default function SettingsScreen() {
     }
   };
 
+  // ✅ 최종 클라이언트용 업로드 코드 예시
   const pickImageAndUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-      base64: true,
     });
 
     if (!result.canceled) {
       const selectedAsset = result.assets[0];
+      const token = await AsyncStorage.getItem("@jwt");
+      if (!token) return;
+
+      const formData = new FormData();
+      formData.append("profile_image_changed", {
+        uri: selectedAsset.uri,
+        name: "profile.jpg",
+        type: "image/jpeg",
+      } as any);
 
       try {
-        const token = await AsyncStorage.getItem("@jwt");
-        if (!token) return;
-
-        await api.put(
-          "/accounts/user/info/image-update/",
-          {},
+        const res = await fetch(
+          "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/accounts/user/info/image-update/",
           {
+            method: "PATCH",
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              // Content-Type 생략 (자동 설정됨)
             },
+            body: formData,
           }
         );
 
+        if (!res.ok) throw new Error("Upload failed");
         setUser((prev) =>
           prev ? { ...prev, profileImageUrl: selectedAsset.uri } : prev
         );
-      } catch (err: any) {
-        console.error("프로필 사진 업로드 실패:", err);
+      } catch (err) {
+        console.error("❌ 프로필 사진 업로드 실패:", err);
       }
     }
   };

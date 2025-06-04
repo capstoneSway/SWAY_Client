@@ -23,7 +23,7 @@ export async function fetchBoardList(): Promise<Post[]> {
     like_count: post.like_count,
     scrap_count: post.scrap_count ?? post.scarp_count ?? 0,
     is_liked: post.is_liked ?? false,
-    is_scraped: post.is_scraped ?? post.is_scrapped ?? false, 
+    is_scraped: post.is_scraped ?? post.is_scrapped ?? false,
     comment_Count: post.comment_count ?? 0,
     userId: post.user_id,
   }));
@@ -104,14 +104,14 @@ export async function deletePost(postId: number) {
 // 좋아요 토글
 export async function toggleLike(postId: number) {
   const res = await api.post(`/board/${postId}/like/`);
- 
-  console.log("📡 상태 코드:", res.status);
 
-   if (res.status === 200) {
-    console.log("❤️ 좋아요 요청 성공");
-    console.log("📦 응답 데이터:", res.data);
+  //console.log("📡 상태 코드:", res.status);
+
+  if (res.status === 200) {
+    //console.log("❤️ 좋아요 요청 성공");
+    //console.log("📦 응답 데이터:", res.data);
   } else {
-    console.log("❗좋아요 요청 응답 상태코드:", res.status);
+    //console.log("❗좋아요 요청 응답 상태코드:", res.status);
   }
   return {
     isLiked: res.data.liked,
@@ -121,12 +121,12 @@ export async function toggleLike(postId: number) {
 // 스크랩 토글
 export async function toggleScrap(postId: number) {
   const res = await api.post(`/board/${postId}/scrap/`);
-  
-  console.log("📡 스크랩 요청 상태 코드:", res.status);
+
+  //console.log("📡 스크랩 요청 상태 코드:", res.status);
 
   if (res.status === 200) {
-    console.log("🔖 스크랩 요청 성공");
-    console.log("📦 응답 데이터:", res.data);
+    //console.log("🔖 스크랩 요청 성공");
+    //console.log("📦 응답 데이터:", res.data);
   } else {
     console.warn("⚠️ 스크랩 요청 비정상 응답:", res.status);
   }
@@ -139,13 +139,13 @@ export async function toggleScrap(postId: number) {
 // 댓글 목록 불러오기
 export async function fetchComments(postId: number): Promise<Comment[]> {
   const token = await AsyncStorage.getItem("@jwt");
-  console.log("🔑 fetchComments 호출, 토큰:", token);
+  //console.log("🔑 fetchComments 호출, 토큰:", token);
   //const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
   const res = await api.get(`/board/${postId}/comments/`, {
     /*headers*/
   });
-  console.log("📥 댓글 응답 데이터:", JSON.stringify(res.data, null, 2));
+  //console.log("📥 댓글 응답 데이터:", JSON.stringify(res.data, null, 2));
 
   return res.data.map((c: any) => ({
     id: c.id,
@@ -208,7 +208,7 @@ export async function postComment(
       },
     });
 
-    console.log("✅서버 응답:", res.data);
+    //console.log("✅서버 응답:", res.data);
 
     return res.data;
   } catch (err) {
@@ -257,13 +257,13 @@ export async function toggleCommentLike(postId: number, commentId: number) {
       },
     }
   );
-  console.log("📡 댓글 좋아요 상태 코드:", res.status);
+  //console.log("📡 댓글 좋아요 상태 코드:", res.status);
 
   if (res.status === 200) {
-    console.log("❤️ 댓글 좋아요 요청 성공");
-    console.log("📦 응답 데이터:", res.data);
+    //console.log("❤️ 댓글 좋아요 요청 성공");
+    //console.log("📦 응답 데이터:", res.data);
   } else {
-    console.log("❗댓글 좋아요 요청 응답 상태코드:", res.status);
+    //console.log("❗댓글 좋아요 요청 응답 상태코드:", res.status);
   }
 
   return {
