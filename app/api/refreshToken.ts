@@ -22,7 +22,6 @@ export default async function refreshToken(
     console.log("🟢 토큰 갱신 성공:", response.data);
     return response.data;
   } catch (error: any) {
-    console.error("❌ 토큰 갱신 실패:", error);
     return null;
   }
 }

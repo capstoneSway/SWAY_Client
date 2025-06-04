@@ -15,13 +15,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/color";
 import { useFonts } from "expo-font";
-import fetchUserInfo from "@/app/api/fetchUserInfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { countries } from "@/constants/country";
 import { useRouter } from "expo-router";
 import { api } from "@/app/api/axios";
 import eventEmitter from "@/utils/eventEmitter";
 import { unscrapPost } from "@/app/api/scrapped";
+import { fetchUserInfo } from "@/app/api/fetchUserInfo";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 

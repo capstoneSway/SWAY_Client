@@ -2,6 +2,7 @@ import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import React from "react";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import {
