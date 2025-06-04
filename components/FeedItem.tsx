@@ -1,16 +1,15 @@
-import {
-  blockPostAuthor,
-  deletePost,
-} from "@/app/api/board";
+import { blockPostAuthor, deletePost } from "@/app/api/board";
 import { Post } from "@/app/type/types";
 import { colors } from "@/constants/color";
-import { Feather } from "@expo/vector-icons";
+import { Entypo, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Dimensions,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,10 +25,12 @@ interface FeedItemProps {
   onCommentPress?: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
-  onLikePress?: () => void;  
+  onLikePress?: () => void;
   onScrapPress?: () => void;
   hideMenu?: boolean;
 }
+
+const MENU_WIDTH = 160;
 
 const FeedItem = ({
   post,
@@ -44,6 +45,8 @@ const FeedItem = ({
   const [isMyPost, setIsMyPost] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
+  const menuBtnRef = useRef<View>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const checkIsMyPost = async () => {
@@ -85,7 +88,10 @@ const FeedItem = ({
             setShowMenu(false);
           } catch (error) {
             console.error("❌ Failed to delete post:", error);
-            Alert.alert("Error", "Failed to delete the post. Please try again.");
+            Alert.alert(
+              "Error",
+              "Failed to delete the post. Please try again."
+            );
           }
         },
       },
@@ -125,83 +131,191 @@ const FeedItem = ({
     }
   };
 
+  const onMenuBtnPress = () => {
+    if (menuBtnRef.current) {
+      menuBtnRef.current.measureInWindow((x, y, width, height) => {
+        const screenWidth = Dimensions.get("window").width;
+        const screenHeight = Dimensions.get("window").height;
+        const estimatedMenuHeight = (isMyPost ? 2 : 3) * 40 + 16;
+
+        // 버튼 높이의 60% 지점 기준으로 메뉴 top 조정 (더 자연스럽게)
+        let top = y + height * 0.6;
+        let left = x + width - 10;
+
+        if (left + MENU_WIDTH > screenWidth) {
+          left = x - MENU_WIDTH + 10;
+        }
+
+        if (top < 8) top = 8;
+        if (top + estimatedMenuHeight > screenHeight) {
+          top = screenHeight - estimatedMenuHeight - 8;
+        }
+
+        setMenuPos({ top, left });
+        setShowMenu(true);
+      });
+    } else {
+      setShowMenu(true);
+    }
+  };
+
+  const closeMenu = () => {
+    setShowMenu(false);
+  };
+
   return (
-    <ContainerComponent style={styles.container} onPress={handlePressFeed}>
-      <View style={styles.contentContainer}>
-        <View style={styles.profileRow}>
-          <Profile
-            imageUri={post?.author?.imageUri ?? ""}
-            nickname={post?.author?.nickname ?? "Anonymous"}
-            createdAt={post?.createdAt ?? new Date().toISOString()}
-            nationality={post?.author?.nationality ?? ""}
-          />
+    <View>
+      <ContainerComponent style={styles.container} onPress={handlePressFeed}>
+        <View style={styles.contentContainer}>
+          <View style={styles.profileRow}>
+            <Profile
+              imageUri={post?.author?.imageUri ?? ""}
+              nickname={post?.author?.nickname ?? "Anonymous"}
+              createdAt={post?.createdAt ?? new Date().toISOString()}
+              nationality={post?.author?.nationality ?? ""}
+            />
+            {isDetail && !hideMenu && (
+              <Pressable
+                ref={menuBtnRef}
+                onPress={onMenuBtnPress}
+                style={styles.menuButton}
+                hitSlop={10}
+              >
+                <Entypo
+                  name="dots-three-vertical"
+                  size={20}
+                  color={colors.GRAY_700}
+                />
+              </Pressable>
+            )}
+          </View>
+
+          {post?.title ? <Text style={styles.title}>{post.title}</Text> : null}
+          {post?.description ? (
+            <Text style={styles.description}>{post.description}</Text>
+          ) : null}
+
+          {post.imageUris && post.imageUris.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.imageScroll}
+            >
+              {post.imageUris.map((uri, index) => (
+                <Image
+                  key={index}
+                  source={{ uri }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          )}
         </View>
 
-        {post?.title ? <Text style={styles.title}>{post.title}</Text> : null}
-        {post?.description ? (
-          <Text style={styles.description}>{post.description}</Text>
-        ) : null}
+        <View style={styles.menuContainer}>
+          <Pressable style={styles.menu} onPress={onLikePress}>
+            <Feather
+              name="heart"
+              size={20}
+              color={post.is_liked ? colors.RED_500 : colors.GRAY_700}
+            />
+            <Text
+              style={[
+                styles.menuText,
+                post.is_liked && { color: colors.RED_500, fontWeight: "600" },
+              ]}
+            >
+              {post.like_count ?? 0}
+            </Text>
+          </Pressable>
 
-        {post.imageUris && post.imageUris.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.imageScroll}
+          <Pressable style={styles.menu} onPress={onCommentPress}>
+            <Feather name="message-circle" size={20} color={colors.GRAY_700} />
+            <Text style={styles.menuText}>{post.comment_count ?? 0}</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.menu}
+            onPress={() => {
+              onScrapPress?.();
+            }}
           >
-            {post.imageUris.map((uri, index) => (
-              <Image
-                key={index}
-                source={{ uri }}
-                style={styles.previewImage}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-        )}
-      </View>
+            <Feather
+              key={post.is_scraped ? "scraped" : "not-scraped"}
+              name="bookmark"
+              size={20}
+              color={
+                post.is_scraped === true ? colors.PURPLE_300 : colors.GRAY_700
+              }
+            />
+            <Text
+              style={[
+                post.is_scraped && {
+                  color: colors.PURPLE_300,
+                  fontWeight: "600",
+                },
+                styles.menuText,
+              ]}
+            >
+              {post.scrap_count ?? post.scarp_count ?? 0}
+            </Text>
+          </Pressable>
+        </View>
+      </ContainerComponent>
 
-      <View style={styles.menuContainer}>
-        {/* 좋아요 */}
-        <Pressable style={styles.menu} onPress={onLikePress}>
-          <Feather
-            name="heart"
-            size={20}
-            color={post.is_liked ? colors.RED_500 : colors.GRAY_700}
-          />
-          <Text
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={closeMenu}
+      >
+        <Pressable style={styles.modalBackground} onPress={closeMenu}>
+          <Pressable
             style={[
-              styles.menuText,
-              post.is_liked && { color: colors.RED_500, fontWeight: "600" },
+              styles.dropdownMenu,
+              { top: menuPos.top, left: menuPos.left },
             ]}
           >
-            {post.like_count ?? 0}
-          </Text>
+            {isMyPost ? (
+              <>
+                <Pressable onPress={handleEdit}>
+                  <Text style={styles.menuOption}>Edit</Text>
+                </Pressable>
+                <Pressable onPress={handleDelete}>
+                  <Text style={[styles.menuOption, { color: colors.RED_500 }]}>
+                    Delete
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable onPress={handleReport}>
+                  <Text style={styles.menuOption}>Report</Text>
+                </Pressable>
+                <Pressable onPress={handleBlock}>
+                  <Text style={[styles.menuOption, { color: colors.RED_500 }]}>
+                    Block Author
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
         </Pressable>
+      </Modal>
 
-        {/* 댓글 */}
-        <Pressable style={styles.menu} onPress={onCommentPress}>
-          <Feather name="message-circle" size={20} color={colors.GRAY_700} />
-          <Text style={styles.menuText}>{post.comment_count ?? 0}</Text>
-        </Pressable>
-
-        {/* 스크랩 */}
-        <Pressable style={styles.menu} onPress={onScrapPress}>
-          <Feather
-            name="bookmark"
-            size={20}
-            color={post.is_scrapped ? colors.PURPLE_300 : colors.GRAY_700}
-          />
-          <Text
-            style={[
-              styles.menuText,
-              post.is_scrapped && { color: colors.PURPLE_300, fontWeight: "600" },
-            ]}
-          >
-            {post.scrap_count ?? 0}
-          </Text>
-        </Pressable>
-      </View>
-    </ContainerComponent>
+      <ReportModal
+        visible={reportVisible}
+        onClose={() => setReportVisible(false)}
+        postId={post.id}
+        targetType="post"
+        onSubmit={(reason) => {
+          Alert.alert("Report Submitted", "Thank you for your report.");
+          setReportVisible(false);
+          setShowMenu(false);
+        }}
+      />
+    </View>
   );
 };
 
@@ -218,6 +332,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+  menuButton: {
+    padding: 8,
   },
   imageScroll: {
     marginTop: 12,
@@ -261,6 +378,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.BLACK,
     marginBottom: 14,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+  },
+  dropdownMenu: {
+    position: "absolute",
+    backgroundColor: colors.WHITE,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 12,
+    minWidth: MENU_WIDTH,
+    zIndex: 9999,
+  },
+  menuOption: {
+    fontSize: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
   },
 });
 

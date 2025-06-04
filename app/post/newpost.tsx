@@ -61,8 +61,10 @@ export default function NewPostScreen() {
   }, [isEdit, initTitle, initDescription]);
 
   useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
     const showSub = Keyboard.addListener(showEvent, (e) => {
       const height = e.endCoordinates?.height ?? 0;
@@ -90,9 +92,17 @@ export default function NewPostScreen() {
   const handleSubmit = async () => {
     if (!isFormValid) return;
 
+    console.log("📤 게시글 업로드 시작");
+    console.log("📝 제목:", title);
+    console.log("📝 내용:", description);
+    console.log("🖼️ 첨부 이미지:", selectedImages);
+
     try {
       if (isEdit && id) {
+        console.log("수정 모드: 게시글 ID =", id);
         await updatePost(Number(id), title, description);
+        console.log("게시글 수정 완료");
+
         Alert.alert("Updated", "Post updated successfully.", [
           {
             text: "OK",
@@ -100,17 +110,28 @@ export default function NewPostScreen() {
           },
         ]);
       } else {
+        console.log("신규 게시글 업로드 시도");
         await createPost(title, description, selectedImages);
+        console.log("게시글 업로드 성공");
         router.push("/(tabs)/board");
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("게시글 전송 실패:", error);
+
+      if (error.response) {
+        console.error("서버 응답 상태:", error.response.status);
+        console.error("서버 응답 내용:", error.response.data);
+      } else {
+        console.error("클라이언트 오류:", error.message);
+      }
+
       Alert.alert("Error", "Failed to submit post.");
     }
   };
 
   const pickImageFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       quality: 1,
       allowsMultipleSelection: true,

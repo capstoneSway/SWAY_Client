@@ -1,18 +1,19 @@
+import { colors } from "@/constants/color";
 import React, { useState } from "react";
 import {
   Modal,
-  View,
+  Pressable,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  Pressable,
+  View,
 } from "react-native";
-import { colors } from "@/constants/color";
 
 interface ReportModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (reason: string) => void;
+  postId: number;
   targetType: "post" | "comment";
 }
 
@@ -26,7 +27,7 @@ export default function ReportModal({
 
   const handleSubmit = () => {
     if (reason.trim()) {
-      console.log("📤 ReportModal reason value:", reason); 
+      console.log("📤 ReportModal reason value:", reason);
       onSubmit(reason);
       setReason("");
     }
@@ -37,7 +38,7 @@ export default function ReportModal({
       <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.title}>
-            {targetType === "post" ? "Post" : "Comment"} Report 
+            {targetType === "post" ? "Post" : "Comment"} Report
           </Text>
           <TextInput
             style={styles.input}

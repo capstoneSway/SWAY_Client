@@ -1,7 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchBoardList, toggleLike, toggleScrap } from "@/app/api/board";
 import type { Post } from "@/app/type/types";
 import { colors } from "@/constants/color";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
@@ -12,13 +13,12 @@ import React, {
 } from "react";
 import {
   FlatList,
+  Pressable,
   StyleSheet,
-  View,
   Text,
   TextInput,
-  Pressable,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import FeedItem from "./FeedItem";
 
 export type FeedListRef = {
@@ -62,16 +62,14 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
   };
 
   useImperativeHandle(ref, () => ({
-    reload: () => {
-      loadPosts();
-    },
+    reload: () => loadPosts(),
   }));
 
   useEffect(() => {
     if (isFocused) {
       if (refreshFlag) {
         loadPosts();
-        router.replace("/board"); // refresh 후 주소에서 refresh 파라미터 제거
+        router.replace("/board");
       } else {
         loadPosts();
         syncUpdatedPost();
@@ -81,14 +79,9 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    try {
-      await loadPosts();
-      await syncUpdatedPost();
-    } catch (error) {
-      console.error("❌ 새로고침 실패:", error);
-    } finally {
-      setRefreshing(false);
-    }
+    await loadPosts();
+    await syncUpdatedPost();
+    setRefreshing(false);
   };
 
   const handleLike = async (postId: number) => {
@@ -108,29 +101,37 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
         )
       );
     } catch (error) {
-      console.error("❌ 좋아요 처리 실패:", error);
+      console.error("❌ 좋아요 요청 실패:", error);
     }
   };
 
   const handleScrap = async (postId: number) => {
     try {
-      const updated = await toggleScrap(postId);
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                is_scrapped: updated.isBookmarked,
-                scrap_count: updated.isBookmarked
-                  ? (p.scrap_count ?? 0) + 1
-                  : Math.max((p.scrap_count ?? 1) - 1, 0),
-              }
-            : p
-        )
-      );
+      const { isBookmarked } = await toggleScrap(postId);
+
+      const updatedPost = posts.find((p) => p.id === postId);
+      if (!updatedPost) return;
+
+      const newPost = {
+        ...updatedPost,
+        is_scraped: isBookmarked,
+        scrap_count: isBookmarked
+          ? updatedPost.scrap_count + 1
+          : Math.max(updatedPost.scrap_count - 1, 0),
+      };
+
+      setPosts((prev) => prev.map((p) => (p.id === postId ? newPost : p)));
+
+      // 👉 여기가 핵심
+      await AsyncStorage.setItem("@selectedPost", JSON.stringify(newPost));
     } catch (error) {
-      console.error("❌ 스크랩 처리 실패:", error);
+      console.error("❌ 스크랩 요청 실패:", error);
     }
+  };
+  const updatePostInFeed = (postId: number, updatedFields: Partial<Post>) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, ...updatedFields } : p))
+    );
   };
 
   const handleSearch = () => {
@@ -141,6 +142,18 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
         post.description?.toLowerCase().includes(keyword)
     );
     setPosts(filtered);
+  };
+
+  const handleCommentPress = (postId: number) => {
+    const currentPost = posts.find((p) => p.id === postId);
+    if (!currentPost) return;
+    router.push({
+      pathname: "/board/[id]",
+      params: {
+        id: String(postId),
+        post: JSON.stringify(currentPost), // 최신 상태 반영
+      },
+    });
   };
 
   return (
@@ -169,24 +182,20 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
         data={posts}
         renderItem={({ item }) => (
           <FeedItem
+            key={`${item.id}-${item.is_scraped}-${item.scrap_count}`}
             post={item}
             onLikePress={() => handleLike(item.id)}
             onScrapPress={() => handleScrap(item.id)}
-            onCommentPress={() =>
-              router.push({
-                pathname: "/board/[id]",
-                params: {
-                  id: String(item.id),
-                },
-              })
-            }
+            onCommentPress={() => handleCommentPress(item.id)}
           />
         )}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.contentContainer}
         refreshing={refreshing}
         onRefresh={handleRefresh}
-        ListEmptyComponent={<Text style={styles.emptyText}>게시글이 없습니다.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>게시글이 없습니다.</Text>
+        }
       />
     </View>
   );

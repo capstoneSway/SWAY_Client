@@ -1,10 +1,10 @@
 import CommonHeader from "@/components/CommonHeader";
 import FeedList from "@/components/FeedList";
 import { colors } from "@/constants/color";
-import { StyleSheet, View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 
 export default function BoardScreen() {
   return (
