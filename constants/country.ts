@@ -133,6 +133,12 @@ export const countries = [
     emoji: "🇹🇭",
   },
   {
+    code: "TRY",
+    name: "Turkiye",
+    flag: require("../assets/images/country/turkiye.png"),
+    emoji: "🇹🇷",
+  },
+  {
     code: "USD",
     name: "United States",
     flag: require("../assets/images/country/usa.png"),

@@ -58,6 +58,8 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const notionURL =
+    "https://regal-macrame-587.notion.site/2091ac2d3624801a825dc2ae49b7e2a0?source=copy_link";
 
   const [user, setUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState("");
@@ -310,22 +312,26 @@ export default function SettingsScreen() {
         {/* Community */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Community</Text>
-          {COMMUNITY_ITEMS.map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={styles.row}
-              onPress={() => {
-                if (item.key === "restriction") {
-                  router.push("/setting/restriction");
-                } else if (item.key === "blocked") {
-                  router.push("/setting/blocked");
-                }
-              }}
-            >
-              <Text style={styles.rowText}>{item.label}</Text>
-              <Ionicons name={item.icon as any} size={20} color="#8B8B94" />
-            </TouchableOpacity>
-          ))}
+          {COMMUNITY_ITEMS.map((item) => {
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={styles.row}
+                onPress={() => {
+                  if (item.key === "restriction") {
+                    router.push("/setting/restriction");
+                  } else if (item.key === "blocked") {
+                    router.push("/setting/blocked");
+                  } else if (item.key === "guidelines") {
+                    router.push(notionURL);
+                  }
+                }}
+              >
+                <Text style={styles.rowText}>{item.label}</Text>
+                <Ionicons name={item.icon as any} size={20} color="#8B8B94" />
+              </TouchableOpacity>
+            );
+          })}
         </View>
         <View style={styles.divider} />
 
