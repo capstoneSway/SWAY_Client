@@ -21,9 +21,8 @@ import {
  * --> 일단 작성 시점 백엔드에서 받아온 배열의 필드입니다. 데이터 필드가 번개모임은 진짜 번개모임 그대로여서..
  */
 const NOTI_TYPE_LABEL = {
-  board: "Post",
+  board: "Comment",
   번개모임: "Meetup",
-  comment: "Comment",
   chat: "Chat",
 };
 
@@ -45,6 +44,11 @@ type Notification = {
  * - readNotification: 개별 알림 읽음 처리
  * - 상기한 두 개만 일단 반영해 놓았습니다. noti 전체 명세서를 확인할 필요가 있습니다.
  */
+
+function cleanMessage(msg: string): string {
+  return msg.replace(/\s?\([^)]+\)/g, ""); // 괄호와 그 안의 내용 제거
+}
+
 export default function NotificationList() {
   // 알림 데이터 배열 State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -65,6 +69,25 @@ export default function NotificationList() {
       setLoading(false);
     }
   };
+
+  function formatKST(utcStr?: string) {
+    if (!utcStr) return "";
+    const date = new Date(utcStr);
+    if (isNaN(date.getTime())) return utcStr;
+    // 예시: 2025. 6. 5. 20:38
+    return date
+      .toLocaleString("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+      .replace(/,\s?/, " ") // 혹시나 쉼표 들어가면 한 번 치환
+      .trim();
+  }
 
   // 1. 화면 진입/포커스될 때마다 알림 갱신으로 기본 입니다.
   useFocusEffect(
@@ -120,14 +143,13 @@ export default function NotificationList() {
       </View>
       {/* 둘째 줄: message 본문 */}
       <Text style={styles.message} numberOfLines={3}>
-        {item.message}
+        {cleanMessage(item.message)}
       </Text>
       {/* 하단: 생성일(시간) + 읽음 버튼 */}
       <View style={styles.bottomRow}>
         {/* 시간 문자열: '2025-06-04 15:39' 형태로 포매팅해둿어요. 제가볼땐 제일 직관적이라서. 근데 번개랑 맞춘다면 utils에 formatDataTime으로 갈아치울 수 있겠져? */}
-        <Text style={styles.timeText}>
-          {item.created_at?.slice(0, 16).replace("T", " ")}
-        </Text>
+        <Text style={styles.timeText}>{formatKST(item.created_at)}</Text>
+
         {/* 안 읽은 알림만 읽음 버튼 표시 */}
         {!item.is_read && (
           <Pressable style={styles.readBtn} onPress={() => handleRead(item.id)}>
@@ -157,6 +179,8 @@ export default function NotificationList() {
       keyExtractor={(item) => item.id.toString()} // 각 알림의 고유 id 사용
       ItemSeparatorComponent={() => <View style={styles.separator} />} // 카드 사이 구분선
       contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       ListEmptyComponent={
         // 알림 없을 때 안내 메시지
         <Text
@@ -166,7 +190,7 @@ export default function NotificationList() {
             marginTop: 32,
           }}
         >
-          알림이 업써요..
+          You have no notifications at the moment.
         </Text>
       }
     />

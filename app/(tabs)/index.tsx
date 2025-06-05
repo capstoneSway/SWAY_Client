@@ -6,6 +6,7 @@ import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import CookieManager from "@react-native-cookies/cookies";
+import messaging from "@react-native-firebase/messaging";
 import axios from "axios";
 import * as Clipboard from "expo-clipboard";
 import * as Font from "expo-font";
@@ -38,9 +39,10 @@ import { deleteLightning } from "../api/deleteLightning";
 import { fetchLightningCards } from "../api/fetchLightningList";
 import fetchMyLightningCards from "../api/fetchMyLightningCards";
 import { fetchUserInfo } from "../api/fetchUserInfo";
-import { getFcmToken } from "../api/getFcmToken";
+import { getFcmToken, requestNotificationPermission } from "../api/getFcmToken";
 import { leaveLightning } from "../api/leaveLightning"; // 탈퇴 API import 추가
 import fetchAllNotifications from "../api/notification/fetchAllNotifications";
+import getUnreadCount from "../api/notification/getUnreadCount";
 import testPushNotification from "../api/notification/testPushNotification";
 import ensureValidToken from "../api/tokenManager";
 
@@ -68,6 +70,7 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [currentLoading, setCurrentLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleShowNotifications = async () => {
     try {
@@ -108,6 +111,89 @@ export default function Home() {
     const parts = fullUsername.split("_");
     return parts.length > 1 ? parts.slice(1).join("_") : fullUsername;
   }
+
+  useEffect(() => {
+    const initPush = async () => {
+      const permissionGranted = await requestNotificationPermission();
+      if (!permissionGranted) {
+        console.warn("🔕 푸시 권한 거부됨");
+        return;
+      }
+
+      const token = await getFcmToken();
+      if (!token) return;
+
+      const jwt = await AsyncStorage.getItem("@jwt");
+      if (!jwt) return;
+
+      try {
+        await axios.post(
+          "https://port-0-sway-server-mam72goke080404a.sel4.cloudtype.app/accounts/fcm-token/",
+          { fcm_token: token },
+          {
+            headers: {
+              Authorization: `Bearer ${jwt}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        console.log("✅ FCM 토큰 자동 등록 성공");
+      } catch (e) {
+        console.error("❌ FCM 토큰 등록 실패", e);
+      }
+    };
+
+    initPush();
+  }, []);
+  useEffect(() => {
+    // 최초 1회 호출
+    const fetchUnread = async () => {
+      try {
+        const count = await getUnreadCount();
+        setUnreadCount(count);
+      } catch (e) {
+        setUnreadCount(0);
+      }
+    };
+    fetchUnread();
+
+    // 1분 주기 체크
+    const interval = setInterval(() => {
+      fetchUnread();
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      (async () => {
+        try {
+          const count = await getUnreadCount();
+          if (mounted) setUnreadCount(count);
+        } catch (e) {
+          if (mounted) setUnreadCount(0);
+        }
+      })();
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
+
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
+      console.log("🔔 알림 수신됨", remoteMessage);
+
+      // 500ms 정도 기다려서 백엔드 갱신 여유 줌
+      setTimeout(async () => {
+        const count = await getUnreadCount();
+        setUnreadCount(count);
+      }, 500);
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -252,6 +338,117 @@ export default function Home() {
       })();
     }, [selectedTag, timeTick, activeTab])
   );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      (async () => {
+        setCurrentLoading(true);
+        try {
+          let data;
+          if (activeTab === "current") {
+            const token = await ensureValidToken();
+            const userInfo = await fetchUserInfo(token);
+            const email = extractEmail(userInfo?.username || "");
+            setUserEmail(email);
+            data = await fetchMyLightningCards();
+            data = data.filter(
+              (item: any) =>
+                Array.isArray(item.participants) &&
+                item.participants.some((p: any) => p.email === email)
+            );
+            data = data.filter((item: any) => {
+              const end = item.end_time || item.expiresAt || item.expiryTime;
+              if (!end) return false;
+              return true;
+            });
+            data = data.map((item: any) => {
+              const tags: string[] = [];
+              if (item.host?.email === email) {
+                tags.push("hosted");
+              } else if (
+                item.participants.some((p: any) => p.email === email)
+              ) {
+                tags.push("participated");
+              }
+              return { ...item, tags };
+            });
+          } else {
+            const token = await ensureValidToken();
+            const userInfo = await fetchUserInfo(token);
+            const email = extractEmail(userInfo?.username || "");
+            setUserEmail(email);
+            data = await fetchLightningCards(selectedTag || undefined);
+            data = data
+              .filter((item: any) => {
+                const participants = Array.isArray(item.participants?.[0])
+                  ? item.participants[0]
+                  : item.participants;
+                return Array.isArray(participants) && participants.length > 0;
+              })
+              .filter((item: any) => {
+                const end = item.end_time || item.expiresAt || item.expiryTime;
+                if (!end) return false;
+                return true;
+              })
+              .map((item: any) => {
+                const participants = Array.isArray(item.participants?.[0])
+                  ? item.participants[0]
+                  : item.participants;
+                const tags: string[] = [];
+                if (item.host?.email === email) {
+                  tags.push("hosted");
+                } else if (
+                  Array.isArray(participants) &&
+                  participants.some((p: any) => p.email === email)
+                ) {
+                  tags.push("participated");
+                }
+                return { ...item, tags };
+              });
+          }
+          const result = data
+            .map((c: any) => ({
+              ...c,
+              isFocused: isExpiringSoon(c.expiresAt),
+              expiryTime: new Date(c.expiresAt),
+            }))
+            .sort((a: any, b: any) => {
+              if (a.isFocused && !b.isFocused) return -1;
+              if (!a.isFocused && b.isFocused) return 1;
+              if (a.isFocused && b.isFocused) {
+                const aTime = a.expiryTime.getTime();
+                const bTime = b.expiryTime.getTime();
+                if (aTime !== bTime) return aTime - bTime;
+                return a.title.localeCompare(b.title);
+              }
+              if (activeTab === "current") {
+                const now = new Date().getTime();
+                const aEnd = new Date(a.end_time).getTime();
+                const bEnd = new Date(b.end_time).getTime();
+                const aClosed = now > aEnd;
+                const bClosed = now > bEnd;
+                if (aClosed && !bClosed) return 1;
+                if (!aClosed && bClosed) return -1;
+                return aEnd - bEnd;
+              } else {
+                const aCreated = new Date(a.created_at).getTime();
+                const bCreated = new Date(b.created_at).getTime();
+                return bCreated - aCreated;
+              }
+            });
+
+          setFilteredCards(result);
+          setHasFetched(true);
+        } catch (err) {
+          console.error("⚠️ 번개모임 불러오기 실패", err);
+        } finally {
+          setCurrentLoading(false);
+        }
+      })();
+    }, 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedTag, activeTab]);
 
   useEffect(() => {
     (async () => {
@@ -731,7 +928,24 @@ export default function Home() {
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>Home</Text>
         <Pressable onPress={() => router.push("/notification")}>
-          <Ionicons name="notifications-outline" size={24} />
+          <View>
+            <Ionicons name="notifications-outline" size={24} />
+            {unreadCount > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -3,
+                  right: -3,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: colors.RED_500,
+                  borderWidth: 1,
+                  borderColor: "white",
+                }}
+              />
+            )}
+          </View>
         </Pressable>
       </View>
 

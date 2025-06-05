@@ -126,6 +126,14 @@ export const countries = [
     flag: require("../assets/images/country/singapore.png"),
     emoji: "🇸🇬",
   },
+
+  {
+    code: "TRY",
+    name: "Turkiye",
+    flag: { uri: "https://i.imgur.com/NXFTNPM.png" },
+    emoji: "🇹🇷",
+  },
+
   {
     code: "THB",
     name: "Thailand",
