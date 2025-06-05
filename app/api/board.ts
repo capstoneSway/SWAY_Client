@@ -5,30 +5,35 @@ import { api } from "./axios";
 // 게시글 목록 불러오기
 export async function fetchBoardList(): Promise<Post[]> {
   const res = await api.get("/board/");
-  return res.data.map((post: any) => ({
-    id: post.id,
-    title: post.title,
-    description: post.content,
-    createdAt:
-      typeof post.date === "string" && !isNaN(Date.parse(post.date))
-        ? new Date(post.date.replace(/\.\d+Z$/, "Z")).toISOString()
-        : new Date().toISOString(),
-    author: {
-      id: post.user_id ?? 0,
-      nickname: post.nickname,
-      imageUri: post.profile_image ?? null,
-      nationality: post.nationality ?? "",
-    },
-    imageUris: post.images?.map((img: any) => img.image_url) ?? [],
-    like_count: post.like_count,
-    scrap_count: post.scrap_count ?? post.scarp_count ?? 0,
-    is_liked: post.is_liked ?? false,
-    is_scraped: post.is_scraped ?? post.is_scrapped ?? false,
-    comment_Count: post.comment_count ?? 0,
-    userId: post.user_id,
-  }));
+  return res.data
+    .map((post: any) => ({
+      id: post.id,
+      title: post.title,
+      description: post.content,
+      createdAt:
+        typeof post.date === "string" && !isNaN(Date.parse(post.date))
+          ? new Date(post.date.replace(/\.\d+Z$/, "Z")).toISOString()
+          : new Date().toISOString(),
+      author: {
+        id: post.user_id ?? 0,
+        nickname: post.nickname,
+        imageUri: post.profile_image ?? null,
+        nationality: post.nationality ?? "",
+      },
+      imageUris: post.images?.map((img: any) => img.image_url) ?? [],
+      like_count: post.like_count,
+      scrap_count: post.scrap_count ?? post.scarp_count ?? 0,
+      is_liked: post.is_liked ?? false,
+      is_scraped: post.is_scraped ?? post.is_scrapped ?? false,
+      comment_count: post.comment_count ?? 0,
+      userId: post.user_id,
+    }))
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ); //최신순 정렬 추가
 }
-
+//게시글 상세 조회회
 export async function fetchBoardDetail(postId: number): Promise<Post> {
   const res = await api.get(`/board/${postId}/`);
 
@@ -71,7 +76,7 @@ export async function createPost(
       name: fileName || `image${index}.jpg`,
       type: "image/jpeg", // 또는 실제 타입: image/png 등
     };
-    formData.append("image", file as any); // 여러 장이라도 key는 항상 "image"
+    formData.append("images", file as any);
   });
 
   const res = await api.post("/board/create/", formData, {
@@ -138,56 +143,59 @@ export async function toggleScrap(postId: number) {
 
 // 댓글 목록 불러오기
 export async function fetchComments(postId: number): Promise<Comment[]> {
-  const token = await AsyncStorage.getItem("@jwt");
-  console.log("🔑 fetchComments 호출, 토큰:", token);
-  //const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  try {
+    const token = await AsyncStorage.getItem("@jwt");
+    console.log("🪪 현재 사용 중인 토큰:", token);
 
-  const res = await api.get(`/board/${postId}/comments/`, {
-    /*headers*/
-  });
-  console.log("📥 댓글 응답 데이터:", JSON.stringify(res.data, null, 2));
+    const res = await api.get(`/board/${postId}/comments/`);
 
-  return res.data.map((c: any) => ({
-    id: c.id,
-    content: c.content,
-    createdAt:
-      typeof c.date === "string" && !isNaN(Date.parse(c.date))
-        ? new Date(c.date).toISOString()
-        : new Date().toISOString(),
-    like_count: c.like_count ?? 0,
-    isLiked: c.comment_is_liked ?? false,
-    parent_id: c.parent_id ?? null,
-    isDeleted: c.is_deleted,
-    user: {
-      id: c.user_id ?? 0,
-      nickname: c.nickname,
-      username: c.username,
-      imageUri: c.profile_image ?? null,
-      nationality: c.nationality ?? "",
-    },
-    replies: (c.reply ?? [])
-      .filter((r: any) => !r.is_deleted) // 삭제된 대댓글은 제외
-      .map((r: any) => ({
-        id: r.id,
-        content: r.content,
-        createdAt:
-          typeof r.date === "string" && !isNaN(Date.parse(r.date))
-            ? new Date(r.date).toISOString()
-            : new Date().toISOString(),
-        like_count: r.like_count ?? 0,
-        isLiked: r.comment_is_liked ?? false,
-        isDeleted: r.is_deleted,
-        parent_id: r.parent_id ?? c.id,
-        user: {
-          id: r.user_id ?? 0,
-          nickname: r.nickname,
-          username: r.username,
-          imageUri: r.profile_image ?? null,
-          nationality: r.nationality ?? "",
-        },
-        replies: [],
-      })),
-  }));
+    console.log("📥 댓글 응답 데이터:", JSON.stringify(res.data, null, 2));
+
+    return res.data.map((c: any) => ({
+      id: c.id,
+      content: c.content,
+      createdAt:
+        typeof c.date === "string" && !isNaN(Date.parse(c.date))
+          ? new Date(c.date).toISOString()
+          : new Date().toISOString(),
+      like_count: c.like_count ?? 0,
+      isLiked: c.comment_is_liked ?? false,
+      parent_id: c.parent_id ?? null,
+      isDeleted: c.is_deleted,
+      user: {
+        id: c.user_id ?? 0,
+        nickname: c.nickname,
+        username: c.username,
+        imageUri: c.profile_image ?? null,
+        nationality: c.nationality ?? "",
+      },
+      replies: (c.reply ?? [])
+        .filter((r: any) => !r.is_deleted) // 삭제된 대댓글 제외
+        .map((r: any) => ({
+          id: r.id,
+          content: r.content,
+          createdAt:
+            typeof r.date === "string" && !isNaN(Date.parse(r.date))
+              ? new Date(r.date).toISOString()
+              : new Date().toISOString(),
+          like_count: r.like_count ?? 0,
+          isLiked: r.comment_is_liked ?? false,
+          isDeleted: r.is_deleted,
+          parent_id: r.parent_id ?? c.id,
+          user: {
+            id: r.user_id ?? 0,
+            nickname: r.nickname,
+            username: r.username,
+            imageUri: r.profile_image ?? null,
+            nationality: r.nationality ?? "",
+          },
+          replies: [],
+        })),
+    }));
+  } catch (error) {
+    console.error("❌ 댓글 목록 불러오기 실패:", error);
+    return [];
+  }
 }
 
 // 댓글 작성 (대댓글 포함)

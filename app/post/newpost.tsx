@@ -92,46 +92,38 @@ export default function NewPostScreen() {
   const handleSubmit = async () => {
     if (!isFormValid) return;
 
-    console.log("📤 게시글 업로드 시작");
-    console.log("📝 제목:", title);
-    console.log("📝 내용:", description);
-    console.log("🖼️ 첨부 이미지:", selectedImages);
-
     try {
       if (isEdit && id) {
-        console.log("수정 모드: 게시글 ID =", id);
         await updatePost(Number(id), title, description);
-        console.log("게시글 수정 완료");
-
-        Alert.alert("Updated", "Post updated successfully.", [
+        Alert.alert("Success", "Post successfully updated.", [
           {
             text: "OK",
             onPress: () => router.replace("/(tabs)/board"),
           },
         ]);
       } else {
-        console.log("신규 게시글 업로드 시도");
-        await createPost(title, description, selectedImages);
-        console.log("게시글 업로드 성공");
-        router.push("/(tabs)/board");
-      }
-    } catch (error: any) {
-      console.error("게시글 전송 실패:", error);
+        const result = await createPost(title, description, selectedImages);
 
-      if (error.response) {
-        console.error("서버 응답 상태:", error.response.status);
-        console.error("서버 응답 내용:", error.response.data);
-      } else {
-        console.error("클라이언트 오류:", error.message);
-      }
+        if (!result || !result.id) {
+          throw new Error("Invalid response from server");
+        }
 
+        Alert.alert("Success", "Post successfully created!", [
+          {
+            text: "OK",
+            onPress: () => router.replace("/(tabs)/board"),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("🛑 Post submission error:", error);
       Alert.alert("Error", "Failed to submit post.");
     }
   };
 
   const pickImageFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
       allowsMultipleSelection: true,

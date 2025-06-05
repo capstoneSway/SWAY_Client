@@ -49,7 +49,6 @@ export default function BoardDetailScreen({
   const navigation = useNavigation();
   const [post, setPost] = useState<Post | null>(initialPost ?? null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [visibleComments, setVisibleComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [postLoading, setPostLoading] = useState(initialPost ? false : true);
@@ -109,24 +108,7 @@ export default function BoardDetailScreen({
   const loadComments = async () => {
     try {
       const commentData = await fetchComments(numericId);
-      let totalVisibleCount = 0;
-      const filtered = commentData.reduce((acc: Comment[], comment) => {
-        const visibleReplies = comment.replies.filter((r) => !r.isDeleted);
-        const isCommentVisible =
-          !comment.isDeleted || visibleReplies.length > 0;
-
-        if (isCommentVisible) {
-          acc.push({ ...comment, replies: visibleReplies });
-          totalVisibleCount += 1 + visibleReplies.length;
-        }
-        return acc;
-      }, []);
-
-      setVisibleComments(filtered);
       setComments(commentData);
-      setPost((prev) =>
-        prev ? { ...prev, comment_count: totalVisibleCount } : prev
-      );
     } catch (err) {
       Alert.alert("Error", "Failed to load comments.");
     } finally {
@@ -190,32 +172,27 @@ export default function BoardDetailScreen({
     setIsSubmitting(true);
     try {
       if (editingCommentId) {
-        const updated = await updateComment(
-          numericId,
-          editingCommentId,
-          newComment
-        );
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === editingCommentId
-              ? { ...c, content: updated.comment }
-              : {
-                  ...c,
-                  replies: c.replies.map((r) =>
-                    r.id === editingCommentId
-                      ? { ...r, content: updated.comment }
-                      : r
-                  ),
-                }
-          )
-        );
+        await updateComment(numericId, editingCommentId, newComment);
+
         setEditingCommentId(null);
+        setNewComment("");
+        inputRef.current?.blur();
+
+        setComments((prev) =>
+          prev.map((c) => {
+            if (c.id === editingCommentId) return { ...c, content: newComment };
+            const updatedReplies = c.replies.map((r) =>
+              r.id === editingCommentId ? { ...r, content: newComment } : r
+            );
+            return { ...c, replies: updatedReplies };
+          })
+        );
       } else {
         await postComment(numericId, newComment, replyTo ?? undefined);
         await loadComments();
+        setNewComment("");
+        setReplyTo(null);
       }
-      setNewComment("");
-      setReplyTo(null);
     } catch (err) {
       Alert.alert("Error", "댓글 작성 중 오류가 발생했습니다.");
     } finally {
@@ -263,9 +240,7 @@ export default function BoardDetailScreen({
 
     try {
       await toggleCommentLike(numericId, commentId);
-      setTimeout(() => {
-        loadComments();
-      }, 1000);
+      loadComments();
     } catch (err) {
       console.error("댓글 좋아요 처리 실패:", err);
       Alert.alert("Error", "댓글 좋아요 처리 중 오류가 발생했습니다.");
@@ -316,7 +291,7 @@ export default function BoardDetailScreen({
               ) : (
                 <CommentList
                   postId={post.id}
-                  comments={visibleComments}
+                  comments={comments}
                   onPressLike={handleCommentLikeToggle}
                   onPressReply={(id) => {
                     setReplyTo(id);

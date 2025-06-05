@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AxiosInstance, InternalAxiosRequestConfig, AxiosHeaders } from "axios";
+import { AxiosHeaders, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 
 export function applyInterceptors(api: AxiosInstance) {
   api.interceptors.request.use(
