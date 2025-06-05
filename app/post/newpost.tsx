@@ -88,25 +88,37 @@ export default function NewPostScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!isFormValid) return;
+  if (!isFormValid) return;
 
-    try {
-      if (isEdit && id) {
-        await updatePost(Number(id), title, description);
-        Alert.alert("Updated", "Post updated successfully.", [
-          {
-            text: "OK",
-            onPress: () => router.replace("/(tabs)/board"),
-          },
-        ]);
-      } else {
-        await createPost(title, description, selectedImages);
-        router.push("/(tabs)/board");
+  try {
+    if (isEdit && id) {
+      await updatePost(Number(id), title, description);
+      Alert.alert("Success", "Post successfully updated.", [
+        {
+          text: "OK",
+          onPress: () => router.replace("/(tabs)/board"),
+        },
+      ]);
+    } else {
+      const result = await createPost(title, description, selectedImages);
+
+      if (!result || !result.id) {
+        throw new Error("Invalid response from server");
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to submit post.");
+
+      Alert.alert("Success", "Post successfully created!", [
+        {
+          text: "OK",
+          onPress: () => 
+            router.replace("/(tabs)/board"),
+        },
+      ]);
     }
-  };
+  } catch (error) {
+    console.error("🛑 Post submission error:", error);
+    Alert.alert("Error", "Failed to submit post.");
+  }
+};
 
   const pickImageFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({

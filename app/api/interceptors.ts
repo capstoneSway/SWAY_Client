@@ -15,6 +15,7 @@ export function applyInterceptors(api: AxiosInstance) {
               Authorization: `Bearer ${token}`,
             });
           }
+          
         } else {
           console.warn("⚠️ JWT 토큰 없음 (accessToken)");
         }

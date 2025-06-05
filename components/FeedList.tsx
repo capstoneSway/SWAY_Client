@@ -12,6 +12,7 @@ import React, {
   useState,
 } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -25,24 +26,28 @@ export type FeedListRef = {
   reload: () => void;
 };
 
+
 const FeedList = forwardRef<FeedListRef>((_, ref) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [originalPosts, setOriginalPosts] = useState<Post[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
   const params = useLocalSearchParams();
   const router = useRouter();
-
   const refreshFlag = params.refresh === "true";
-
+ 
   const loadPosts = async () => {
     try {
+      setLoading(true);
       const data = await fetchBoardList();
       setPosts(data);
       setOriginalPosts(data);
     } catch (error) {
       console.error("❌ 게시글 불러오기 실패:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,6 +66,20 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
     }
   };
 
+  const insertNewPost = async () => {
+    try {
+      const savedPostStr = await AsyncStorage.getItem("@newPost");
+      if (savedPostStr) {
+        const newPost: Post = JSON.parse(savedPostStr);
+        setPosts((prev) => [newPost, ...prev]);
+        setOriginalPosts((prev) => [newPost, ...prev]);
+        await AsyncStorage.removeItem("@newPost");
+      }
+    } catch (err) {
+      console.error("❌ 새 게시글 반영 실패:", err);
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     reload: () => loadPosts(),
   }));
@@ -68,11 +87,13 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
   useEffect(() => {
     if (isFocused) {
       if (refreshFlag) {
-        loadPosts();
+        loadPosts().then(insertNewPost);
         router.replace("/board");
       } else {
-        loadPosts();
-        syncUpdatedPost();
+        loadPosts().then(() => {
+          syncUpdatedPost();
+          insertNewPost();
+        });
       }
     }
   }, [isFocused, refreshFlag]);
@@ -81,6 +102,7 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
     setRefreshing(true);
     await loadPosts();
     await syncUpdatedPost();
+    await insertNewPost();
     setRefreshing(false);
   };
 
@@ -108,7 +130,6 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
   const handleScrap = async (postId: number) => {
     try {
       const { isBookmarked } = await toggleScrap(postId);
-
       const updatedPost = posts.find((p) => p.id === postId);
       if (!updatedPost) return;
 
@@ -121,13 +142,12 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
       };
 
       setPosts((prev) => prev.map((p) => (p.id === postId ? newPost : p)));
-
-      // 👉 여기가 핵심
       await AsyncStorage.setItem("@selectedPost", JSON.stringify(newPost));
     } catch (error) {
       console.error("❌ 스크랩 요청 실패:", error);
     }
   };
+
   const updatePostInFeed = (postId: number, updatedFields: Partial<Post>) => {
     setPosts((prev) =>
       prev.map((p) => (p.id === postId ? { ...p, ...updatedFields } : p))
@@ -151,11 +171,13 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
       pathname: "/board/[id]",
       params: {
         id: String(postId),
-        post: JSON.stringify(currentPost), // 최신 상태 반영
+        post: JSON.stringify(currentPost),
       },
     });
   };
 
+  
+  
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
@@ -182,7 +204,6 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
         data={posts}
         renderItem={({ item }) => (
           <FeedItem
-            key={`${item.id}-${item.is_scraped}-${item.scrap_count}`} 
             post={item}
             onLikePress={() => handleLike(item.id)}
             onScrapPress={() => handleScrap(item.id)}
@@ -194,7 +215,15 @@ const FeedList = forwardRef<FeedListRef>((_, ref) => {
         refreshing={refreshing}
         onRefresh={handleRefresh}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>게시글이 없습니다.</Text>
+          loading ? (
+            <ActivityIndicator
+              size="large"
+              color={colors.GRAY_500}
+              style={{ marginTop: 50 }}
+            />
+          ) : (
+            <Text style={styles.emptyText}>No posts available.</Text>
+          )
         }
       />
     </View>
@@ -231,3 +260,4 @@ const styles = StyleSheet.create({
     color: colors.BLACK,
   },
 });
+

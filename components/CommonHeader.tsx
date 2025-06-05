@@ -22,16 +22,24 @@ export default function CommonHeader({
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        {/* 왼쪽: SWAY 로고 */}
-        <Image
-          source={logoImage}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
+        {/* 왼쪽: 뒤로가기 or 로고 이미지 */}
+        {showBackButton ? (
+          <Pressable onPress={() => router.back()} hitSlop={10}>
+            <Ionicons name="arrow-back" size={24} color={colors.BLACK} />
+          </Pressable>
+        ) : (
+          <Image
+            source={logoImage}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        )}
 
         {/* 중앙: 제목 */}
         <View style={styles.center}>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {title}
+          </Text>
         </View>
 
         {/* 오른쪽: 알림 아이콘 */}
@@ -70,10 +78,14 @@ const styles = StyleSheet.create({
     marginTop: 4.5,
   },
   center: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: -60,
+    pointerEvents: "none", // 제목이 아이콘 클릭 막지 않도록
   },
   headerTitle: {
     fontSize: 18,

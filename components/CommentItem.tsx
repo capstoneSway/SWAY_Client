@@ -38,7 +38,7 @@ interface CommentItemProps {
   onPressMenu?: () => void;
 }
 
-export default function CommentItem({
+export function CommentItem({
   nickname,
   content,
   createdAt,
@@ -75,13 +75,12 @@ export default function CommentItem({
     checkUsername();
   }, [username]);
 
-    useEffect(() => {
-      setLocalIsLiked(comment_is_liked);
-      setLocalLikeCount(like_count ?? 0);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // ✅ 마운트 시 한 번만 실행
- 
-    const toggleLike = async () => {
+  useEffect(() => {
+    setLocalIsLiked(comment_is_liked);
+    setLocalLikeCount(like_count ?? 0);
+  }, [comment_is_liked, like_count]);
+
+  const toggleLike = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
 
@@ -300,13 +299,14 @@ export default function CommentItem({
           }
         }}
         targetType="comment"
+        postId={postId}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { backgroundColor: colors.WHITE, paddingHorizontal:16},
+  wrapper: { backgroundColor: colors.WHITE, paddingHorizontal: 16 },
   innerBox: { paddingVertical: 20, justifyContent: "center", minHeight: 120 },
   highlight: { backgroundColor: colors.PURPLE_100 },
   row: { flexDirection: "row", alignItems: "flex-start" },
@@ -380,3 +380,5 @@ const styles = StyleSheet.create({
   menuText: { fontSize: 16, color: colors.BLACK },
   contentBox: { flex: 1, flexDirection: "column" },
 });
+
+export default React.memo(CommentItem);
