@@ -3,6 +3,7 @@ import mitt from "mitt";
 
 type Events = {
   nicknameChanged: void;
+  newNotification: any;
 };
 
 const emitter = mitt<Events>();

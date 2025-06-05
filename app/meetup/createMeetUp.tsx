@@ -90,6 +90,7 @@ export default function CreateMeetUp() {
       gender: gender.toLowerCase(),
       category: category.toLowerCase(),
       background_pic: randomImage,
+      meeting_date: date.toISOString(),
     };
 
     try {

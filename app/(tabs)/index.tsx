@@ -1022,8 +1022,7 @@ export default function Home() {
         />
       )}
 
-      {/* 로그인 창 이동 버튼 */}
-      <Pressable
+      {/* <Pressable
         style={{
           position: "absolute",
           bottom: 12,
@@ -1038,10 +1037,10 @@ export default function Home() {
         <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
           🔐 로그인 창으로 가기
         </Text>
-      </Pressable>
+      </Pressable> */}
 
       {/* FCM 테스트 버튼 */}
-      <Pressable
+      {/* <Pressable
         style={{
           position: "absolute",
           bottom: 64,
@@ -1056,9 +1055,9 @@ export default function Home() {
         <Text style={{ color: colors.BLACK, fontWeight: "600" }}>
           FCM 토큰 테스트
         </Text>
-      </Pressable>
+      </Pressable> */}
 
-      <Pressable
+      {/* <Pressable
         style={{
           position: "absolute",
           bottom: 120,
@@ -1073,7 +1072,7 @@ export default function Home() {
         <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
           🔔 알림 목록 보기
         </Text>
-      </Pressable>
+      </Pressable> */}
 
       {activeTab === "meetup" && (
         <Pressable

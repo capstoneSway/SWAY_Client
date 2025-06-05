@@ -1,11 +1,12 @@
 // app/_layout.tsx
 import { colors } from "@/constants/color";
+import emitter from "@/utils/eventEmitter";
 import messaging from "@react-native-firebase/messaging";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
-import { Alert } from "react-native";
 import "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // 백그라운드 알림 수신
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
@@ -13,28 +14,30 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
 });
 
 export default function RootLayout() {
+  const insets = useSafeAreaInsets();
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   // 포그라운드 + 종료 상태에서의 알림 수신 처리
   useEffect(() => {
-    // 포그라운드 상태 알림 수신
+    // 포그라운드 상태에서 푸시 알림 수신
     const unsubscribe = messaging().onMessage(async (remoteMessage) => {
       console.log("📲 포그라운드 알림:", remoteMessage);
-      Alert.alert(
-        remoteMessage.notification?.title ?? "알림",
-        remoteMessage.notification?.body ?? ""
-      );
+
+      // notification.tsx로 이벤트 전파
+      emitter.emit("newNotification", remoteMessage);
     });
 
-    // 종료 상태에서 앱 열렸을 때 푸시 클릭 처리
+    // 종료 상태에서 푸시 알림 클릭으로 앱 실행될 때
     messaging()
       .getInitialNotification()
       .then((remoteMessage) => {
         if (remoteMessage) {
-          console.log("🚪 종료 상태에서 알림으로 앱 실행됨:", remoteMessage);
-          // 예: router.push(`/chatRoom/${roomId}`);
+          console.log("종료 상태에서 알림으로 앱 실행됨:", remoteMessage);
+
+          // 필요 시 알림 이벤트 전달
+          emitter.emit("newNotification", remoteMessage);
         }
       });
 
