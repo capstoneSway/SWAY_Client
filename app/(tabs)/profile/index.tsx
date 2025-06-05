@@ -17,7 +17,6 @@ import { countries } from "@/constants/country";
 import { useRouter } from "expo-router";
 import { api } from "@/app/api/axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import eventEmitter from "@/utils/eventEmitter";
 import FeedItem from "@/components/FeedItem";
 import { fetchUserInfo } from "@/app/api/fetchUserInfo";
 import { toggleLike } from "@/app/api/board";
@@ -72,6 +71,11 @@ export default function ProfileScreen() {
       },
     }));
 
+    postsWithAuthor.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
     const scrapsWithAuthor = res.data.scrapped_posts.map((post) => ({
       ...post,
       title: post.title,
@@ -85,6 +89,11 @@ export default function ProfileScreen() {
         nationality: post.nationality,
       },
     }));
+
+    scrapsWithAuthor.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     const sortMeetups = (meetups) => {
       const now = new Date();
