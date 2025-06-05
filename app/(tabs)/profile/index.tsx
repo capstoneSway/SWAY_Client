@@ -58,33 +58,43 @@ export default function ProfileScreen() {
 
     const res = await api.get("/mypage/");
 
-    const postsWithAuthor = res.data.my_posts.map((post) => ({
-      ...post,
-      title: post.title,
-      description: post.content,
-      createdAt: post.date,
-      imageUris: (post.images ?? []).map((img) => img.image_url),
-      author: {
-        username: username,
-        nickname: post.nickname,
-        imageUri: post.profile_image,
-        nationality: post.nationality,
-      },
-    }));
+    const postsWithAuthor = res.data.my_posts
+      .map((post) => ({
+        ...post,
+        title: post.title,
+        description: post.content,
+        createdAt: post.date,
+        imageUris: (post.images ?? []).map((img) => img.image_url),
+        author: {
+          username: username,
+          nickname: post.nickname,
+          imageUri: post.profile_image,
+          nationality: post.nationality,
+        },
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
-    const scrapsWithAuthor = res.data.scrapped_posts.map((post) => ({
-      ...post,
-      title: post.title,
-      description: post.content,
-      createdAt: post.date,
-      imageUris: (post.images ?? []).map((img) => img.image_url),
-      author: {
-        username: post.username,
-        nickname: post.nickname,
-        imageUri: post.profile_image,
-        nationality: post.nationality,
-      },
-    }));
+    const scrapsWithAuthor = res.data.scrapped_posts
+      .map((post) => ({
+        ...post,
+        title: post.title,
+        description: post.content,
+        createdAt: post.date,
+        imageUris: (post.images ?? []).map((img) => img.image_url),
+        author: {
+          username: post.username,
+          nickname: post.nickname,
+          imageUri: post.profile_image,
+          nationality: post.nationality,
+        },
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
     const sortMeetups = (meetups) => {
       return meetups.slice().sort((a, b) => {
