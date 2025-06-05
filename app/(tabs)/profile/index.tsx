@@ -58,55 +58,56 @@ export default function ProfileScreen() {
 
     const res = await api.get("/mypage/");
 
-    const postsWithAuthor = res.data.my_posts
-      .map((post) => ({
-        ...post,
-        title: post.title,
-        description: post.content,
-        createdAt: post.date,
-        imageUris: (post.images ?? []).map((img) => img.image_url),
-        author: {
-          username: username,
-          nickname: post.nickname,
-          imageUri: post.profile_image,
-          nationality: post.nationality,
-        },
-      }))
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+    const postsWithAuthor = res.data.my_posts.map((post) => ({
+      ...post,
+      title: post.title,
+      description: post.content,
+      createdAt: post.date,
+      imageUris: (post.images ?? []).map((img) => img.image_url),
+      author: {
+        username: username,
+        nickname: post.nickname,
+        imageUri: post.profile_image,
+        nationality: post.nationality,
+      },
+    }));
 
-    const scrapsWithAuthor = res.data.scrapped_posts
-      .map((post) => ({
-        ...post,
-        title: post.title,
-        description: post.content,
-        createdAt: post.date,
-        imageUris: (post.images ?? []).map((img) => img.image_url),
-        author: {
-          username: post.username,
-          nickname: post.nickname,
-          imageUri: post.profile_image,
-          nationality: post.nationality,
-        },
-      }))
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+    const scrapsWithAuthor = res.data.scrapped_posts.map((post) => ({
+      ...post,
+      title: post.title,
+      description: post.content,
+      createdAt: post.date,
+      imageUris: (post.images ?? []).map((img) => img.image_url),
+      author: {
+        username: post.username,
+        nickname: post.nickname,
+        imageUri: post.profile_image,
+        nationality: post.nationality,
+      },
+    }));
 
     const sortMeetups = (meetups) => {
-      return meetups.slice().sort((a, b) => {
-        const isAInProgress = a.status === "inProgress";
-        const isBInProgress = b.status === "inProgress";
-        if (isAInProgress && !isBInProgress) return -1;
-        if (!isAInProgress && isBInProgress) return 1;
-        return (
-          new Date(b.meeting_date).getTime() -
-          new Date(a.meeting_date).getTime()
-        );
-      });
+      const now = new Date();
+
+      return meetups
+        .map((item) => {
+          const isEnded = new Date(item.end_time).getTime() < now.getTime();
+          return {
+            ...item,
+            displayStatus: isEnded ? "done" : item.status,
+          };
+        })
+        .sort((a, b) => {
+          const isAInProgress = a.displayStatus === "inProgress";
+          const isBInProgress = b.displayStatus === "inProgress";
+
+          if (isAInProgress && !isBInProgress) return -1;
+          if (!isAInProgress && isBInProgress) return 1;
+
+          const timeA = new Date(a.meeting_date).getTime();
+          const timeB = new Date(b.meeting_date).getTime();
+          return timeB - timeA; // 오래된 게 아래로
+        });
     };
 
     const sortedMeetups = sortMeetups(res.data.participanted_lightening || []);
