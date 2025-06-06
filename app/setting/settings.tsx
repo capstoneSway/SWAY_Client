@@ -43,8 +43,8 @@ const ACCOUNT_ITEMS = [
 ];
 
 const SERVER_KEYS: Record<string, string> = {
-  posts: "comment_noti",
-  comments: "reply_noti",
+  comments: "comment_noti",
+  replies: "reply_noti",
   meetups: "meetup_noti",
   chats: "chat_noti",
 };
