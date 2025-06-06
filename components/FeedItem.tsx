@@ -1,7 +1,7 @@
 import { blockPostAuthor, deletePost } from "@/app/api/board";
 import { Post } from "@/app/type/types";
 import { colors } from "@/constants/color";
-import { Entypo, Feather } from "@expo/vector-icons";
+import { AntDesign, Entypo, Feather, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -216,8 +216,8 @@ const FeedItem = ({
 
         <View style={styles.menuContainer}>
           <Pressable style={styles.menu} onPress={onLikePress}>
-            <Feather
-              name="heart"
+            <AntDesign
+              name={post.is_liked ? "heart" : "hearto"}
               size={20}
               color={post.is_liked ? colors.RED_500 : colors.GRAY_700}
             />
@@ -243,11 +243,10 @@ const FeedItem = ({
             }}
           >
             
-            <Feather
-              key={post.is_scraped ? "scraped" : "not-scraped"}
-              name="bookmark"
+            <Ionicons
+              name={!!post.is_scraped ? "bookmark" : "bookmark-outline"}
               size={20}
-              color={post.is_scraped === true ? colors.PURPLE_300 : colors.GRAY_700}
+              color={!!post.is_scraped ? colors.PURPLE_300 : colors.GRAY_700}
             />
             <Text
               style={[
