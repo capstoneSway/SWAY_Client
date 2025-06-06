@@ -24,7 +24,10 @@ const NOTI_TYPE_LABEL = {
   board: "Comment",
   번개모임: "Meetup",
   chat: "Chat",
+  댓글: "Comment",
 };
+
+//
 
 /**
  * Notification 타입 정의 (서버 응답 JSON 구조에 맞췄습니다.)

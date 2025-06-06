@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   },
   nickname: { fontWeight: "bold", fontSize: 14, color: colors.BLACK },
   mostLikedTag: {
-    backgroundColor: colors.PURPLE_300,
+    backgroundColor: colors.PURPLE_200,
     color: colors.WHITE,
     fontSize: 10,
     fontWeight: "bold",

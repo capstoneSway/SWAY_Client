@@ -42,15 +42,15 @@ const ACCOUNT_ITEMS = [
 ];
 
 const SERVER_KEYS: Record<string, string> = {
-  posts: "post_noti",
   comments: "comment_noti",
+  replies: "reply_noti",
   meetups: "meetup_noti",
   chats: "chat_noti",
 };
 
 const NOTIFICATION_LABELS: Record<string, string> = {
-  posts: "Posts",
   comments: "Comments",
+  replies: "Replies",
   meetups: "Meetups",
   chats: "Meetup Chats",
 };
@@ -58,20 +58,20 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const notionURL =
-    "https://regal-macrame-587.notion.site/2091ac2d3624801a825dc2ae49b7e2a0?source=copy_link";
+    "https://regal-macrame-587.notion.site/SWAY-Legal-Community-Documents-2091ac2d3624807683a4ed7ef3709d0d";
 
   const [user, setUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [checkResult, setCheckResult] = useState<boolean | null>(null);
   const [switches, setSwitches] = useState<{
-    posts: boolean;
     comments: boolean;
+    replies: boolean;
     meetups: boolean;
     chats: boolean;
   }>({
-    posts: true,
     comments: true,
+    replies: true,
     meetups: true,
     chats: true,
   });
@@ -100,8 +100,8 @@ export default function SettingsScreen() {
         });
 
         setSwitches({
-          posts: res.data.post_noti,
           comments: res.data.comment_noti,
+          replies: res.data.reply_noti,
           meetups: res.data.meetup_noti,
           chats: res.data.chat_noti,
         });

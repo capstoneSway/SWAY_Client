@@ -2,7 +2,6 @@
 import * as Application from "expo-application";
 import * as ImagePicker from "expo-image-picker";
 import * as IntentLauncher from "expo-intent-launcher";
-import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { Alert, Linking, Platform } from "react-native";
 
@@ -60,14 +59,6 @@ export function requestGalleryPermission() {
   );
 }
 
-//  위치 권한
-export function requestLocationPermission() {
-  return requestWithPrompt(
-    () => Location.requestForegroundPermissionsAsync(),
-    "위치"
-  );
-}
-
 //  알림 권한
 export function requestNotificationPermission() {
   return requestWithPrompt(
@@ -82,7 +73,6 @@ export async function requestInitialPermissions() {
     { fn: requestNotificationPermission, label: "알림" },
     { fn: requestGalleryPermission, label: "갤러리" },
     { fn: requestCameraPermission, label: "카메라" },
-    { fn: requestLocationPermission, label: "위치" },
   ];
 
   for (const { fn, label } of permissions) {

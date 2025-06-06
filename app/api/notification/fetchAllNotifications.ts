@@ -13,8 +13,9 @@ export default async function fetchAllNotifications() {
     const res = await api.get("/noti/", {
       headers: { Authorization: `Bearer ${token}` },
     });
-
-    console.log("[알림] 전체 알림 데이터:", res.data);
+    console.log(
+      "[알림] 전체 알림 데이터:\n" + JSON.stringify(res.data, null, 2)
+    );
     return res.data;
   } catch (error) {
     console.error("[알림] 알림 목록 조회 실패:", error);

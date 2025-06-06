@@ -271,6 +271,9 @@ export default function Home() {
               .filter((item: any) => {
                 const end = item.end_time || item.expiresAt || item.expiryTime;
                 if (!end) return false;
+                const isExpired = new Date(end).getTime() < Date.now();
+                if (activeTab === "meetup" && isExpired) return false;
+
                 return true;
               })
               .map((item: any) => {

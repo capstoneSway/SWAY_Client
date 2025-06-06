@@ -31,7 +31,9 @@ export const getFcmToken = async (): Promise<string | null> => {
     console.log("FCM Token:", token);
     return token;
   } catch (e) {
-    console.error("FCM 토큰 가져오기 실패:", e);
+    if (__DEV__) {
+      console.error("FCM 토큰 가져오기 실패:", e);
+    }
     return null;
   }
 };

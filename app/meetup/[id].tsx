@@ -291,7 +291,13 @@ export default function MeetUpDetail() {
           </View>
 
           {/* 모임 설명 */}
-          <Text style={styles.description}>{meetup.content}</Text>
+          <Text
+            style={styles.description}
+            numberOfLines={6} // 최대 6줄까지만 표시
+            ellipsizeMode="tail" // 뒷부분에 … 붙음
+          >
+            {meetup.content}
+          </Text>
         </View>
 
         {/* 하단 참가 버튼 */}

@@ -3,29 +3,15 @@ import React from "react";
 
 import { colors } from "@/constants/color";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Image } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image, StyleSheet } from "react-native";
 
 export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
-  const TAB_BAR_BASE_HEIGHT = 50;
-
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.PURPLE_600,
         tabBarInactiveTintColor: colors.GRAY_500,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: colors.WHITE,
-          borderTopColor: colors.GRAY_200,
-          borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingHorizontal: 16,
-          justifyContent: "center",
-          height: TAB_BAR_BASE_HEIGHT + insets.bottom,
-          bottom: 0,
-        },
+        tabBarStyle: styles.tabBar,
       }}
     >
       <Tabs.Screen
@@ -33,7 +19,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           headerShown: false,
-          headerTitleAlign: "center",
+          headerTitleAlign: "center", // 가운데 정렬
           headerLeft: () => (
             <Image
               source={require("@/assets/images/SWAY.png")}
@@ -66,7 +52,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" color={color} size={size} />
           ),
-        }}
+        }} /* Board */
       />
       <Tabs.Screen
         name="currency"
@@ -92,6 +78,26 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      {/* <Tabs.Screen
+        name="index"
+        options={{
+          headerShown: false,
+          tabBarButton: () => <View style={{ width: 0, height: 0 }} />, // 스플래시로 탭 인덱스 활용했으니 탭에서 지워버림.
+        }}
+      /> */}
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: colors.WHITE,
+    borderTopColor: colors.GRAY_200,
+    borderTopWidth: 1,
+    height: 60,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
+});

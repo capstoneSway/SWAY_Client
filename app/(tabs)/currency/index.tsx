@@ -4,14 +4,16 @@ import {
   fetchAllMemos,
   MemoDTO,
 } from "@/app/api/memo";
+import getUnreadCount from "@/app/api/notification/getUnreadCount";
 import { getHistory } from "@/app/api/rate";
 import { parseCurrencyCode } from "@/app/api/utils";
 import CurrencyListItem from "@/components/CurrencyList";
 import { colors } from "@/constants/color";
 import { currencies } from "@/constants/currency";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import messaging from "@react-native-firebase/messaging";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -55,7 +57,45 @@ export default function CurrencyScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selecting, setSelecting] = useState<"from" | "to">("from");
+  const [unreadCount, setUnreadCount] = useState(0);
 
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const count = await getUnreadCount();
+        setUnreadCount(count);
+      } catch {
+        setUnreadCount(0);
+      }
+    };
+
+    fetchUnread(); // 첫 진입 시 1회
+
+    const interval = setInterval(fetchUnread, 60 * 1000); // 1분마다
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const count = await getUnreadCount();
+          setUnreadCount(count);
+        } catch {
+          setUnreadCount(0);
+        }
+      })();
+    }, [])
+  );
+
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(async () => {
+      const count = await getUnreadCount();
+      setUnreadCount(count);
+    });
+    return unsubscribe;
+  }, []);
   // currencies 배열에서 검색어로 필터링
   const filteredCurrencies =
     searchText.trim().length > 0
@@ -68,10 +108,10 @@ export default function CurrencyScreen() {
 
   // 초기 선택 통화
   const [fromCur, setFromCur] = useState(
-    currencies.find((c) => c.code === "KRW") ?? currencies[0]
+    currencies.find((c) => c.code === "USD") ?? currencies[0]
   );
   const [toCur, setToCur] = useState(
-    currencies.find((c) => c.code === "AED") ?? currencies[1] ?? currencies[0]
+    currencies.find((c) => c.code === "KRW") ?? currencies[1] ?? currencies[0]
   );
 
   // 금액 & 메모 상태
@@ -262,7 +302,24 @@ export default function CurrencyScreen() {
         <Text style={styles.logoText}>SWAY</Text>
         <Text style={styles.headerTitle}>Currency</Text>
         <TouchableOpacity onPress={() => router.push("/notification")}>
-          <Ionicons name="notifications-outline" size={24} />
+          <View>
+            <Ionicons name="notifications-outline" size={24} />
+            {unreadCount > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -3,
+                  right: -3,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: colors.RED_500,
+                  borderWidth: 1,
+                  borderColor: "white",
+                }}
+              />
+            )}
+          </View>
         </TouchableOpacity>
       </View>
       {/* 카드 */}

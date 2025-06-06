@@ -7,7 +7,6 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -17,9 +16,7 @@ import {
 import { WebView } from "react-native-webview";
 import { api } from "../api/axios";
 import { fetchUserInfo } from "../api/fetchUserInfo";
-import logout from "../api/logout";
 import refreshToken from "../api/refreshToken";
-import deleteAccount from "../api/unregister";
 
 const REST_API_KEY = "30ec7806d186838e36cbb3201fcc3fd5";
 const REDIRECT_URI =
@@ -183,7 +180,7 @@ export default function AuthHome() {
       </Pressable>
 
       {/* RefreshToken 테스트 버튼 */}
-      <Pressable
+      {/* <Pressable
         style={[styles.kakaoButton, { backgroundColor: "#ccc" }]}
         onPress={async () => {
           console.log("🟢 [테스트 버튼] RefreshToken 호출 시작");
@@ -218,10 +215,10 @@ export default function AuthHome() {
         }}
       >
         <Text>🔄 RefreshToken 테스트</Text>
-      </Pressable>
+      </Pressable> */}
 
       {/* AsyncStorage + 쿠키 초기화(로그아웃 대체) */}
-      <Pressable
+      {/* <Pressable
         style={[styles.kakaoButton, { backgroundColor: "#FF5252" }]}
         onPress={async () => {
           try {
@@ -235,10 +232,10 @@ export default function AuthHome() {
         }}
       >
         <Text style={styles.kakaoText}>🧹 AsyncStorage + 쿠키 초기화</Text>
-      </Pressable>
+      </Pressable> */}
 
       {/* ✅ 로그아웃 + 회원탈퇴 버튼 묶음 */}
-      <View
+      {/* <View
         style={{
           position: "absolute",
           bottom: 150,
@@ -247,7 +244,7 @@ export default function AuthHome() {
         }}
       >
         {/* 로그아웃 버튼 */}
-        <Pressable
+      {/* <Pressable
           style={{
             backgroundColor: colors.GRAY_500,
             paddingHorizontal: 16,
@@ -265,10 +262,10 @@ export default function AuthHome() {
           <Text style={{ color: colors.WHITE, fontWeight: "600" }}>
             로그아웃
           </Text>
-        </Pressable>
+        </Pressable> */}
 
-        {/* 회원탈퇴 버튼 */}
-        <Pressable
+      {/* 회원탈퇴 버튼 */}
+      {/* <Pressable
           onPress={() => {
             Alert.alert("회원탈퇴", "정말 탈퇴하시겠습니까?", [
               { text: "취소", style: "cancel" },
@@ -294,8 +291,8 @@ export default function AuthHome() {
           <Text style={{ color: "white", fontWeight: "600" }}>
             회원탈퇴 (카카오 연결 끊기)
           </Text>
-        </Pressable>
-      </View>
+        </Pressable> */}
+      {/* </View>  */}
 
       <Text style={styles.termsText}>
         By clicking continue, you agree to our{" "}

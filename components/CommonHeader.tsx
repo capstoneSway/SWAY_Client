@@ -1,7 +1,9 @@
+import getUnreadCount from "@/app/api/notification/getUnreadCount";
 import { colors } from "@/constants/color";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import messaging from "@react-native-firebase/messaging";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -18,6 +20,32 @@ export default function CommonHeader({
   showBackButton = false,
 }: CommonHeaderProps) {
   const insets = useSafeAreaInsets();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // 알림 수 갱신 함수
+  const fetchUnread = async () => {
+    try {
+      const count = await getUnreadCount();
+      setUnreadCount(count || 0);
+    } catch (e) {
+      console.error("Failed to fetch unread count", e);
+    }
+  };
+
+  // 포커스될 때마다 알림 수 갱신
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnread();
+    }, [])
+  );
+
+  // FCM 수신 시에도 갱신
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(async () => {
+      fetchUnread();
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -53,6 +81,7 @@ export default function CommonHeader({
             size={24}
             color={colors.BLACK}
           />
+          {unreadCount > 0 && <View style={styles.dot} />}
         </Pressable>
       </View>
     </View>
@@ -94,5 +123,17 @@ const styles = StyleSheet.create({
   },
   rightIcon: {
     marginLeft: "auto",
+    position: "relative",
+  },
+  dot: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.RED_500,
+    borderWidth: 1,
+    borderColor: colors.WHITE,
   },
 });

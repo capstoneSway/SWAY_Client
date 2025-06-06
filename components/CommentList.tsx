@@ -1,9 +1,8 @@
-
+import { Comment } from "@/app/type/types";
+import { colors } from "@/constants/color";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import CommentItem from "./CommentItem";
-import { Comment } from "@/app/type/types";
-import { colors } from "@/constants/color";
 
 interface CommentListProps {
   postId: number;
@@ -39,13 +38,23 @@ export default function CommentList({
     }
   }, [comments]);
 
-  const sortedComments = comments
-    .filter((c) => !(c.isDeleted && (c.replies?.length ?? 0) === 0))
-    .sort((a, b) => {
-      const aLikes = a.like_count ?? 0;
-      const bLikes = b.like_count ?? 0;
-      return bLikes - aLikes;
-    });
+  // 🔽 정렬 로직: mostLiked 1개 + 나머지는 작성일 순
+  const mostLikedComment = comments.find((c) => c.id === mostLikedId);
+
+  const otherComments = comments
+    .filter(
+      (c) =>
+        c.id !== mostLikedId && !(c.isDeleted && (c.replies?.length ?? 0) === 0)
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+  const sortedComments = [
+    ...(mostLikedComment ? [mostLikedComment] : []),
+    ...otherComments,
+  ];
 
   return (
     <>
@@ -102,9 +111,7 @@ export default function CommentList({
             ))}
 
           {/* 부모 댓글 사이에만 divider */}
-          {index < sortedComments.length - 1 && (
-            <View style={styles.divider} />
-          )}
+          {index < sortedComments.length - 1 && <View style={styles.divider} />}
         </View>
       ))}
     </>
