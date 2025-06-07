@@ -1,5 +1,5 @@
 import { colors } from "@/constants/color";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons ,AntDesign } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -25,7 +25,7 @@ export default function CommonHeader({
         {/* 왼쪽: 뒤로가기 or 로고 이미지 */}
         {showBackButton ? (
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="arrow-back" size={24} color={colors.BLACK} />
+            <AntDesign name="left" size={24} color={colors.BLACK} />
           </Pressable>
         ) : (
           <Image
