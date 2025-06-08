@@ -42,6 +42,12 @@ export const countries = [
     emoji: "🇨🇳",
   },
   {
+    code: "DEU",
+    name: "Germany",
+    flag: { uri: "https://i.imgur.com/B3fFj0T.png" },
+    emoji: "🇩🇪",
+  },
+  {
     code: "DKK",
     name: "Denmark",
     flag: require("../assets/images/country/denmark.png"),
@@ -72,12 +78,17 @@ export const countries = [
     emoji: "🇮🇩",
   },
   {
+    code: "IRN",
+    name: "Iran",
+    flag: { uri: "https://i.imgur.com/wOV220O.png" },
+    emoji: "🇮🇷",
+  },
+  {
     code: "JPY",
     name: "Japan",
     flag: require("../assets/images/country/japan.png"),
     emoji: "🇯🇵",
   },
-
   {
     code: "KRW",
     name: "South Korea",
@@ -109,6 +120,12 @@ export const countries = [
     emoji: "🇳🇿",
   },
   {
+    code: "PRT",
+    name: "Portugal",
+    flag: { uri: "https://i.imgur.com/V0le6er.png" },
+    emoji: "🇵🇹",
+  },
+  {
     code: "SAR",
     name: "Saudi Arabia",
     flag: require("../assets/images/country/saudi-arabia.png"),
@@ -126,14 +143,6 @@ export const countries = [
     flag: require("../assets/images/country/singapore.png"),
     emoji: "🇸🇬",
   },
-
-  {
-    code: "TRY",
-    name: "Turkiye",
-    flag: { uri: "https://i.imgur.com/NXFTNPM.png" },
-    emoji: "🇹🇷",
-  },
-
   {
     code: "THB",
     name: "Thailand",
@@ -141,9 +150,21 @@ export const countries = [
     emoji: "🇹🇭",
   },
   {
+    code: "TRY",
+    name: "Turkiye",
+    flag: { uri: "https://i.imgur.com/NXFTNPM.png" },
+    emoji: "🇹🇷",
+  },
+  {
     code: "USD",
     name: "United States",
     flag: require("../assets/images/country/usa.png"),
     emoji: "🇺🇸",
+  },
+  {
+    code: "UZB",
+    name: "Uzbekistan",
+    flag: { uri: "https://i.imgur.com/ja0BLHB.png" },
+    emoji: "🇺🇿",
   },
 ];
