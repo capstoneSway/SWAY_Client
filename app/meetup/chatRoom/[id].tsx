@@ -196,10 +196,29 @@ export default function ChatRoom() {
                     style={{ marginLeft: 2 }}
                   />
                 </Pressable>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  {(meetup && meetup.title) || "Chat Room"}
-                </Text>
 
+                {/* ✅ 제목은 가운데 + overflow 방지 */}
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    paddingHorizontal: 8,
+                  }}
+                >
+                  <Text
+                    style={styles.headerTitle}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {meetup && meetup.title
+                      ? meetup.title.length > 18
+                        ? meetup.title.slice(0, 18) + "..."
+                        : meetup.title
+                      : "Chat Room"}
+                  </Text>
+                </View>
+
+                {/* ✅ 아이콘 + 타이머는 오른쪽 고정 */}
                 <View style={styles.rightSection}>
                   <View style={styles.timerContainer}>
                     <FontAwesome5

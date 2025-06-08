@@ -159,7 +159,7 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
           ? new Date(c.date).toISOString()
           : new Date().toISOString(),
       like_count: c.like_count ?? 0,
-      isLiked: c.comment_is_liked ?? false,
+      comment_is_liked: c.comment_is_liked ?? false,
       parent_id: c.parent_id ?? null,
       isDeleted: c.is_deleted,
       user: {
@@ -179,7 +179,7 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
               ? new Date(r.date).toISOString()
               : new Date().toISOString(),
           like_count: r.like_count ?? 0,
-          isLiked: r.comment_is_liked ?? false,
+          comment_is_liked: r.comment_is_liked ?? false,
           isDeleted: r.is_deleted,
           parent_id: r.parent_id ?? c.id,
           user: {
@@ -252,7 +252,15 @@ export async function updateComment(
 }
 
 // 댓글 좋아요 토글
-export async function toggleCommentLike(postId: number, commentId: number) {
+export async function toggleCommentLike(
+  postId: number,
+  commentId: number
+): Promise<{
+  comment_is_liked: boolean;
+  like_count: number;
+  id: number;
+  [key: string]: any; // 다른 필드도 유연하게 받을 수 있도록
+}> {
   const token = await AsyncStorage.getItem("@jwt");
   if (!token) throw new Error("No access token");
 
@@ -265,6 +273,7 @@ export async function toggleCommentLike(postId: number, commentId: number) {
       },
     }
   );
+
   console.log("📡 댓글 좋아요 상태 코드:", res.status);
 
   if (res.status === 200) {
@@ -274,10 +283,7 @@ export async function toggleCommentLike(postId: number, commentId: number) {
     console.log("❗댓글 좋아요 요청 응답 상태코드:", res.status);
   }
 
-  return {
-    is_liked: res.data.liked,
-    delta: res.data.liked ? 1 : -1,
-  };
+  return res.data;
 }
 
 // 게시글 검색

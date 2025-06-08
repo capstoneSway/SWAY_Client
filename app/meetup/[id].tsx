@@ -87,8 +87,24 @@ export default function MeetUpDetail() {
   // 참가 버튼 클릭 시 처리
   const handleJoin = async () => {
     const endTime = new Date(meetup.end_time);
+    const token = await AsyncStorage.getItem("@jwt");
+    if (!token) throw new Error("No access token found");
 
-    if (now > endTime) {
+    const me = await fetchUserInfo(token);
+    if (!me?.username) throw new Error("No username found");
+
+    const alreadyJoined = meetup.participants?.some(
+      (p: any) => p.username === me.username
+    );
+
+    // 만료/닫힘 여부 체크 전에 alreadyJoined 확인
+    if (alreadyJoined) {
+      router.push(`/meetup/chatRoom/${meetup.id}`);
+      return;
+    }
+
+    // 아래 두 조건은 이제 'alreadyJoined'가 false인 경우에만 적용
+    if (!alreadyJoined && now > endTime) {
       Alert.alert("This meetup has expired.", "You can no longer join.");
       return;
     }
@@ -357,13 +373,14 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   titleRow: {
+    paddingBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 2,
   },
   title: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: "600",
     flexShrink: 1,
     marginTop: -28,

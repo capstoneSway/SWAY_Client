@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   button: {
-    width: "105%",
+    width: "100%",
     maxWidth: 400,
     height: 50,
     borderRadius: 10,

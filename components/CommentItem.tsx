@@ -1,5 +1,5 @@
 import { api } from "@/app/api/axios";
-import { blockCommentAuthor, toggleCommentLike } from "@/app/api/board";
+import { blockCommentAuthor } from "@/app/api/board";
 import { colors } from "@/constants/color";
 import { getFlagImage } from "@/utils/getFlagImage";
 import { Entypo, Feather } from "@expo/vector-icons";
@@ -84,24 +84,20 @@ export function CommentItem({
     if (isProcessing) return;
     setIsProcessing(true);
 
-    const previousLiked = localIsLiked;
-    const newLiked = !previousLiked;
-
-    setLocalIsLiked(newLiked);
-    setLocalLikeCount((prev) => {
-      const next = newLiked ? prev + 1 : prev - 1;
-      return next >= 0 ? next : 0;
-    });
-
     try {
-      await toggleCommentLike(postId, commentId);
-      onPressLike?.(commentId, isReply, newLiked);
+      //const res = await toggleCommentLike(postId, commentId);
+      //console.log("❤️ 서버 응답:", res);
+
+      //const serverLiked = res.comment_is_liked ?? false;
+      //const updatedCount = res.like_count ?? localLikeCount;
+
+      //setLocalIsLiked(serverLiked);
+      //setLocalLikeCount(updatedCount);
+
+      onPressLike?.(commentId, isReply, localIsLiked);
     } catch (err) {
       console.error("❌ Failed to toggle like:", err);
-      setLocalIsLiked(previousLiked);
-      setLocalLikeCount((prev) =>
-        previousLiked ? prev + 1 : Math.max(prev - 1, 0)
-      );
+      Alert.alert("Error", "Failed to update like status.");
     } finally {
       setIsProcessing(false);
     }

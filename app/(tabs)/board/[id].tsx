@@ -213,34 +213,9 @@ export default function BoardDetailScreen({
     commentId: number,
     isReply: boolean = false
   ) => {
-    setComments((prev) =>
-      prev.map((c) => {
-        if (!isReply && c.id === commentId) {
-          const newLiked = !c.comment_is_liked;
-          const newCount = newLiked
-            ? c.like_count + 1
-            : Math.max(c.like_count - 1, 0);
-          return { ...c, comment_is_liked: newLiked, like_count: newCount };
-        }
-        return {
-          ...c,
-          replies: c.replies.map((r) => {
-            if (r.id === commentId) {
-              const newLiked = !r.comment_is_liked;
-              const newCount = newLiked
-                ? r.like_count + 1
-                : Math.max(r.like_count - 1, 0);
-              return { ...r, comment_is_liked: newLiked, like_count: newCount };
-            }
-            return r;
-          }),
-        };
-      })
-    );
-
     try {
-      await toggleCommentLike(numericId, commentId);
-      loadComments();
+      await toggleCommentLike(numericId, commentId); // 서버에 좋아요/취소 요청
+      await loadComments(); // 최신 댓글 목록 재로드 (서버 상태 기준으로 UI 갱신)
     } catch (err) {
       console.error("댓글 좋아요 처리 실패:", err);
       Alert.alert("Error", "댓글 좋아요 처리 중 오류가 발생했습니다.");
@@ -282,9 +257,7 @@ export default function BoardDetailScreen({
                 onDelete={handleDeletePost}
               />
               <Text style={styles.commentTitle}>
-                {commentLoading
-                  ? "Loading..."
-                  : `${post?.comment_count ?? 0} Comments`}
+                {commentLoading ? "Loading..." : `${comments.length} Comments`}
               </Text>
               {commentLoading ? (
                 <ActivityIndicator />

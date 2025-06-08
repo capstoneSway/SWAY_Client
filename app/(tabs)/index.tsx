@@ -5,7 +5,6 @@ import formatDateTime from "@/utils/formatDataTime";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
 import messaging from "@react-native-firebase/messaging";
 import axios from "axios";
 import * as Clipboard from "expo-clipboard";
@@ -113,6 +112,10 @@ export default function Home() {
   }
 
   useEffect(() => {
+    setFilteredCards([]);
+  }, [activeTab]);
+
+  useEffect(() => {
     const initPush = async () => {
       const permissionGranted = await requestNotificationPermission();
       if (!permissionGranted) {
@@ -206,63 +209,50 @@ export default function Home() {
 
   useFocusEffect(
     useCallback(() => {
+      let isMounted = true;
+      const currentTab = activeTab; // 🔒 fetch 시작 시점의 탭 고정
+
       (async () => {
         setCurrentLoading(true);
         try {
           let data;
 
-          if (activeTab === "current") {
-            const token = await ensureValidToken();
+          const token = await ensureValidToken();
+          const userInfo = await fetchUserInfo(token);
+          const email = extractEmail(userInfo?.username || "");
+          setUserEmail(email);
 
-            // 사용자 정보 먼저 받아서 이메일 추출
-            const userInfo = await fetchUserInfo(token);
-            const email = extractEmail(userInfo?.username || "");
-            setUserEmail(email);
-
-            // 참여중인 번개 가져오기
+          if (currentTab === "current") {
             data = await fetchMyLightningCards();
-
-            // 이메일 기준으로 필터링
-            data = data.filter(
-              (item: any) =>
-                Array.isArray(item.participants) &&
-                item.participants.some((p: any) => p.email === email)
+            console.log(
+              "🔥 fetchMyLightningCards 결과",
+              JSON.stringify(data, null, 2)
             );
 
             data = data.filter((item: any) => {
-              // end_time, expiresAt, expiryTime 중 하나라도 있으면 사용
-              const end = item.end_time || item.expiresAt || item.expiryTime;
-              if (!end) return false; // 만료 정보 없으면 표시하지 않음
-              return true;
+              if (item.status === "canceled") return false;
+              const endRaw = item.end_time || item.expiresAt || item.expiryTime;
+              const end = new Date(endRaw);
+              if (!endRaw || isNaN(end.getTime())) return true;
+              return (
+                Array.isArray(item.participants) &&
+                item.participants.some((p: any) => p.email === email)
+              );
             });
 
-            // 호스트 여부 태그 지정
             data = data.map((item: any) => {
               const tags: string[] = [];
-              if (item.host?.email === email) {
-                tags.push("hosted");
-              } else if (
-                item.participants.some((p: any) => p.email === email)
-              ) {
-                tags.push("participated");
-              }
+              if (item.host?.email === email) tags.push("hosted");
+              else tags.push("participated");
               return { ...item, tags };
             });
           } else {
-            // meet ups
-            const token = await ensureValidToken();
-
-            // 사용자 정보 먼저 받아서 이메일 추출
-            const userInfo = await fetchUserInfo(token);
-            const email = extractEmail(userInfo?.username || "");
-            setUserEmail(email);
-
             data = await fetchLightningCards(selectedTag || undefined);
             console.log("전체 번개 목록:\n" + JSON.stringify(data, null, 2));
 
             data = data
               .filter((item: any) => {
-                // participants가 1단 혹은 2단 배열인지 대응
+                if (item.status === "canceled") return false;
                 const participants = Array.isArray(item.participants?.[0])
                   ? item.participants[0]
                   : item.participants;
@@ -272,125 +262,7 @@ export default function Home() {
                 const end = item.end_time || item.expiresAt || item.expiryTime;
                 if (!end) return false;
                 const isExpired = new Date(end).getTime() < Date.now();
-                if (activeTab === "meetup" && isExpired) return false;
-
-                return true;
-              })
-              .map((item: any) => {
-                const participants = Array.isArray(item.participants?.[0])
-                  ? item.participants[0]
-                  : item.participants;
-                const tags: string[] = [];
-
-                if (item.host?.email === email) {
-                  tags.push("hosted");
-                } else if (
-                  Array.isArray(participants) &&
-                  participants.some((p: any) => p.email === email)
-                ) {
-                  tags.push("participated");
-                }
-
-                return { ...item, tags };
-              });
-          }
-
-          // 정렬 및 시급한 항목 강조 표시
-          const result = data
-            .map((c: any) => ({
-              ...c,
-              isFocused: isExpiringSoon(c.expiresAt),
-              expiryTime: new Date(c.expiresAt),
-            }))
-            .sort((a: any, b: any) => {
-              if (a.isFocused && !b.isFocused) return -1;
-              if (!a.isFocused && b.isFocused) return 1;
-              if (a.isFocused && b.isFocused) {
-                const aTime = a.expiryTime.getTime();
-                const bTime = b.expiryTime.getTime();
-                if (aTime !== bTime) return aTime - bTime;
-                return a.title.localeCompare(b.title);
-                // 둘 다 임박했으면 더 빨리 종료되는 쪽이 앞으로 가고, 만약 종료 시각까지 같아버리면 또 제목으로.
-              }
-              if (activeTab === "current") {
-                const now = new Date().getTime();
-                const aEnd = new Date(a.end_time).getTime();
-                const bEnd = new Date(b.end_time).getTime();
-
-                const aClosed = now > aEnd;
-                const bClosed = now > bEnd;
-
-                if (aClosed && !bClosed) return 1; // 종료된 a는 아래로
-                if (!aClosed && bClosed) return -1; // 종료된 b는 아래로
-
-                return aEnd - bEnd; // 둘 다 open이면 종료 임박 순
-              } else {
-                const aCreated = new Date(a.created_at).getTime();
-                const bCreated = new Date(b.created_at).getTime();
-                return bCreated - aCreated; // meetups: 최신 생성순
-              }
-            });
-
-          setFilteredCards(result);
-          setHasFetched(true);
-        } catch (err) {
-          console.error("⚠️ 번개모임 불러오기 실패", err);
-        } finally {
-          setCurrentLoading(false);
-        }
-      })();
-    }, [selectedTag, timeTick, activeTab])
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      (async () => {
-        setCurrentLoading(true);
-        try {
-          let data;
-          if (activeTab === "current") {
-            const token = await ensureValidToken();
-            const userInfo = await fetchUserInfo(token);
-            const email = extractEmail(userInfo?.username || "");
-            setUserEmail(email);
-            data = await fetchMyLightningCards();
-            data = data.filter(
-              (item: any) =>
-                Array.isArray(item.participants) &&
-                item.participants.some((p: any) => p.email === email)
-            );
-            data = data.filter((item: any) => {
-              const end = item.end_time || item.expiresAt || item.expiryTime;
-              if (!end) return false;
-              return true;
-            });
-            data = data.map((item: any) => {
-              const tags: string[] = [];
-              if (item.host?.email === email) {
-                tags.push("hosted");
-              } else if (
-                item.participants.some((p: any) => p.email === email)
-              ) {
-                tags.push("participated");
-              }
-              return { ...item, tags };
-            });
-          } else {
-            const token = await ensureValidToken();
-            const userInfo = await fetchUserInfo(token);
-            const email = extractEmail(userInfo?.username || "");
-            setUserEmail(email);
-            data = await fetchLightningCards(selectedTag || undefined);
-            data = data
-              .filter((item: any) => {
-                const participants = Array.isArray(item.participants?.[0])
-                  ? item.participants[0]
-                  : item.participants;
-                return Array.isArray(participants) && participants.length > 0;
-              })
-              .filter((item: any) => {
-                const end = item.end_time || item.expiresAt || item.expiryTime;
-                if (!end) return false;
+                if (currentTab === "meetup" && isExpired) return false;
                 return true;
               })
               .map((item: any) => {
@@ -409,6 +281,7 @@ export default function Home() {
                 return { ...item, tags };
               });
           }
+
           const result = data
             .map((c: any) => ({
               ...c,
@@ -424,7 +297,8 @@ export default function Home() {
                 if (aTime !== bTime) return aTime - bTime;
                 return a.title.localeCompare(b.title);
               }
-              if (activeTab === "current") {
+
+              if (currentTab === "current") {
                 const now = new Date().getTime();
                 const aEnd = new Date(a.end_time).getTime();
                 const bEnd = new Date(b.end_time).getTime();
@@ -440,41 +314,171 @@ export default function Home() {
               }
             });
 
-          setFilteredCards(result);
-          setHasFetched(true);
+          // ✅ 탭이 도중에 바뀌지 않았을 경우에만 상태 적용
+          if (isMounted && currentTab === activeTab) {
+            setFilteredCards(result);
+            setHasFetched(true);
+          }
         } catch (err) {
           console.error("⚠️ 번개모임 불러오기 실패", err);
         } finally {
-          setCurrentLoading(false);
+          if (isMounted) setCurrentLoading(false);
+        }
+      })();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [selectedTag, timeTick, activeTab])
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    const currentTab = activeTab; // 🔒 fetch 시작 시점의 탭 고정
+
+    const interval = setInterval(() => {
+      (async () => {
+        setCurrentLoading(true);
+        try {
+          let data;
+          const token = await ensureValidToken();
+          const userInfo = await fetchUserInfo(token);
+          const email = extractEmail(userInfo?.username || "");
+          setUserEmail(email);
+
+          if (currentTab === "current") {
+            data = await fetchMyLightningCards();
+            console.log(
+              "🔥 fetchMyLightningCards 결과",
+              JSON.stringify(data, null, 2)
+            );
+
+            data = data.filter((item: any) => {
+              if (item.status === "canceled") return false;
+              const endRaw = item.end_time || item.expiresAt || item.expiryTime;
+              const end = new Date(endRaw);
+              if (!endRaw || isNaN(end.getTime())) return true;
+              return (
+                Array.isArray(item.participants) &&
+                item.participants.some((p: any) => p.email === email)
+              );
+            });
+
+            data = data.map((item: any) => {
+              const tags: string[] = [];
+              if (item.host?.email === email) tags.push("hosted");
+              else tags.push("participated");
+              return { ...item, tags };
+            });
+          } else {
+            data = await fetchLightningCards(selectedTag || undefined);
+            console.log("전체 번개 목록:\n" + JSON.stringify(data, null, 2));
+
+            data = data
+              .filter((item: any) => {
+                if (item.status === "canceled") return false;
+                const participants = Array.isArray(item.participants?.[0])
+                  ? item.participants[0]
+                  : item.participants;
+                return Array.isArray(participants) && participants.length > 0;
+              })
+              .filter((item: any) => {
+                const end = item.end_time || item.expiresAt || item.expiryTime;
+                if (!end) return false;
+                const isExpired = new Date(end).getTime() < Date.now();
+                if (currentTab === "meetup" && isExpired) return false;
+                return true;
+              })
+              .map((item: any) => {
+                const participants = Array.isArray(item.participants?.[0])
+                  ? item.participants[0]
+                  : item.participants;
+                const tags: string[] = [];
+                if (item.host?.email === email) {
+                  tags.push("hosted");
+                } else if (
+                  Array.isArray(participants) &&
+                  participants.some((p: any) => p.email === email)
+                ) {
+                  tags.push("participated");
+                }
+                return { ...item, tags };
+              });
+          }
+
+          const result = data
+            .map((c: any) => ({
+              ...c,
+              isFocused: isExpiringSoon(c.expiresAt),
+              expiryTime: new Date(c.expiresAt),
+            }))
+            .sort((a: any, b: any) => {
+              if (a.isFocused && !b.isFocused) return -1;
+              if (!a.isFocused && b.isFocused) return 1;
+              if (a.isFocused && b.isFocused) {
+                const aTime = a.expiryTime.getTime();
+                const bTime = b.expiryTime.getTime();
+                if (aTime !== bTime) return aTime - bTime;
+                return a.title.localeCompare(b.title);
+              }
+
+              if (currentTab === "current") {
+                const now = new Date().getTime();
+                const aEnd = new Date(a.end_time).getTime();
+                const bEnd = new Date(b.end_time).getTime();
+                const aClosed = now > aEnd;
+                const bClosed = now > bEnd;
+                if (aClosed && !bClosed) return 1;
+                if (!aClosed && bClosed) return -1;
+                return aEnd - bEnd;
+              } else {
+                const aCreated = new Date(a.created_at).getTime();
+                const bCreated = new Date(b.created_at).getTime();
+                return bCreated - aCreated;
+              }
+            });
+
+          // ✅ 탭이 도중에 바뀌지 않았을 경우에만 상태 적용
+          if (isMounted && currentTab === activeTab) {
+            setFilteredCards(result);
+            setHasFetched(true);
+          }
+        } catch (err) {
+          console.error("⚠️ 번개모임 주기 fetch 실패", err);
+        } finally {
+          if (isMounted) setCurrentLoading(false);
         }
       })();
     }, 60 * 1000);
 
-    return () => clearInterval(interval);
-  }, [selectedTag, activeTab]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [selectedTag, timeTick, activeTab]);
 
-  useEffect(() => {
-    (async () => {
-      const token = await ensureValidToken();
-      if (!token) {
-        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-        await CookieManager.clearAll();
-        router.replace("/auth/signIn");
-        return;
-      }
+  // useEffect(() => {
+  //   (async () => {
+  //     const token = await ensureValidToken();
+  //     if (!token) {
+  //       await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+  //       await CookieManager.clearAll();
+  //       router.replace("/auth/signIn");
+  //       return;
+  //     }
 
-      try {
-        const userInfo = await fetchUserInfo(token);
-        if (!userInfo.nickname) {
-          router.replace("/auth/signUsername");
-        } else if (!userInfo.nationality) {
-          router.replace("/auth/signNationality");
-        }
-      } catch (err) {
-        router.replace("/auth/signIn");
-      }
-    })();
-  }, []);
+  //     try {
+  //       const userInfo = await fetchUserInfo(token);
+  //       if (!userInfo.nickname) {
+  //         router.replace("/auth/signUsername");
+  //       } else if (!userInfo.nationality) {
+  //         router.replace("/auth/signNationality");
+  //       }
+  //     } catch (err) {
+  //       router.replace("/auth/signIn");
+  //     }
+  //   })();
+  // }, []);
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });

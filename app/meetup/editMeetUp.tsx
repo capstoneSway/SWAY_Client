@@ -453,7 +453,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 32,
-    paddingTop: 40,
+    paddingTop: 10,
+    paddingBottom: 60,
     overflow: "hidden",
   },
 

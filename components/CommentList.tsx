@@ -1,3 +1,4 @@
+import { toggleCommentLike } from "@/app/api/board";
 import { Comment } from "@/app/type/types";
 import { colors } from "@/constants/color";
 import React, { useEffect, useState } from "react";
@@ -7,7 +8,7 @@ import CommentItem from "./CommentItem";
 interface CommentListProps {
   postId: number;
   comments: Comment[];
-  onPressLike: (id: number, isReply?: boolean) => void;
+  onPressLike: (id: number, isReply?: boolean, isLiked?: boolean) => void;
   onPressMenu?: (id: number) => void;
   onPressReply: (id: number, isReply?: boolean) => void;
   onPressEdit?: (id: number, content: string) => void;
@@ -17,18 +18,22 @@ interface CommentListProps {
 export default function CommentList({
   postId,
   comments,
-  onPressLike,
   onPressMenu,
   onPressReply,
   onPressEdit,
   onPressDelete,
 }: CommentListProps) {
+  const [localComments, setLocalComments] = useState<Comment[]>([]);
   const [mostLikedId, setMostLikedId] = useState<number | null>(null);
 
   useEffect(() => {
-    const likeCounts = comments.map((c) => c.like_count ?? 0);
+    setLocalComments(comments);
+  }, [comments]);
+
+  useEffect(() => {
+    const likeCounts = localComments.map((c) => c.like_count ?? 0);
     const maxLikes = Math.max(...likeCounts);
-    const topLiked = comments.filter(
+    const topLiked = localComments.filter(
       (c) => (c.like_count ?? 0) === maxLikes && maxLikes > 0
     );
     if (topLiked.length === 1) {
@@ -36,12 +41,48 @@ export default function CommentList({
     } else {
       setMostLikedId(null);
     }
-  }, [comments]);
+  }, [localComments]);
 
-  // 🔽 정렬 로직: mostLiked 1개 + 나머지는 작성일 순
-  const mostLikedComment = comments.find((c) => c.id === mostLikedId);
+  const handlePressLike = async (
+    commentId: number,
+    isReply: boolean = false
+  ) => {
+    try {
+      const res = await toggleCommentLike(postId, commentId);
 
-  const otherComments = comments
+      const updatedComments = localComments.map((comment) => {
+        if (comment.id === commentId && !isReply) {
+          return {
+            ...comment,
+            comment_is_liked: res.comment_is_liked,
+            like_count: res.like_count,
+          };
+        } else if (comment.replies) {
+          return {
+            ...comment,
+            replies: comment.replies.map((reply) =>
+              reply.id === commentId
+                ? {
+                    ...reply,
+                    comment_is_liked: res.comment_is_liked,
+                    like_count: res.like_count,
+                  }
+                : reply
+            ),
+          };
+        }
+        return comment;
+      });
+
+      setLocalComments(updatedComments);
+    } catch (err) {
+      console.error("댓글 좋아요 처리 오류:", err);
+    }
+  };
+
+  const mostLikedComment = localComments.find((c) => c.id === mostLikedId);
+
+  const otherComments = localComments
     .filter(
       (c) =>
         c.id !== mostLikedId && !(c.isDeleted && (c.replies?.length ?? 0) === 0)
@@ -60,7 +101,6 @@ export default function CommentList({
     <>
       {sortedComments.map((comment, index) => (
         <View key={comment.id} style={styles.section}>
-          {/* 부모 댓글 */}
           <CommentItem
             postId={postId}
             nickname={comment.user.nickname}
@@ -74,7 +114,7 @@ export default function CommentList({
             commentId={comment.id}
             isDeleted={comment.isDeleted ?? false}
             isBlocked={comment.is_blocked ?? false}
-            onPressLike={() => onPressLike(comment.id, false)}
+            onPressLike={(id, isReply, isLiked) => handlePressLike(id, isReply)}
             onPressMenu={() => onPressMenu?.(comment.id)}
             onPressReply={() => onPressReply(comment.id)}
             onEdit={() => onPressEdit?.(comment.id, comment.content)}
@@ -82,7 +122,6 @@ export default function CommentList({
             mostLiked={comment.id === mostLikedId}
           />
 
-          {/* 대댓글 */}
           {comment.replies
             ?.filter((reply) => !reply.isDeleted)
             .map((reply) => (
@@ -101,7 +140,7 @@ export default function CommentList({
                 isReply
                 isDeleted={false}
                 isBlocked={reply.is_blocked ?? false}
-                onPressLike={() => onPressLike(reply.id, true)}
+                onPressLike={() => handlePressLike(reply.id, true)}
                 onPressMenu={() => onPressMenu?.(reply.id)}
                 onPressReply={() => onPressReply(comment.id, true)}
                 onEdit={() => onPressEdit?.(reply.id, reply.content)}
@@ -110,7 +149,6 @@ export default function CommentList({
               />
             ))}
 
-          {/* 부모 댓글 사이에만 divider */}
           {index < sortedComments.length - 1 && <View style={styles.divider} />}
         </View>
       ))}
