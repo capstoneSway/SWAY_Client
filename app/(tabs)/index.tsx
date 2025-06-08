@@ -656,9 +656,7 @@ export default function Home() {
                     bottom: 12,
                     right: 4,
                     zIndex: 999,
-                    backgroundColor: isFocused
-                      ? colors.YELLOW_500
-                      : colors.WHITE,
+                    backgroundColor: "transparent",
                     borderRadius: 10,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -687,14 +685,14 @@ export default function Home() {
                   <FontAwesome
                     name="edit"
                     size={28}
-                    color={isFocused ? colors.PURPLE_300 : colors.BLACK}
+                    color={isFocused ? colors.WHITE : colors.BLACK}
                     style={{ marginRight: 2 }}
                   />
                   <Text
                     style={{
                       fontSize: 16,
                       fontWeight: "600",
-                      color: isFocused ? colors.PURPLE_300 : colors.BLACK,
+                      color: isFocused ? colors.WHITE : colors.BLACK,
                     }}
                   >
                     Edit
