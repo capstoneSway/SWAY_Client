@@ -2,19 +2,34 @@ import ensureValidToken from "@/app/api/tokenManager";
 import { colors } from "@/constants/color";
 import emitter from "@/utils/eventEmitter";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
-import messaging from "@react-native-firebase/messaging";
 import { useFonts } from "expo-font";
 import { Stack, usePathname, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchUserInfo } from "./api/fetchUserInfo";
 
-// 백그라운드 알림 수신
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  console.log("📦 백그라운드 알림 수신:", remoteMessage);
-});
+// 플랫폼에 따라 CookieManager를 안전하게 불러옴
+let CookieManager: any;
+if (Platform.OS !== "web") {
+  CookieManager = require("@react-native-cookies/cookies").default;
+} else {
+  CookieManager = {
+    clearAll: async () => {},
+  };
+}
+
+// 플랫폼에 따라 messaging safely 불러옴
+let messaging: any = null;
+if (Platform.OS !== "web") {
+  messaging = require("@react-native-firebase/messaging").default;
+
+  // 백그라운드 알림 수신
+  messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
+    console.log("📦 백그라운드 알림 수신:", remoteMessage);
+  });
+}
 
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
@@ -66,8 +81,8 @@ export default function RootLayout() {
 
     checkToken();
   }, [pathname]);
-  //5분 검사 로직도
 
+  // 5분 검사 로직
   useEffect(() => {
     const interval = setInterval(async () => {
       const token = await ensureValidToken();
@@ -109,14 +124,16 @@ export default function RootLayout() {
 
   // 포그라운드 + 종료 상태에서의 알림 수신 처리
   useEffect(() => {
-    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
+    if (!messaging) return;
+
+    const unsubscribe = messaging().onMessage(async (remoteMessage: any) => {
       console.log("📲 포그라운드 알림:", remoteMessage);
       emitter.emit("newNotification", remoteMessage);
     });
 
     messaging()
       .getInitialNotification()
-      .then((remoteMessage) => {
+      .then((remoteMessage: any) => {
         if (remoteMessage) {
           console.log("🚪 종료 상태에서 알림으로 앱 실행됨:", remoteMessage);
           emitter.emit("newNotification", remoteMessage);
@@ -126,7 +143,7 @@ export default function RootLayout() {
     return unsubscribe;
   }, []);
 
-  if (!loaded || checkingAuth) return null; // 폰트 or 인증 체크 중이면 렌더링 막음
+  if (!loaded || checkingAuth) return null;
 
   return (
     <Stack
