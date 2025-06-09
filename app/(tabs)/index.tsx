@@ -5,6 +5,7 @@ import formatDateTime from "@/utils/formatDataTime";
 import { requestInitialPermissions } from "@/utils/requestPermissions";
 import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import CookieManager from "@react-native-cookies/cookies";
 import messaging from "@react-native-firebase/messaging";
 import axios from "axios";
 import * as Clipboard from "expo-clipboard";
@@ -457,28 +458,28 @@ export default function Home() {
     };
   }, [selectedTag, timeTick, activeTab]);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     const token = await ensureValidToken();
-  //     if (!token) {
-  //       await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-  //       await CookieManager.clearAll();
-  //       router.replace("/auth/signIn");
-  //       return;
-  //     }
+  useEffect(() => {
+    (async () => {
+      const token = await ensureValidToken();
+      if (!token) {
+        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+        await CookieManager.clearAll();
+        router.replace("/auth/signIn");
+        return;
+      }
 
-  //     try {
-  //       const userInfo = await fetchUserInfo(token);
-  //       if (!userInfo.nickname) {
-  //         router.replace("/auth/signUsername");
-  //       } else if (!userInfo.nationality) {
-  //         router.replace("/auth/signNationality");
-  //       }
-  //     } catch (err) {
-  //       router.replace("/auth/signIn");
-  //     }
-  //   })();
-  // }, []);
+      try {
+        const userInfo = await fetchUserInfo(token);
+        if (!userInfo.nickname) {
+          router.replace("/auth/signUsername");
+        } else if (!userInfo.nationality) {
+          router.replace("/auth/signNationality");
+        }
+      } catch (err) {
+        router.replace("/auth/signIn");
+      }
+    })();
+  }, []);
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });

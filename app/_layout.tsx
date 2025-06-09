@@ -4,7 +4,7 @@ import emitter from "@/utils/eventEmitter";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFonts } from "expo-font";
 import { Stack, usePathname, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,64 +40,67 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  // const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // 토큰 유효성 검사 후 로그인 페이지로 이동
-  useEffect(() => {
-    const checkToken = async () => {
-      const token = await ensureValidToken();
-      if (!token) {
-        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-        await CookieManager.clearAll();
-        if (!pathname.startsWith("/auth")) {
-          router.replace("/auth/signIn");
-        } else {
-          setCheckingAuth(false); // ✅ 여기에서 꼭 호출
-        }
-        return;
-      }
+  // // 토큰 유효성 검사 후 로그인 페이지로 이동
+  // useEffect(() => {
+  //   const checkToken = async () => {
+  //     try {
+  //       const token = await ensureValidToken();
 
-      try {
-        const user = await fetchUserInfo(token);
-        if (!user.nickname && !pathname.includes("signUsername")) {
-          router.replace("/auth/signUsername");
-          return;
-        }
+  //       if (!token) {
+  //         await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+  //         await CookieManager.clearAll();
 
-        if (
-          user.nickname &&
-          !user.nationality &&
-          !pathname.includes("signNationality")
-        ) {
-          router.replace("/auth/signNationality");
-          return;
-        }
-      } catch (e) {
-        router.replace("/auth/signIn");
-      }
+  //         if (!pathname.startsWith("/auth")) {
+  //           router.replace("/auth/signIn");
+  //         }
+  //         setCheckingAuth(false);
 
-      setCheckingAuth(false); // ✅ 정상 유저일 경우에도 호출
-    };
+  //         return;
+  //       }
 
-    checkToken();
-  }, [pathname]);
+  //       const user = await fetchUserInfo(token);
+
+  //       if (!user.nickname && !pathname.includes("signUsername")) {
+  //         router.replace("/auth/signUsername");
+  //         return;
+  //       }
+
+  //       if (
+  //         user.nickname &&
+  //         !user.nationality &&
+  //         !pathname.includes("signNationality")
+  //       ) {
+  //         router.replace("/auth/signNationality");
+  //         return;
+  //       }
+  //     } catch (e) {
+  //       router.replace("/auth/signIn");
+  //     } finally {
+  //       setCheckingAuth(false); // ✅ 무조건 실행
+  //     }
+  //   };
+
+  //   checkToken();
+  // }, []);
 
   // 5분 검사 로직
   useEffect(() => {
     const interval = setInterval(async () => {
-      const token = await ensureValidToken();
-
-      if (!token) {
-        console.warn("⛔️ Token expired or invalid. Logging out.");
-        await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
-        await CookieManager.clearAll();
-        if (!pathname.startsWith("/auth")) {
-          router.replace("/auth/signIn");
-        }
-        return;
-      }
-
       try {
+        const token = await ensureValidToken();
+
+        if (!token) {
+          console.warn("⛔️ Token expired or invalid. Logging out.");
+          await AsyncStorage.multiRemove(["@jwt", "@refreshToken"]);
+          await CookieManager.clearAll();
+          if (!pathname.startsWith("/auth")) {
+            router.replace("/auth/signIn");
+          }
+          return;
+        }
+
         const user = await fetchUserInfo(token);
 
         if (!user.nickname && !pathname.includes("signUsername")) {
@@ -143,7 +146,7 @@ export default function RootLayout() {
     return unsubscribe;
   }, []);
 
-  if (!loaded || checkingAuth) return null;
+  if (!loaded) return null;
 
   return (
     <Stack

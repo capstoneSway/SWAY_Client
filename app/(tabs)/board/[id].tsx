@@ -125,6 +125,13 @@ export default function BoardDetailScreen({
     return () => clearInterval(interval);
   }, [id]);
 
+  const totalCount =
+    comments.length +
+    comments.reduce((sum, comment) => sum + (comment.replies?.length ?? 0), 0);
+
+  const commentLabel =
+    totalCount === 1 ? `${totalCount} Comment` : `${totalCount} Comments`;
+
   const handlePostLikeToggle = async () => {
     try {
       const updated = await toggleLike(numericId);
@@ -257,7 +264,7 @@ export default function BoardDetailScreen({
                 onDelete={handleDeletePost}
               />
               <Text style={styles.commentTitle}>
-                {commentLoading ? "Loading..." : `${comments.length} Comments`}
+                {commentLoading ? "Loading..." : commentLabel}
               </Text>
               {commentLoading ? (
                 <ActivityIndicator />

@@ -1,6 +1,6 @@
 import getUnreadCount from "@/app/api/notification/getUnreadCount";
 import { colors } from "@/constants/color";
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import messaging from "@react-native-firebase/messaging";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -53,7 +53,7 @@ export default function CommonHeader({
         {/* 왼쪽: 뒤로가기 or 로고 이미지 */}
         {showBackButton ? (
           <Pressable onPress={() => router.back()} hitSlop={10}>
-            <Ionicons name="arrow-back" size={24} color={colors.BLACK} />
+            <AntDesign name="left" size={24} color={colors.BLACK} />
           </Pressable>
         ) : (
           <Image
@@ -81,7 +81,6 @@ export default function CommonHeader({
             size={24}
             color={colors.BLACK}
           />
-          {unreadCount > 0 && <View style={styles.dot} />}
         </Pressable>
       </View>
     </View>
@@ -123,17 +122,5 @@ const styles = StyleSheet.create({
   },
   rightIcon: {
     marginLeft: "auto",
-    position: "relative",
-  },
-  dot: {
-    position: "absolute",
-    top: -3,
-    right: -3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.RED_500,
-    borderWidth: 1,
-    borderColor: colors.WHITE,
   },
 });

@@ -2,7 +2,7 @@ import { createPost, updatePost } from "@/app/api/board";
 import DescriptionInput from "@/components/DescriptionInput";
 import TitleInput from "@/components/TitleInput";
 import { colors } from "@/constants/color";
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -155,7 +155,7 @@ export default function NewPostScreen() {
             <SafeAreaView style={styles.headerContainer} edges={["top"]}>
               <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                  <Ionicons name="arrow-back" size={24} color={colors.BLACK} />
+                  <AntDesign name="left" size={24} color={colors.BLACK} />
                 </TouchableOpacity>
 
                 <Text style={styles.headerTitle}>

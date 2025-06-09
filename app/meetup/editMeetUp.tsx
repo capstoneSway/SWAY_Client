@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
 
   modalTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "600",
     marginBottom: 12,
     color: colors.BLACK,
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 16,
+    marginBottom: 4,
   },
 
   chip: {
