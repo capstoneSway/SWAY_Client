@@ -104,6 +104,14 @@ export default function MeetUpDetail() {
     }
 
     // 아래 두 조건은 이제 'alreadyJoined'가 false인 경우에만 적용
+    if (
+      !alreadyJoined &&
+      meetup.participants?.length >= meetup.max_participant
+    ) {
+      Alert.alert("This meetup is full.", "No more participants can join.");
+      return;
+    } // 임시 땜빵.
+
     if (!alreadyJoined && now > endTime) {
       Alert.alert("This meetup has expired.", "You can no longer join.");
       return;
@@ -119,11 +127,6 @@ export default function MeetUpDetail() {
         "You are not eligible to join",
         "This meetup is restricted based on gender."
       );
-      return;
-    }
-
-    if (meetup.current_participant >= meetup.max_participant) {
-      Alert.alert("This meetup is full.", "No more participants can join.");
       return;
     }
 

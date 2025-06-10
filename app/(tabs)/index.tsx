@@ -254,6 +254,8 @@ export default function Home() {
             data = data
               .filter((item: any) => {
                 if (item.status === "canceled") return false;
+                if (currentTab === "meetup" && item.status === "done")
+                  return false;
                 const participants = Array.isArray(item.participants?.[0])
                   ? item.participants[0]
                   : item.participants;
@@ -378,6 +380,8 @@ export default function Home() {
             data = data
               .filter((item: any) => {
                 if (item.status === "canceled") return false;
+                if (currentTab === "meetup" && item.status === "done")
+                  return false;
                 const participants = Array.isArray(item.participants?.[0])
                   ? item.participants[0]
                   : item.participants;
@@ -724,7 +728,7 @@ export default function Home() {
                   styles.participants,
                   isFocused && styles.participantsFocused,
                   { marginTop: 4 },
-                  { marginBottom: 30 }, // ✅ 간격 좁힘
+                  { marginBottom: 30 },
                 ]}
               >
                 Participants: {participantsText}
@@ -751,7 +755,9 @@ export default function Home() {
           ) : (
             <>
               <Text style={[styles.title, isFocused && styles.titleFocused]}>
-                {item.title}
+                {activeTab === "current" && item.title.length > 20
+                  ? item.title.slice(0, 20) + "..."
+                  : item.title}
               </Text>
               <Text style={[styles.sub, isFocused && styles.subFocused]}>
                 {isValidDate
